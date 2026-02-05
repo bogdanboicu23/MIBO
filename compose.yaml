@@ -1,0 +1,25 @@
+﻿services:
+  mibo.apigateway:
+    image: mibo.apigateway
+    build:
+      context: .
+      dockerfile: MIBO.ApiGateway/Dockerfile
+
+  mibo.conversationservice:
+    image: mibo.conversationservice
+    build:
+      context: .
+      dockerfile: MIBO.ConversationService/Dockerfile
+
+  mibo.visualisationservice:
+    image: mibo.visualisationservice
+    build:
+      context: .
+      dockerfile: MIBO.VisualisationService/Dockerfile
+
+  mibo.calendaragent:
+    image: mibo.calendaragent
+    build:
+      context: .
+      dockerfile: MIBO.CalendarAgent/Dockerfile
+

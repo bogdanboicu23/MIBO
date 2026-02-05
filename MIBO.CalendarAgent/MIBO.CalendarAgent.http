@@ -1,0 +1,6 @@
+@MIBO.CalendarAgent_HostAddress = http://localhost:5001
+
+GET {{MIBO.CalendarAgent_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
