@@ -28,7 +28,7 @@ jobs:
     name: Detect Changed Services
     runs-on: ubuntu-latest
     outputs:
-      services: ${{ steps.filter.outputs.changes }}
+      services: ${{ steps.set-services.outputs.services }}
       api-gateway: ${{ steps.filter.outputs.api-gateway }}
       app-host: ${{ steps.filter.outputs.app-host }}
       calendar-agent: ${{ steps.filter.outputs.calendar-agent }}
@@ -70,6 +70,17 @@ jobs:
               - 'src/MIBO.Storage.Blob/**'
               - 'src/MIBO.Storage.PostgreSQL/**'
               - 'src/MIBO.Observability/**'
+
+      - name: Filter out non-deployable services
+        id: set-services
+        run: |
+          # Get the changes from the filter step
+          CHANGES='${{ steps.filter.outputs.changes }}'
+
+          # Filter out shared-libs from the services array
+          SERVICES=$(echo "$CHANGES" | jq -r '. - ["shared-libs"]')
+
+          echo "services=$SERVICES" >> $GITHUB_OUTPUT
 
 
   build-and-test:
