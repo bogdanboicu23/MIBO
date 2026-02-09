@@ -18,6 +18,13 @@ on:
           - staging
           - production
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+  id-token: write
+
 env:
   DOTNET_VERSION: '9.0'
   REGISTRY: ghcr.io
