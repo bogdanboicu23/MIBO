@@ -105,7 +105,7 @@ jobs:
 
       - name: Upload Trivy results
         if: inputs.scan-image
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-${{ inputs.service-name }}.sarif'
 
