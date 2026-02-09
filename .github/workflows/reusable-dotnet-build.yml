@@ -1,0 +1,136 @@
+name: Reusable .NET Build
+
+on:
+  workflow_call:
+    inputs:
+      project-name:
+        required: true
+        type: string
+        description: 'Name of the project to build'
+      dotnet-version:
+        required: false
+        type: string
+        default: '9.0'
+        description: '.NET SDK version'
+      run-tests:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to run tests'
+      upload-artifacts:
+        required: false
+        type: boolean
+        default: true
+        description: 'Whether to upload build artifacts'
+    secrets:
+      sonar-token:
+        required: false
+        description: 'SonarCloud token for code analysis'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install SonarScanner
+        if: secrets.sonar-token != ''
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          dotnet tool install --global dotnet-coverage
+
+      - name: Start SonarCloud analysis
+        if: secrets.sonar-token != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+        run: |
+          dotnet sonarscanner begin \
+            /k:"${{ github.repository_owner }}_${{ inputs.project-name }}" \
+            /o:"${{ github.repository_owner }}" \
+            /d:sonar.token="${SONAR_TOKEN}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
+
+      - name: Restore dependencies
+        run: |
+          cd src
+          dotnet restore "${{ inputs.project-name }}/${{ inputs.project-name }}.csproj"
+
+      - name: Build
+        run: |
+          cd src
+          dotnet build "${{ inputs.project-name }}/${{ inputs.project-name }}.csproj" \
+            --configuration Release \
+            --no-restore \
+            -p:TreatWarningsAsErrors=true
+
+      - name: Run tests
+        if: inputs.run-tests
+        run: |
+          cd src
+          TEST_PROJECT="${{ inputs.project-name }}.Tests/${{ inputs.project-name }}.Tests.csproj"
+
+          if [ -f "$TEST_PROJECT" ]; then
+            dotnet test "$TEST_PROJECT" \
+              --configuration Release \
+              --no-restore \
+              --no-build \
+              --logger "trx;LogFileName=test-results.trx" \
+              --logger "console;verbosity=detailed" \
+              --collect:"XPlat Code Coverage" \
+              --results-directory ./TestResults \
+              /p:CollectCoverage=true \
+              /p:CoverletOutputFormat=opencover \
+              /p:CoverletOutput=./TestResults/coverage.opencover.xml
+          else
+            echo "No test project found at $TEST_PROJECT"
+          fi
+
+      - name: End SonarCloud analysis
+        if: secrets.sonar-token != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+        run: |
+          dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+
+      - name: Generate test report
+        if: inputs.run-tests && always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results - ${{ inputs.project-name }}
+          path: 'src/TestResults/*.trx'
+          reporter: dotnet-trx
+          fail-on-error: false
+
+      - name: Upload build artifacts
+        if: inputs.upload-artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.project-name }}-build
+          path: |
+            src/${{ inputs.project-name }}/bin/Release/
+            src/${{ inputs.project-name }}/obj/Release/
+
+      - name: Upload test results
+        if: inputs.run-tests && always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.project-name }}-test-results
+          path: src/TestResults/
