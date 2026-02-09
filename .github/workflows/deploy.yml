@@ -88,7 +88,7 @@ jobs:
 
       - name: Configure kubectl
         env:
-          KUBECONFIG_DATA: ${{ secrets[format('KUBECONFIG_{0}', upper(github.event.inputs.environment))] }}
+          KUBECONFIG_DATA: ${{ github.event.inputs.environment == 'production' && secrets.KUBECONFIG_PROD || github.event.inputs.environment == 'staging' && secrets.KUBECONFIG_STAGING || secrets.KUBECONFIG_DEV }}
         run: |
           echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
           echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
@@ -126,7 +126,7 @@ jobs:
 
       - name: Configure kubectl
         env:
-          KUBECONFIG_DATA: ${{ secrets[format('KUBECONFIG_{0}', upper(github.event.inputs.environment))] }}
+          KUBECONFIG_DATA: ${{ github.event.inputs.environment == 'production' && secrets.KUBECONFIG_PROD || github.event.inputs.environment == 'staging' && secrets.KUBECONFIG_STAGING || secrets.KUBECONFIG_DEV }}
         run: |
           echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
           echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
@@ -175,7 +175,7 @@ jobs:
 
       - name: Configure kubectl
         env:
-          KUBECONFIG_DATA: ${{ secrets[format('KUBECONFIG_{0}', upper(github.event.inputs.environment))] }}
+          KUBECONFIG_DATA: ${{ github.event.inputs.environment == 'production' && secrets.KUBECONFIG_PROD || github.event.inputs.environment == 'staging' && secrets.KUBECONFIG_STAGING || secrets.KUBECONFIG_DEV }}
         run: |
           echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
           echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
