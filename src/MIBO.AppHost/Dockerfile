@@ -6,8 +6,11 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet restore "MIBO.AppHost/MIBO.AppHost.csproj"
-RUN dotnet publish "MIBO.AppHost/MIBO.AppHost.csproj" -c Release -o /app/publish
+WORKDIR /src/MIBO.AppHost
+RUN dotnet restore
+RUN dotnet build -c Release
+RUN dotnet publish -c Release -o /app/publish --self-contained false
+RUN ls -la /app/publish || echo "Publish directory not created"
 
 FROM base AS final
 WORKDIR /app
