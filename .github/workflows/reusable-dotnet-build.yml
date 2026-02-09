@@ -22,10 +22,6 @@ on:
         type: boolean
         default: true
         description: 'Whether to upload build artifacts'
-    secrets:
-      sonar-token:
-        required: false
-        description: 'SonarCloud token for code analysis'
 
 jobs:
   build:
@@ -47,25 +43,6 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
-
-      - name: Install SonarScanner
-        if: ${{ secrets.sonar-token != '' }}
-        run: |
-          dotnet tool install --global dotnet-sonarscanner
-          dotnet tool install --global dotnet-coverage
-
-      - name: Start SonarCloud analysis
-        if: ${{ secrets.sonar-token != '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.sonar-token }}
-        run: |
-          dotnet sonarscanner begin \
-            /k:"${{ github.repository_owner }}_${{ inputs.project-name }}" \
-            /o:"${{ github.repository_owner }}" \
-            /d:sonar.token="${SONAR_TOKEN}" \
-            /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
 
       - name: Restore dependencies
         run: |
@@ -101,14 +78,6 @@ jobs:
           else
             echo "No test project found at $TEST_PROJECT"
           fi
-
-      - name: End SonarCloud analysis
-        if: ${{ secrets.sonar-token != '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.sonar-token }}
-        run: |
-          dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
 
       - name: Generate test report
         if: inputs.run-tests && always()
