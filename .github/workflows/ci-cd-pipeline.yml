@@ -109,7 +109,7 @@ jobs:
           dotnet build MIBO.Metrics/MIBO.Metrics.csproj --configuration Release --no-restore
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shared-libs
           path: src/**/bin/Release/
@@ -132,7 +132,7 @@ jobs:
 
       - name: Download shared libraries
         if: needs.build-shared-libraries.result == 'success'
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: shared-libs
           path: src/
@@ -172,7 +172,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.service }}
           path: src/TestResults/

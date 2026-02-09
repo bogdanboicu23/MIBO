@@ -49,13 +49,13 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Install SonarScanner
-        if: secrets.sonar-token != ''
+        if: ${{ secrets.sonar-token != '' }}
         run: |
           dotnet tool install --global dotnet-sonarscanner
           dotnet tool install --global dotnet-coverage
 
       - name: Start SonarCloud analysis
-        if: secrets.sonar-token != ''
+        if: ${{ secrets.sonar-token != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.sonar-token }}
@@ -103,7 +103,7 @@ jobs:
           fi
 
       - name: End SonarCloud analysis
-        if: secrets.sonar-token != ''
+        if: ${{ secrets.sonar-token != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.sonar-token }}
@@ -121,7 +121,7 @@ jobs:
 
       - name: Upload build artifacts
         if: inputs.upload-artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.project-name }}-build
           path: |
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload test results
         if: inputs.run-tests && always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.project-name }}-test-results
           path: src/TestResults/
