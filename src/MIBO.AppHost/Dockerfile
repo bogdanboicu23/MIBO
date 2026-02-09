@@ -17,6 +17,7 @@ WORKDIR "/src/MIBO.AppHost"
 RUN dotnet build "MIBO.AppHost.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
+WORKDIR "/src/MIBO.AppHost"
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "MIBO.AppHost.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
