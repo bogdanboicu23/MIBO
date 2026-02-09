@@ -77,8 +77,13 @@ jobs:
           # Get the changes from the filter step
           CHANGES='${{ steps.filter.outputs.changes }}'
 
-          # Filter out shared-libs from the services array
-          SERVICES=$(echo "$CHANGES" | jq -r '. - ["shared-libs"]')
+          # For workflow_dispatch, if no changes detected, include all deployable services
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ "$CHANGES" == "[]" ]]; then
+            SERVICES='["api-gateway","app-host","calendar-agent","conversation-service","visualisation-service"]'
+          else
+            # Filter out shared-libs and non-deployable services from the changes
+            SERVICES=$(echo "$CHANGES" | jq -c '. - ["shared-libs","weather-data-service","finance-data-service"]')
+          fi
 
           echo "services=$SERVICES" >> $GITHUB_OUTPUT
 
