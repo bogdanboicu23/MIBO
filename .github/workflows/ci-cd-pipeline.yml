@@ -346,22 +346,3 @@ jobs:
 
           kubectl -n mibo get pods
           kubectl -n mibo get services
-
-  notify:
-    name: Send Notifications
-    runs-on: ubuntu-latest
-    needs: [build-and-test, deploy]
-    if: always()
-    steps:
-      - name: Send Slack notification
-        if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: |
-            Pipeline Status: ${{ job.status }}
-            Commit: ${{ github.sha }}
-            Author: ${{ github.actor }}
-            Branch: ${{ github.ref }}
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        continue-on-error: true

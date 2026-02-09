@@ -221,16 +221,3 @@ jobs:
               required_contexts: [],
               payload: deployment
             });
-
-      - name: Send notification
-        if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: |
-            Deployment to ${{ github.event.inputs.environment }} ${{ job.status }}
-            Services: ${{ github.event.inputs.services }}
-            Image Tag: ${{ github.event.inputs.image-tag }}
-            Deployed by: ${{ github.actor }}
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        continue-on-error: true
