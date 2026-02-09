@@ -1,0 +1,236 @@
+name: Deploy to Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      services:
+        description: 'Services to deploy (comma-separated, or "all")'
+        required: false
+        default: 'all'
+      image-tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'latest'
+      dry-run:
+        description: 'Perform a dry run without applying changes'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  prepare-deployment:
+    name: Prepare Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      services-matrix: ${{ steps.prepare.outputs.services }}
+      namespace: ${{ steps.prepare.outputs.namespace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare deployment parameters
+        id: prepare
+        run: |
+          # Set namespace based on environment
+          case "${{ github.event.inputs.environment }}" in
+            production)
+              echo "namespace=mibo-prod" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "namespace=mibo-staging" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "namespace=mibo-dev" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+          # Parse services to deploy
+          if [[ "${{ github.event.inputs.services }}" == "all" ]]; then
+            echo 'services=["api-gateway","app-host","calendar-agent","conversation-service","visualisation-service","weather-data-service"]' >> $GITHUB_OUTPUT
+          else
+            # Convert comma-separated to JSON array
+            SERVICES=$(echo "${{ github.event.inputs.services }}" | tr ',' '\n' | jq -R . | jq -sc .)
+            echo "services=$SERVICES" >> $GITHUB_OUTPUT
+          fi
+
+  validate-deployment:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    needs: prepare-deployment
+    environment:
+      name: ${{ github.event.inputs.environment }}-approval
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup tools
+        run: |
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+          # Install Helm
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+          # Install Kustomize
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ secrets[format('KUBECONFIG_{0}', upper(github.event.inputs.environment))] }}
+        run: |
+          echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+
+      - name: Validate Kubernetes connection
+        run: |
+          kubectl cluster-info
+          kubectl get ns ${{ needs.prepare-deployment.outputs.namespace }} || \
+            kubectl create ns ${{ needs.prepare-deployment.outputs.namespace }}
+
+      - name: Validate manifests
+        run: |
+          cd deploy/environments/${{ github.event.inputs.environment }}
+          kustomize build . | kubectl apply --dry-run=client -f -
+
+  deploy-services:
+    name: Deploy Service
+    runs-on: ubuntu-latest
+    needs: [prepare-deployment, validate-deployment]
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.prepare-deployment.outputs.services-matrix) }}
+      max-parallel: 2
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: https://${{ matrix.service }}.${{ github.event.inputs.environment }}.mibo.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup deployment tools
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ secrets[format('KUBECONFIG_{0}', upper(github.event.inputs.environment))] }}
+        run: |
+          echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+
+      - name: Deploy with Helm
+        run: |
+          NAMESPACE=${{ needs.prepare-deployment.outputs.namespace }}
+          SERVICE=${{ matrix.service }}
+          IMAGE_TAG=${{ github.event.inputs.image-tag }}
+          DRY_RUN=${{ github.event.inputs.dry-run == 'true' && '--dry-run' || '' }}
+
+          helm upgrade --install $SERVICE \
+            ./deploy/helm/$SERVICE \
+            --namespace $NAMESPACE \
+            --create-namespace \
+            --values ./deploy/environments/${{ github.event.inputs.environment }}/values-$SERVICE.yaml \
+            --set image.tag=$IMAGE_TAG \
+            --set image.repository=ghcr.io/${{ github.repository_owner }}/mibo-$SERVICE \
+            --wait \
+            --timeout 10m \
+            $DRY_RUN
+
+      - name: Verify deployment
+        if: github.event.inputs.dry-run != 'true'
+        run: |
+          NAMESPACE=${{ needs.prepare-deployment.outputs.namespace }}
+          SERVICE=${{ matrix.service }}
+
+          # Wait for rollout
+          kubectl -n $NAMESPACE rollout status deployment/$SERVICE --timeout=5m
+
+          # Check pod status
+          kubectl -n $NAMESPACE get pods -l app=$SERVICE
+
+          # Run health check
+          POD=$(kubectl -n $NAMESPACE get pod -l app=$SERVICE -o jsonpath='{.items[0].metadata.name}')
+          kubectl -n $NAMESPACE exec $POD -- wget -O- http://localhost:8080/health || true
+
+  post-deployment:
+    name: Post-Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: deploy-services
+    if: github.event.inputs.dry-run != 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        env:
+          KUBECONFIG_DATA: ${{ secrets[format('KUBECONFIG_{0}', upper(github.event.inputs.environment))] }}
+        run: |
+          echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+      - name: Run smoke tests
+        run: |
+          NAMESPACE=${{ needs.prepare-deployment.outputs.namespace }}
+
+          # Test API Gateway health
+          kubectl -n $NAMESPACE run smoke-test --rm -i --restart=Never --image=curlimages/curl -- \
+            curl -f http://api-gateway:8080/health || echo "API Gateway health check failed"
+
+          # Test service discovery
+          kubectl -n $NAMESPACE get endpoints
+
+          # Check resource usage
+          kubectl -n $NAMESPACE top pods || true
+
+      - name: Create deployment record
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployment = {
+              environment: '${{ github.event.inputs.environment }}',
+              services: '${{ github.event.inputs.services }}',
+              image_tag: '${{ github.event.inputs.image-tag }}',
+              deployed_by: '${{ github.actor }}',
+              deployment_time: new Date().toISOString(),
+              commit_sha: '${{ github.sha }}',
+              workflow_run: '${{ github.run_id }}'
+            };
+
+            // Create deployment annotation
+            await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: '${{ github.event.inputs.environment }}',
+              description: `Deployed ${deployment.services} with tag ${deployment.image_tag}`,
+              auto_merge: false,
+              required_contexts: [],
+              payload: deployment
+            });
+
+      - name: Send notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to ${{ github.event.inputs.environment }} ${{ job.status }}
+            Services: ${{ github.event.inputs.services }}
+            Image Tag: ${{ github.event.inputs.image-tag }}
+            Deployed by: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        continue-on-error: true

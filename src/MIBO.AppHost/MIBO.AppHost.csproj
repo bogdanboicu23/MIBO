@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UserSecretsId>474bcbb4-7367-4415-b5d8-7fb99ad5f850</UserSecretsId>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     <ItemGroup>
@@ -18,6 +19,12 @@
     <ItemGroup>
       <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
       <PackageReference Include="Aspire.Hosting.Redis" Version="13.1.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
