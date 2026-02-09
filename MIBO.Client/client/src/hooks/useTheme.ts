@@ -7,7 +7,10 @@ export function useTheme() {
     const [theme, setTheme] = useState<ThemeMode>(() => getStorage(themeKey, "dark"));
 
     useEffect(() => {
-        document.documentElement.classList.toggle("dark", theme === "dark");
+        const isDark = theme === "dark";
+        document.documentElement.classList.toggle("dark", isDark);
+        document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+
         setStorage(themeKey, theme);
     }, [theme]);
 
