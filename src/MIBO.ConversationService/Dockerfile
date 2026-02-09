@@ -13,6 +13,7 @@ WORKDIR "/src/MIBO.ConversationService"
 RUN dotnet build "./MIBO.ConversationService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
+WORKDIR "/src/MIBO.ConversationService"
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./MIBO.ConversationService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 

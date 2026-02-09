@@ -13,6 +13,7 @@ WORKDIR "/src/MIBO.CalendarAgent"
 RUN dotnet build "./MIBO.CalendarAgent.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
+WORKDIR "/src/MIBO.CalendarAgent"
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./MIBO.CalendarAgent.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 

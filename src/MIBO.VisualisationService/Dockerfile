@@ -1,5 +1,4 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
@@ -14,6 +13,7 @@ WORKDIR "/src/MIBO.VisualisationService"
 RUN dotnet build "./MIBO.VisualisationService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
+WORKDIR "/src/MIBO.VisualisationService"
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./MIBO.VisualisationService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
