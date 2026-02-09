@@ -2,3 +2,4 @@
 
 html, body, #root { height: 100%; }
 body { margin: 0; }
+@custom-variant dark (&:where(.dark, .dark *));
