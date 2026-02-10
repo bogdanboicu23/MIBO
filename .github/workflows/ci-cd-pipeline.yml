@@ -255,7 +255,7 @@ jobs:
     needs: [build-docker-images, security-scan]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && always()
     environment:
-      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production') || (github.ref == 'refs/heads/develop' && 'staging') || 'dev' }}
+      name: dev
     steps:
       - uses: actions/checkout@v4
 
