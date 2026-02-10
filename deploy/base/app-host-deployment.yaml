@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-host
+  namespace: mibo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-host
+  template:
+    metadata:
+      labels:
+        app: app-host
+    spec:
+      containers:
+      - name: app-host
+        image: ghcr.io/bogdanboicu23/mibo-app-host:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-host
+  namespace: mibo
+spec:
+  selector:
+    app: app-host
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

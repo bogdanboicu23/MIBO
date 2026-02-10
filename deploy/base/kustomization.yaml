@@ -4,3 +4,6 @@ resources:
   - namespaces.yaml
   - configmap.yaml
   - secrets.yaml
+  - api-gateway-deployment.yaml
+  - app-host-deployment.yaml
+  - other-services-deployment.yaml
