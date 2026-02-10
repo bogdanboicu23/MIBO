@@ -316,16 +316,19 @@ jobs:
         run: |
           cd deploy/environments/${{ env.ENVIRONMENT }}
 
-          # Update image tags in kustomization
-          for service in api-gateway app-host calendar-agent conversation-service visualisation-service; do
-            IMAGE_TAG="${{ github.sha }}"
-            if [[ "${{ github.ref_type }}" == "tag" ]]; then
-              IMAGE_TAG="${{ github.ref_name }}"
-            fi
+          # Update image tags using kustomize edit
+          IMAGE_TAG="${{ github.sha }}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            IMAGE_TAG="${{ github.ref_name }}"
+          fi
 
-            # Update values files with new image tags
-            sed -i "s|tag: .*|tag: ${IMAGE_TAG}|" values-${service}.yaml
-          done
+          # Update all service images with the new tag
+          kustomize edit set image \
+            ghcr.io/bogdanboicu23/mibo-api-gateway=ghcr.io/bogdanboicu23/mibo-api-gateway:${IMAGE_TAG} \
+            ghcr.io/bogdanboicu23/mibo-app-host=ghcr.io/bogdanboicu23/mibo-app-host:${IMAGE_TAG} \
+            ghcr.io/bogdanboicu23/mibo-calendar-agent=ghcr.io/bogdanboicu23/mibo-calendar-agent:${IMAGE_TAG} \
+            ghcr.io/bogdanboicu23/mibo-conversation-service=ghcr.io/bogdanboicu23/mibo-conversation-service:${IMAGE_TAG} \
+            ghcr.io/bogdanboicu23/mibo-visualisation-service=ghcr.io/bogdanboicu23/mibo-visualisation-service:${IMAGE_TAG}
 
           # Build and apply Kustomize configuration
           kustomize build . | kubectl apply -f -
