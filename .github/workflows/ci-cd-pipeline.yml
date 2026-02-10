@@ -261,16 +261,21 @@ jobs:
 
       - name: Set environment variables
         run: |
-          if [[ "${{ github.event.inputs.environment }}" == "production" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "ENVIRONMENT=production" >> $GITHUB_ENV
-            echo "KUBECONFIG_SECRET=KUBECONFIG_PROD" >> $GITHUB_ENV
-          elif [[ "${{ github.event.inputs.environment }}" == "staging" ]] || [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            echo "KUBECONFIG_SECRET=KUBECONFIG_STAGING" >> $GITHUB_ENV
-          else
-            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-            echo "KUBECONFIG_SECRET=KUBECONFIG_DEV" >> $GITHUB_ENV
-          fi
+          # For now, always use dev environment for testing
+          echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+          echo "KUBECONFIG_SECRET=KUBECONFIG_DEV" >> $GITHUB_ENV
+
+          # Original logic (commented out for now):
+          # if [[ "${{ github.event.inputs.environment }}" == "production" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          #   echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+          #   echo "KUBECONFIG_SECRET=KUBECONFIG_PROD" >> $GITHUB_ENV
+          # elif [[ "${{ github.event.inputs.environment }}" == "staging" ]] || [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          #   echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+          #   echo "KUBECONFIG_SECRET=KUBECONFIG_STAGING" >> $GITHUB_ENV
+          # else
+          #   echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+          #   echo "KUBECONFIG_SECRET=KUBECONFIG_DEV" >> $GITHUB_ENV
+          # fi
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
