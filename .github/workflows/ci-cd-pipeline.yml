@@ -311,6 +311,18 @@ jobs:
             rm -f kubeconfig
           fi
 
+      - name: Create image pull secret
+        if: env.SKIP_DEPLOYMENT != 'true'
+        run: |
+          # Create or update the image pull secret for GitHub Container Registry
+          kubectl create secret docker-registry ghcr-pull-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-email=noreply@github.com \
+            --namespace=mibo \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy with Kustomize
         if: env.SKIP_DEPLOYMENT != 'true'
         run: |

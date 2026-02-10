@@ -13,6 +13,8 @@ spec:
       labels:
         app: app-host
     spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
       containers:
       - name: app-host
         image: ghcr.io/bogdanboicu23/mibo-app-host:latest

@@ -13,6 +13,8 @@ spec:
       labels:
         app: calendar-agent
     spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
       containers:
       - name: calendar-agent
         image: ghcr.io/bogdanboicu23/mibo-calendar-agent:latest
@@ -37,6 +39,8 @@ spec:
       labels:
         app: conversation-service
     spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
       containers:
       - name: conversation-service
         image: ghcr.io/bogdanboicu23/mibo-conversation-service:latest
@@ -61,6 +65,8 @@ spec:
       labels:
         app: visualisation-service
     spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
       containers:
       - name: visualisation-service
         image: ghcr.io/bogdanboicu23/mibo-visualisation-service:latest
