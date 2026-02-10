@@ -289,13 +289,21 @@ jobs:
 
       - name: Configure kubectl
         run: |
-          if [ -z "${{ secrets[env.KUBECONFIG_SECRET] }}" ] || [ "${{ secrets[env.KUBECONFIG_SECRET] }}" = "***" ]; then
-            echo "::warning::KUBECONFIG secret not configured. Skipping deployment."
-            echo "SKIP_DEPLOYMENT=true" >> $GITHUB_ENV
+          # Try to decode the kubeconfig, if it fails then the secret is not properly configured
+          if echo "${{ secrets[env.KUBECONFIG_SECRET] }}" | base64 -d > kubeconfig 2>/dev/null; then
+            if [ -s kubeconfig ]; then
+              echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+              echo "SKIP_DEPLOYMENT=false" >> $GITHUB_ENV
+              echo "✅ Kubeconfig configured successfully"
+            else
+              echo "::warning::KUBECONFIG secret is empty. Skipping deployment."
+              echo "SKIP_DEPLOYMENT=true" >> $GITHUB_ENV
+              rm -f kubeconfig
+            fi
           else
-            echo "${{ secrets[env.KUBECONFIG_SECRET] }}" | base64 -d > kubeconfig
-            echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
-            echo "SKIP_DEPLOYMENT=false" >> $GITHUB_ENV
+            echo "::warning::KUBECONFIG secret not properly configured (invalid base64). Skipping deployment."
+            echo "SKIP_DEPLOYMENT=true" >> $GITHUB_ENV
+            rm -f kubeconfig
           fi
 
       - name: Deploy with Kustomize
