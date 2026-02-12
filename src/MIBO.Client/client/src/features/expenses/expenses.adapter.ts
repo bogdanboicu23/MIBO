@@ -1,4 +1,4 @@
-import type { AdaptResult } from "../../core/uiRuntime";
+import type { AdaptResult } from "../../components/sandbox/uiRuntime/UiPlugin";
 import type { ExpensesDashboardProps, Category } from "./expenses.types";
 import { CATEGORIES } from "./expenses.types";
 

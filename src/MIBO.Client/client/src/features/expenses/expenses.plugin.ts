@@ -1,4 +1,4 @@
-import type { UiPlugin } from "../../core/uiRuntime";
+import type { UiPlugin } from "../../components/sandbox/uiRuntime/UiPlugin";
 import { adaptExpensesDashboardProps } from "./expenses.adapter";
 import { ExpensesDashboard } from "./ExpensesDashboard";
 import type { ExpensesDashboardProps } from "./expenses.types";

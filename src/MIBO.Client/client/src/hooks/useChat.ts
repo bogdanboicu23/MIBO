@@ -13,7 +13,7 @@ export function useChat() {
         [conversations, activeId]
     );
 
-    const listRef = useRef<HTMLDivElement | null>(null);
+    const listRef = useRef<HTMLDivElement>(null as any);
 
     function newChat() {
         const now = Date.now();
