@@ -27,7 +27,7 @@ export function ChatHeader(props: {
                         Model{" "}
                         <select
                             value={model}
-                            onChange={(e) => onModelChange(e.target.value as any)}
+                            onChange={(e) => onModelChange(e.target.value as "AI Agent" | "AI Agent Pro")}
                             className="ml-2 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs dark:border-zinc-800 dark:bg-zinc-900"
                         >
                             <option>AI Agent</option>

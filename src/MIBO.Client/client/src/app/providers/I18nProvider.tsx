@@ -2,8 +2,13 @@ import React, { useMemo, useState } from "react";
 import { I18nContext } from "../../hooks/useI18n";
 import { locales, type LocaleKey } from "../../locales";
 
-function getByPath(obj: any, path: string) {
-    return path.split(".").reduce((acc, k) => (acc ? acc[k] : undefined), obj);
+function getByPath(obj: Record<string, unknown>, path: string): unknown {
+    return path.split(".").reduce<unknown>((acc, k) => {
+        if (acc && typeof acc === 'object' && k in acc) {
+            return (acc as Record<string, unknown>)[k];
+        }
+        return undefined;
+    }, obj);
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {

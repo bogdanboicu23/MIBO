@@ -1,5 +1,5 @@
 import { IconButton } from "../ui/IconButton";
-import { useThemeContext } from "../../app/providers/ThemeProvider";
+import { useThemeContext } from "../../app/providers/useThemeContext";
 
 export function ThemeToggle() {
     const { theme, setTheme } = useThemeContext();

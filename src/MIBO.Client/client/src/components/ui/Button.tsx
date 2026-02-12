@@ -6,8 +6,14 @@ export function Button(props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
 }) {
     const { className, variant = "outline", size = "md", ...rest } = props;
 
+    const sizeStyles = {
+        sm: "px-2 py-1 text-xs",
+        md: "px-3 py-2 text-sm",
+        lg: "px-4 py-3 text-base"
+    };
+
     const base =
-        "inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium transition";
+        `inline-flex items-center justify-center rounded-xl ${sizeStyles[size]} font-medium transition`;
 
     let styles = "";
     switch (variant) {

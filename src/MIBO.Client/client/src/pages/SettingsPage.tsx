@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { paths } from "../app/routes/paths";
-import { useThemeContext } from "../app/providers/ThemeProvider";
+import { useThemeContext } from "../app/providers/useThemeContext";
 
 export default function SettingsPage() {
     const { theme, setTheme } = useThemeContext();

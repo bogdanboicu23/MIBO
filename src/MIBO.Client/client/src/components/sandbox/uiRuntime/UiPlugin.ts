@@ -4,7 +4,7 @@ export type AdaptResult<TProps> =
     | { ok: true; props: TProps }
     | { ok: false; error: string };
 
-export type UiPlugin<TProps = any> = {
+export type UiPlugin<TProps = unknown> = {
     kind: string;
 
     /**
