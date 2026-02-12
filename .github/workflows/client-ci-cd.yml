@@ -80,7 +80,7 @@ jobs:
         run: npm run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: ${{ env.WORKING_DIR }}/dist
@@ -117,7 +117,7 @@ jobs:
           npm audit --json > audit-report.json || true
 
       - name: Upload audit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: ${{ env.WORKING_DIR }}/audit-report.json
@@ -133,7 +133,7 @@ jobs:
             --enableExperimental
 
       - name: Upload dependency check results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: reports/
@@ -206,7 +206,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: ./dist
@@ -256,7 +256,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: ./dist
@@ -283,7 +283,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: build-artifacts
           path: ./dist
