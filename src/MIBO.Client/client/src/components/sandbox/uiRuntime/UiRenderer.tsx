@@ -39,13 +39,15 @@ export function UiRenderer({ spec }: UiRendererProps) {
     }
 
     const Component = plugin.Component;
+    // Cast props to correct type since we know it's valid after adapt
+    const componentProps = adapted.props as Record<string, unknown>;
 
     return (
         <div className="space-y-3">
             {normalized.view.title ? (
                 <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{normalized.view.title}</div>
             ) : null}
-            <Component {...adapted.props} />
+            <Component {...componentProps} />
         </div>
     );
 }
