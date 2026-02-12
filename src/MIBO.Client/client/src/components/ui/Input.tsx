@@ -9,7 +9,8 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ({ className, label, hint, error, id, ...props }, ref) => {
-        const inputId = id ?? React.useId();
+        const generatedId = React.useId();
+        const inputId = id ?? generatedId;
 
         return (
             <div className={cn("space-y-1", className)}>
