@@ -1,0 +1,103 @@
+name: Simple CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  DOTNET_VERSION: '9.0'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - api-gateway
+          - app-host
+          - calendar-agent
+          - conversation-service
+          - visualisation-service
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./src
+          file: ./src/MIBO.${{ matrix.service == 'api-gateway' && 'ApiGateway' || matrix.service == 'app-host' && 'AppHost' || matrix.service == 'calendar-agent' && 'CalendarAgent' || matrix.service == 'conversation-service' && 'ConversationService' || 'VisualisationService' }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/mibo-${{ matrix.service }}:latest
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/mibo-${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG_DEV }}" | base64 -d > kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+
+      - name: Create namespace
+        run: kubectl create namespace mibo --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ghcr-pull-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --namespace=mibo \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy services
+        run: |
+          # Apply all deployment files
+          kubectl apply -f deploy/base/namespaces.yaml
+          kubectl apply -f deploy/base/configmap.yaml
+          kubectl apply -f deploy/base/secrets.yaml
+          kubectl apply -f deploy/base/api-gateway-deployment.yaml
+          kubectl apply -f deploy/base/app-host-deployment.yaml
+          kubectl apply -f deploy/base/other-services-deployment.yaml
+
+          # Update images to use the latest build
+          kubectl set image deployment/api-gateway api-gateway=ghcr.io/${{ github.repository_owner }}/mibo-api-gateway:${{ github.sha }} -n mibo
+          kubectl set image deployment/app-host app-host=ghcr.io/${{ github.repository_owner }}/mibo-app-host:${{ github.sha }} -n mibo
+          kubectl set image deployment/calendar-agent calendar-agent=ghcr.io/${{ github.repository_owner }}/mibo-calendar-agent:${{ github.sha }} -n mibo
+          kubectl set image deployment/conversation-service conversation-service=ghcr.io/${{ github.repository_owner }}/mibo-conversation-service:${{ github.sha }} -n mibo
+          kubectl set image deployment/visualisation-service visualisation-service=ghcr.io/${{ github.repository_owner }}/mibo-visualisation-service:${{ github.sha }} -n mibo
+
+      - name: Check deployment status
+        run: |
+          kubectl get pods -n mibo
+          kubectl get services -n mibo

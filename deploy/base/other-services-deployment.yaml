@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar-agent
+  namespace: mibo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar-agent
+  template:
+    metadata:
+      labels:
+        app: calendar-agent
+    spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
+      containers:
+      - name: calendar-agent
+        image: ghcr.io/bogdanboicu23/mibo-calendar-agent:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conversation-service
+  namespace: mibo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: conversation-service
+  template:
+    metadata:
+      labels:
+        app: conversation-service
+    spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
+      containers:
+      - name: conversation-service
+        image: ghcr.io/bogdanboicu23/mibo-conversation-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: visualisation-service
+  namespace: mibo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: visualisation-service
+  template:
+    metadata:
+      labels:
+        app: visualisation-service
+    spec:
+      imagePullSecrets:
+      - name: ghcr-pull-secret
+      containers:
+      - name: visualisation-service
+        image: ghcr.io/bogdanboicu23/mibo-visualisation-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Development
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calendar-agent
+  namespace: mibo
+spec:
+  selector:
+    app: calendar-agent
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: conversation-service
+  namespace: mibo
+spec:
+  selector:
+    app: conversation-service
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: visualisation-service
+  namespace: mibo
+spec:
+  selector:
+    app: visualisation-service
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP

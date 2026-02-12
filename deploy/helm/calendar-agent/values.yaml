@@ -1,0 +1,30 @@
+replicaCount: 1
+
+image:
+  repository: mibo/calendar-agent
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: calendar-agent.dev.mibo.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+
+env:
+  ASPNETCORE_ENVIRONMENT: Development
