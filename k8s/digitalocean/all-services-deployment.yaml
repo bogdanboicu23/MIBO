@@ -1,0 +1,267 @@
+# Identity Service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+  namespace: mibo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: identity-service
+  template:
+    metadata:
+      labels:
+        app: identity-service
+    spec:
+      containers:
+      - name: identity-service
+        image: registry.digitalocean.com/mibo/identity-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: database-url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+  namespace: mibo
+spec:
+  selector:
+    app: identity-service
+  ports:
+  - port: 8081
+    targetPort: 8081
+
+# Expense Service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-service
+  namespace: mibo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: expense-service
+  template:
+    metadata:
+      labels:
+        app: expense-service
+    spec:
+      containers:
+      - name: expense-service
+        image: registry.digitalocean.com/mibo/expense-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: database-url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-service
+  namespace: mibo
+spec:
+  selector:
+    app: expense-service
+  ports:
+  - port: 8082
+    targetPort: 8082
+
+# Notification Service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: mibo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: registry.digitalocean.com/mibo/notification-service:latest
+        ports:
+        - containerPort: 8083
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: database-url
+        - name: Email__SmtpServer
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: smtp-server
+        - name: Email__SmtpPort
+          value: "587"
+        - name: Email__Username
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: smtp-username
+        - name: Email__Password
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: smtp-password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: mibo
+spec:
+  selector:
+    app: notification-service
+  ports:
+  - port: 8083
+    targetPort: 8083
+
+# Reporting Service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting-service
+  namespace: mibo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reporting-service
+  template:
+    metadata:
+      labels:
+        app: reporting-service
+    spec:
+      containers:
+      - name: reporting-service
+        image: registry.digitalocean.com/mibo/reporting-service:latest
+        ports:
+        - containerPort: 8084
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mibo-secrets
+              key: database-url
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "400m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporting-service
+  namespace: mibo
+spec:
+  selector:
+    app: reporting-service
+  ports:
+  - port: 8084
+    targetPort: 8084
+
+# React Client (if deployed in K8s instead of App Platform)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mibo-client
+  namespace: mibo
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mibo-client
+  template:
+    metadata:
+      labels:
+        app: mibo-client
+    spec:
+      containers:
+      - name: mibo-client
+        image: registry.digitalocean.com/mibo/client:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mibo-client
+  namespace: mibo
+  annotations:
+    service.beta.kubernetes.io/do-loadbalancer-protocol: "http"
+    service.beta.kubernetes.io/do-loadbalancer-tls-ports: "443"
+    service.beta.kubernetes.io/do-loadbalancer-certificate-id: "your-cert-id"
+spec:
+  type: LoadBalancer
+  selector:
+    app: mibo-client
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  - port: 443
+    targetPort: 80
+    name: https

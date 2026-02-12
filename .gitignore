@@ -323,7 +323,16 @@ azure-setup-eu.sh
 # CI/CD sensitive files
 *-secrets.yaml
 *-secrets.yml
+secrets.yaml
 # Local appsettings with sensitive data
 src/MIBO.ApiGateway/appsettings.json
 src/*/appsettings.json
 !src/*/appsettings.Example.json
+
+# Deployment scripts with hardcoded values
+deploy-to-do.sh
+*.bak
+
+# DigitalOcean specific
+.do/
+do-env.sh
