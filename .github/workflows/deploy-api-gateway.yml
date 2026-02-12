@@ -1,0 +1,54 @@
+name: Deploy API Gateway to DigitalOcean
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/MIBO.ApiGateway/**'
+      - '.github/workflows/deploy-api-gateway.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: registry.digitalocean.com
+  DO_REGISTRY_NAME: mibo
+  CLUSTER_NAME: mibo
+
+jobs:
+  deploy-api-gateway:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Build and push API Gateway
+        run: |
+          docker buildx build --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway:latest \
+            -t ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway:${{ github.sha }} \
+            --push \
+            ./src/MIBO.ApiGateway/
+
+      - name: Save DigitalOcean kubeconfig
+        run: doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/api-gateway \
+            api-gateway=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway:${{ github.sha }} \
+            -n default
+
+          kubectl rollout status deployment/api-gateway -n default
+
+      - name: Get Service URL
+        run: |
+          echo "API Gateway deployed!"
+          kubectl get svc api-gateway -n default
