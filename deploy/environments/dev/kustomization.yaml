@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mibo
+
+resources:
+  - ../../base
+
+# For now, we'll use simple image transformations
+# instead of Helm charts
+images:
+  - name: ghcr.io/bogdanboicu23/mibo-api-gateway
+    newTag: latest
+  - name: ghcr.io/bogdanboicu23/mibo-app-host
+    newTag: latest
+  - name: ghcr.io/bogdanboicu23/mibo-calendar-agent
+    newTag: latest
+  - name: ghcr.io/bogdanboicu23/mibo-conversation-service
+    newTag: latest
+  - name: ghcr.io/bogdanboicu23/mibo-visualisation-service
+    newTag: latest

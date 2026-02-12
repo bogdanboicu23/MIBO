@@ -308,3 +308,22 @@ coverage/
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Kubernetes secrets
+kubeconfig*
+*.kubeconfig
+KUBECONFIG_*.txt
+github-secrets.txt
+github-secrets.md
+
+# Azure
+*.azurecli
+azure-setup-eu.sh
+
+# CI/CD sensitive files
+*-secrets.yaml
+*-secrets.yml
+# Local appsettings with sensitive data
+src/MIBO.ApiGateway/appsettings.json
+src/*/appsettings.json
+!src/*/appsettings.Example.json

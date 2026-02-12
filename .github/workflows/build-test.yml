@@ -1,0 +1,38 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '9.0'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: |
+          cd src
+          dotnet restore MIBO.sln
+
+      - name: Build solution
+        run: |
+          cd src
+          dotnet build MIBO.sln --configuration Release --no-restore
+
+      - name: Run tests
+        run: |
+          cd src
+          dotnet test MIBO.sln --configuration Release --no-build --verbosity normal
