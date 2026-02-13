@@ -2,13 +2,12 @@ name: Prod - Deploy mibo-client
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
     paths:
       - "src/MIBO.Client/client/**"
-      - "k8s/apps/**"
-      - "k8s/ci/**"
+      - "k8s/apps/10-mibo-client.yaml"
       - ".github/workflows/prod-client.yml"
-  workflow_dispatch: {}
+  workflow_dispatch: { }
 
 env:
   NAMESPACE: mibo
@@ -32,7 +31,7 @@ jobs:
       - name: Login DOCR
         run: doctl registry login --expiry-seconds 1200
 
-      - name: Build & Push image (tag = commit SHA)
+      - name: Build & Push image (tag = commit SHA + latest)
         run: |
           docker buildx build --platform linux/amd64 \
             -t "${{ env.IMAGE }}:${{ github.sha }}" \
@@ -40,8 +39,8 @@ jobs:
             --push \
             ./src/MIBO.Client/client
 
-      # --- Kubernetes auth with ServiceAccount token ---
-      - name: Setup kubectl
+      # --- Kubernetes auth with ServiceAccount token (namespaced RBAC) ---
+      - name: Setup kubectl (SA token)
         run: |
           set -euo pipefail
           mkdir -p ~/.kube
@@ -57,20 +56,21 @@ jobs:
           kubectl config use-context prod
 
           kubectl version --client=true
-          kubectl -n "${{ env.NAMESPACE }}" get pods || true
-          kubectl -n traefik get deploy/traefik || true
 
-      - name: Apply CI/RBAC
+      - name: Sanity checks (no cluster-scope calls)
         run: |
-          kubectl apply -f k8s/ci/
+          set -euo pipefail
+          kubectl -n "${{ env.NAMESPACE }}" get deploy "${{ env.DEPLOYMENT }}" >/dev/null
+          kubectl -n "${{ env.NAMESPACE }}" get svc "${{ env.DEPLOYMENT }}" >/dev/null || true
 
-      - name: Apply app manifests
+      - name: Apply app manifests (namespaced only)
         run: |
-          kubectl apply -f k8s/apps/00-mibo-namespace.yaml
-          kubectl apply -f k8s/apps/
+          set -euo pipefail
+          kubectl apply -f k8s/apps/10-mibo-client.yaml
 
       - name: Update deployment image + wait rollout
         run: |
+          set -euo pipefail
           kubectl -n "${{ env.NAMESPACE }}" set image deployment/"${{ env.DEPLOYMENT }}" \
             "${{ env.CONTAINER }}"="${{ env.IMAGE }}:${{ github.sha }}"
 
