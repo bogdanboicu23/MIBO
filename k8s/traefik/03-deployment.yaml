@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: traefik
+  labels:
+    app: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      serviceAccountName: traefik
+      containers:
+        - name: traefik
+          image: traefik:v3.1
+          args:
+            - "--ping=true"
+            - "--ping.entrypoint=traefik"
+
+            - "--log.level=INFO"
+            - "--accesslog=true"
+
+            - "--api.dashboard=true"
+            - "--api.insecure=false"
+
+            - "--providers.kubernetesingress=true"
+            - "--providers.kubernetescrd=true"
+
+            - "--entrypoints.web.address=:80"
+            - "--entrypoints.websecure.address=:443"
+
+            # Dashboard pe port separat în pod
+            - "--entrypoints.traefik.address=:9000"
+
+            # (important) detectează corect IP-ul public la DO LB
+            - "--providers.kubernetesingress.ingressendpoint.publishedservice=traefik/traefik"
+          ports:
+            - name: web
+              containerPort: 80
+            - name: websecure
+              containerPort: 443
+            - name: admin
+              containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10

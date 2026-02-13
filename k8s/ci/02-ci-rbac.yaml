@@ -1,0 +1,93 @@
+# =========================
+# Permissions in namespace: mibo
+# For: frontend deploy/service/ingress (+ optional Traefik CRDs used in apps)
+# =========================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-deployer
+  namespace: mibo
+rules:
+  # Core resources typically applied/managed for an app
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Deployments (rollouts)
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Ingress objects (if you use networking.k8s.io Ingress for the frontend)
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Traefik CRDs that you may use in app namespace (optional, but safe to include)
+  - apiGroups: ["traefik.io"]
+    resources: ["middlewares", "ingressroutes", "traefikservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-deployer
+  namespace: mibo
+subjects:
+  - kind: ServiceAccount
+    name: ci-deployer
+    namespace: mibo
+roleRef:
+  kind: Role
+  name: ci-deployer
+  apiGroup: rbac.authorization.k8s.io
+
+# =========================
+# Permissions in namespace: traefik
+# For: managing Traefik deployment/service + dashboard IngressRoute/Middleware
+# Note: RoleBinding references the ServiceAccount from namespace "mibo"
+# =========================
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ci-deployer
+  namespace: traefik
+rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  - apiGroups: ["traefik.io"]
+    resources: ["middlewares", "ingressroutes", "traefikservices"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Only needed if you apply traefik dashboard basic-auth secret from CI.
+  # If you create it manually, you can remove this rule.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ci-deployer
+  namespace: traefik
+subjects:
+  - kind: ServiceAccount
+    name: ci-deployer
+    namespace: mibo
+roleRef:
+  kind: Role
+  name: ci-deployer
+  apiGroup: rbac.authorization.k8s.io
