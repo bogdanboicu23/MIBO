@@ -9,7 +9,7 @@ export function getMockConversations(): Conversation[] {
     return [
         {
             id: uid(),
-            title: "Demo: UI ChatGPT-like",
+            title: "MIBO",
             updatedAt: now,
             messages: [
                 {
