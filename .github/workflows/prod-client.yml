@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - "mibo-client/**"
+      - "src/MIBO.Client/client/**"
       - "k8s/apps/**"
       - "k8s/ci/**"
       - ".github/workflows/prod-client.yml"
