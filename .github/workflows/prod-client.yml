@@ -5,7 +5,8 @@ on:
     branches: ["main"]
     paths:
       - "src/MIBO.Client/client/**"
-      - "k8s/apps/10-mibo-client.yaml"
+      - "k8s/apps/**"
+      - "k8s/ci/**"
       - ".github/workflows/prod-client.yml"
   workflow_dispatch: {}
 
@@ -31,7 +32,7 @@ jobs:
       - name: Login DOCR
         run: doctl registry login --expiry-seconds 1200
 
-      - name: Build & Push image (tag = commit SHA + latest)
+      - name: Build & Push image (tag = commit SHA)
         run: |
           docker buildx build --platform linux/amd64 \
             -t "${{ env.IMAGE }}:${{ github.sha }}" \
@@ -39,33 +40,19 @@ jobs:
             --push \
             ./src/MIBO.Client/client
 
-      - name: Setup kubectl (kubeconfig)
-        shell: bash
+      # --- Kubernetes auth with DigitalOcean ---
+      - name: Setup kubectl
         run: |
-          set -euo pipefail
-          mkdir -p ~/.kube
-          printf '%s' '${{ secrets.KUBECONFIG_PROD }}' > ~/.kube/config
+          doctl kubernetes cluster kubeconfig save ${{ secrets.CLUSTER_NAME }}
+          kubectl version --client=true
 
-          kubectl config current-context
-          kubectl cluster-info
-
-      - name: Sanity checks
-        shell: bash
+      - name: Apply app manifests
         run: |
-          set -euo pipefail
-          kubectl -n "${{ env.NAMESPACE }}" get deploy "${{ env.DEPLOYMENT }}" >/dev/null
-          kubectl -n "${{ env.NAMESPACE }}" get svc "${{ env.DEPLOYMENT }}" >/dev/null || true
-
-      - name: Apply app manifests (namespaced only)
-        shell: bash
-        run: |
-          set -euo pipefail
-          kubectl apply -f k8s/apps/10-mibo-client.yaml
+          kubectl apply -f k8s/apps/00-mibo-namespace.yaml
+          kubectl apply -f k8s/apps/
 
       - name: Update deployment image + wait rollout
-        shell: bash
         run: |
-          set -euo pipefail
           kubectl -n "${{ env.NAMESPACE }}" set image deployment/"${{ env.DEPLOYMENT }}" \
             "${{ env.CONTAINER }}"="${{ env.IMAGE }}:${{ github.sha }}"
 
