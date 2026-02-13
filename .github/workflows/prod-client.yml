@@ -40,29 +40,11 @@ jobs:
             --push \
             ./src/MIBO.Client/client
 
-      # --- Kubernetes auth with ServiceAccount token ---
+      # --- Kubernetes auth with DigitalOcean ---
       - name: Setup kubectl
         run: |
-          set -euo pipefail
-          mkdir -p ~/.kube
-
-          echo "${{ secrets.KUBE_CA }}" | base64 -d > ca.crt
-
-          kubectl config set-cluster doks \
-            --server="${{ secrets.KUBE_SERVER }}" \
-            --certificate-authority="$PWD/ca.crt"
-
-          kubectl config set-credentials ci-deployer --token="${{ secrets.KUBE_TOKEN }}"
-          kubectl config set-context prod --cluster=doks --user=ci-deployer
-          kubectl config use-context prod
-
+          doctl kubernetes cluster kubeconfig save ${{ secrets.CLUSTER_NAME }}
           kubectl version --client=true
-          kubectl -n "${{ env.NAMESPACE }}" get pods || true
-          kubectl -n traefik get deploy/traefik || true
-
-      - name: Apply CI/RBAC
-        run: |
-          kubectl apply -f k8s/ci/
 
       - name: Apply app manifests
         run: |
