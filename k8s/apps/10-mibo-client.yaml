@@ -13,8 +13,6 @@ spec:
       labels:
         app: mibo-client
     spec:
-      imagePullSecrets:
-        - name: registry-mibo
       containers:
         - name: mibo-client
           image: registry.digitalocean.com/mibo/client:latest
