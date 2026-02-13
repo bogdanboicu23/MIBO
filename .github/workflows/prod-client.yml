@@ -39,7 +39,7 @@ jobs:
           docker buildx build --platform linux/amd64 \
             -t "${{ env.IMAGE }}:${{ github.sha }}" \
             --push \
-            ./mibo-client
+            ./src/MIBO.Client/client
 
       # --- Kubernetes auth with ServiceAccount token ---
       - name: Setup kubectl
