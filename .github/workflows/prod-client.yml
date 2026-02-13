@@ -2,12 +2,12 @@ name: Prod - Deploy mibo-client
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "src/MIBO.Client/client/**"
       - "k8s/apps/10-mibo-client.yaml"
       - ".github/workflows/prod-client.yml"
-  workflow_dispatch: { }
+  workflow_dispatch: {}
 
 env:
   NAMESPACE: mibo
@@ -39,36 +39,31 @@ jobs:
             --push \
             ./src/MIBO.Client/client
 
-      # --- Kubernetes auth with ServiceAccount token (namespaced RBAC) ---
-      - name: Setup kubectl (SA token)
+      - name: Setup kubectl (kubeconfig)
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p ~/.kube
+          printf '%s' '${{ secrets.KUBECONFIG_PROD }}' > ~/.kube/config
 
-          echo "${{ secrets.KUBE_CA }}" | base64 -d > ca.crt
+          kubectl config current-context
+          kubectl cluster-info
 
-          kubectl config set-cluster doks \
-            --server="${{ secrets.KUBE_SERVER }}" \
-            --certificate-authority="$PWD/ca.crt"
-
-          kubectl config set-credentials ci-deployer --token="${{ secrets.KUBE_TOKEN }}"
-          kubectl config set-context prod --cluster=doks --user=ci-deployer
-          kubectl config use-context prod
-
-          kubectl version --client=true
-
-      - name: Sanity checks (no cluster-scope calls)
+      - name: Sanity checks
+        shell: bash
         run: |
           set -euo pipefail
           kubectl -n "${{ env.NAMESPACE }}" get deploy "${{ env.DEPLOYMENT }}" >/dev/null
           kubectl -n "${{ env.NAMESPACE }}" get svc "${{ env.DEPLOYMENT }}" >/dev/null || true
 
       - name: Apply app manifests (namespaced only)
+        shell: bash
         run: |
           set -euo pipefail
           kubectl apply -f k8s/apps/10-mibo-client.yaml
 
       - name: Update deployment image + wait rollout
+        shell: bash
         run: |
           set -euo pipefail
           kubectl -n "${{ env.NAMESPACE }}" set image deployment/"${{ env.DEPLOYMENT }}" \
