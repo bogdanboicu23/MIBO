@@ -2,7 +2,7 @@ name: Prod - Deploy mibo-client
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "src/MIBO.Client/client/**"
       - "k8s/apps/**"
@@ -11,8 +11,6 @@ on:
   workflow_dispatch: {}
 
 env:
-  REGISTRY: registry.digitalocean.com
-  DOCR_REPO: mibo/client
   NAMESPACE: mibo
   DEPLOYMENT: mibo-client
   CONTAINER: mibo-client
@@ -38,12 +36,14 @@ jobs:
         run: |
           docker buildx build --platform linux/amd64 \
             -t "${{ env.IMAGE }}:${{ github.sha }}" \
+            -t "${{ env.IMAGE }}:latest" \
             --push \
             ./src/MIBO.Client/client
 
       # --- Kubernetes auth with ServiceAccount token ---
       - name: Setup kubectl
         run: |
+          set -euo pipefail
           mkdir -p ~/.kube
 
           echo "${{ secrets.KUBE_CA }}" | base64 -d > ca.crt
@@ -57,14 +57,16 @@ jobs:
           kubectl config use-context prod
 
           kubectl version --client=true
-          kubectl get ns
+          kubectl -n "${{ env.NAMESPACE }}" get pods || true
+          kubectl -n traefik get deploy/traefik || true
 
-      - name: Apply CI/RBAC (one-time safe)
+      - name: Apply CI/RBAC
         run: |
-          kubectl apply -f k8s/ci/ || true
+          kubectl apply -f k8s/ci/
 
       - name: Apply app manifests
         run: |
+          kubectl apply -f k8s/apps/00-mibo-namespace.yaml
           kubectl apply -f k8s/apps/
 
       - name: Update deployment image + wait rollout
