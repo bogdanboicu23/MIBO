@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "../../utils/cn.ts";
+import { cn } from "@/utils/cn.ts";
 
 export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
     label?: string;
