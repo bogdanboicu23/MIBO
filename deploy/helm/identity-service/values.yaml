@@ -28,3 +28,4 @@ resources:
 
 env:
   ASPNETCORE_ENVIRONMENT: Development
+  DisableSwagger: "true"
