@@ -5,9 +5,10 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["MIBO.ApiGateway.csproj", "."]
-RUN dotnet restore "MIBO.ApiGateway.csproj"
-COPY . .
+COPY ["MIBO.ApiGateway/MIBO.ApiGateway.csproj", "MIBO.ApiGateway/"]
+RUN dotnet restore "MIBO.ApiGateway/MIBO.ApiGateway.csproj"
+COPY MIBO.ApiGateway/ MIBO.ApiGateway/
+WORKDIR "/src/MIBO.ApiGateway"
 RUN dotnet build "MIBO.ApiGateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish

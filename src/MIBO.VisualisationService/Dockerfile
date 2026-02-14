@@ -8,7 +8,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["MIBO.VisualisationService/MIBO.VisualisationService.csproj", "MIBO.VisualisationService/"]
 RUN dotnet restore "MIBO.VisualisationService/MIBO.VisualisationService.csproj"
-COPY . .
+COPY MIBO.VisualisationService/ MIBO.VisualisationService/
 WORKDIR "/src/MIBO.VisualisationService"
 RUN dotnet build "./MIBO.VisualisationService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 

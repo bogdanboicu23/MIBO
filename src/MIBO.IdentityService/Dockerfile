@@ -9,7 +9,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["MIBO.IdentityService/MIBO.IdentityService.csproj", "MIBO.IdentityService/"]
 RUN dotnet restore "MIBO.IdentityService/MIBO.IdentityService.csproj"
-COPY . .
+COPY MIBO.IdentityService/ MIBO.IdentityService/
 WORKDIR "/src/MIBO.IdentityService"
 RUN dotnet build "./MIBO.IdentityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
