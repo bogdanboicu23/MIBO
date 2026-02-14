@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { I18nContext } from "../../hooks/useI18n";
-import { locales, type LocaleKey } from "../../locales";
+import { I18nContext } from "@/hooks/useI18n.ts";
+import { locales, type LocaleKey } from "@/locales";
 
 function getByPath(obj: Record<string, unknown>, path: string): unknown {
     return path.split(".").reduce<unknown>((acc, k) => {
@@ -24,4 +24,13 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     );
 
     return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export const i18n_keys = {
+    toast: {
+        maintenanceWarning: "toast.maintenanceWarning",
+        permissionDenied: "toast.permissionDenied",
+        sessionExpired: "toast.sessionExpired",
+        requestError: "toast.requestError"
+    }
 }
