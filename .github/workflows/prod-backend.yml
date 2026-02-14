@@ -87,30 +87,6 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Update image tags in kustomization
-        run: |
-          cat > deploy/environments/prod/kustomization-override.yaml << EOF
-          apiVersion: kustomize.config.k8s.io/v1beta1
-          kind: Kustomization
-
-          resources:
-            - ./kustomization.yaml
-
-          images:
-            - name: ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/identity-service
-              newTag: ${{ github.sha }}
-            - name: ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway
-              newTag: ${{ github.sha }}
-            - name: ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
-              newTag: ${{ github.sha }}
-            - name: ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/visualisation-service
-              newTag: ${{ github.sha }}
-            - name: ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/calendar-agent
-              newTag: ${{ github.sha }}
-
-          namespace: ${{ env.NAMESPACE }}
-          EOF
-
       - name: Create prod namespace if not exists
         run: |
           kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
@@ -124,9 +100,38 @@ jobs:
             --namespace=${{ env.NAMESPACE }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy with Kustomize and Helm
+      - name: Deploy with Helm
         run: |
-          kubectl apply -k deploy/environments/prod/ -n ${{ env.NAMESPACE }}
+          # Deploy each Helm chart
+          helm upgrade --install api-gateway deploy/helm/api-gateway \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/prod/values-api-gateway.yaml \
+            --set image.tag=${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway
+
+          helm upgrade --install conversation-service deploy/helm/conversation-service \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/prod/values-conversation-service.yaml \
+            --set image.tag=${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
+
+          helm upgrade --install visualisation-service deploy/helm/visualisation-service \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/prod/values-visualisation-service.yaml \
+            --set image.tag=${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/visualisation-service
+
+          helm upgrade --install calendar-agent deploy/helm/calendar-agent \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/prod/values-calendar-agent.yaml \
+            --set image.tag=${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/calendar-agent
+
+          helm upgrade --install identity-service deploy/helm/identity-service \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/prod/values-identity-service.yaml \
+            --set image.tag=${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/identity-service
 
       - name: Wait for deployments
         run: |
