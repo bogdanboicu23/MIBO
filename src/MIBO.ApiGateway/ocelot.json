@@ -1,10 +1,6 @@
 {
   "GlobalConfiguration": {
-    "BaseUrl": "http://api-gateway:8080",
-    "ServiceDiscoveryProvider": {
-      "Namespace": "test",
-      "Type": "Kube"
-    }
+    "BaseUrl": "http://api-gateway:8080"
   },
   "Routes": [
     {

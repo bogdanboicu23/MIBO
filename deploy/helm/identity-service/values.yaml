@@ -27,5 +27,5 @@ resources:
     memory: "128Mi" 
 
 env:
-  ASPNETCORE_ENVIRONMENT: Development
+  ASPNETCORE_ENVIRONMENT: test
   DisableSwagger: "true"
