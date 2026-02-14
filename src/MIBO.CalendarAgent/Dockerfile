@@ -8,7 +8,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["MIBO.CalendarAgent/MIBO.CalendarAgent.csproj", "MIBO.CalendarAgent/"]
 RUN dotnet restore "MIBO.CalendarAgent/MIBO.CalendarAgent.csproj"
-COPY . .
+COPY MIBO.CalendarAgent/ MIBO.CalendarAgent/
 WORKDIR "/src/MIBO.CalendarAgent"
 RUN dotnet build "./MIBO.CalendarAgent.csproj" -c $BUILD_CONFIGURATION -o /app/build
 

@@ -8,7 +8,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["MIBO.ConversationService/MIBO.ConversationService.csproj", "MIBO.ConversationService/"]
 RUN dotnet restore "MIBO.ConversationService/MIBO.ConversationService.csproj"
-COPY . .
+COPY MIBO.ConversationService/ MIBO.ConversationService/
 WORKDIR "/src/MIBO.ConversationService"
 RUN dotnet build "./MIBO.ConversationService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
