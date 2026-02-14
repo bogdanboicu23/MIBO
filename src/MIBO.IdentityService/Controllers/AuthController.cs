@@ -77,6 +77,7 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthResponse
         {
+            Message = "User created successfully",
             Token = accessToken,
             RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -91,6 +92,12 @@ public class AuthController : ControllerBase
         });
     }
 
+    [HttpGet("test")]
+    public IActionResult Test()
+    {
+        return Ok(new { message = "Auth service is working 🚀" });
+    }
+    
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
@@ -133,6 +140,7 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthResponse
         {
+            Message = "Auth service reached succesfully",
             Token = accessToken,
             RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddHours(1),
@@ -178,6 +186,7 @@ public class AuthController : ControllerBase
 
         return Ok(new AuthResponse
         {
+            Message = "Auth service reached succesfully",
             Token = accessToken,
             RefreshToken = refreshToken,
             ExpiresAt = DateTime.UtcNow.AddHours(1),
