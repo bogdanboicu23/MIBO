@@ -1,16 +1,45 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Ocelot.DependencyInjection;
+using Ocelot.Middleware;
+using Ocelot.Provider.Kubernetes;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add Ocelot configuration
+builder.Configuration
+    .SetBasePath(builder.Environment.ContentRootPath)
+    .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Add JWT Authentication (for validating tokens)
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-default-secret-key-for-development";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MIBO.IdentityService";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MIBO.Services";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.Authority = builder.Configuration["IdentityService:Authority"];
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -23,12 +52,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add HttpClient for service communication
-builder.Services.AddHttpClient();
+// Add Ocelot with Kubernetes provider
+builder.Services.AddOcelot()
+    .AddKubernetes();
 
 // Add health checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -43,10 +72,10 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
-app.UseAuthorization();
 
-app.MapControllers();
 app.MapHealthChecks("/health");
 
+// Add Ocelot middleware
+await app.UseOcelot();
 
 app.Run();
