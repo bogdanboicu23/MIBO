@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MIBO.ApiGateway.Models;
+namespace MIBO.IdentityService.Models;
 
 public class RegisterModel
 {

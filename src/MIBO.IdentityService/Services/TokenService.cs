@@ -2,10 +2,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using MIBO.IdentityService.Data;
 using Microsoft.IdentityModel.Tokens;
-using MIBO.ApiGateway.Data;
 
-namespace MIBO.ApiGateway.Services;
+namespace MIBO.IdentityService.Services;
 
 public interface ITokenService
 {

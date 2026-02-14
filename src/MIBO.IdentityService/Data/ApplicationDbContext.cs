@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace MIBO.ApiGateway.Data;
+namespace MIBO.IdentityService.Data;
 
 public class ApplicationUser : IdentityUser
 {

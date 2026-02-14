@@ -1,12 +1,11 @@
+using MIBO.IdentityService.Data;
+using MIBO.IdentityService.Models;
+using MIBO.IdentityService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using MIBO.ApiGateway.Data;
-using MIBO.ApiGateway.Models;
-using MIBO.ApiGateway.Services;
 
-namespace MIBO.ApiGateway.Controllers;
+namespace MIBO.IdentityService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
