@@ -1,0 +1,9 @@
+{
+  "GlobalConfiguration": {
+    "BaseUrl": "http://api-gateway:8080",
+    "ServiceDiscoveryProvider": {
+      "Namespace": "prod",
+      "Type": "Kube"
+    }
+  }
+}

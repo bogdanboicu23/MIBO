@@ -1,0 +1,6 @@
+@MIBO.IdentityService_HostAddress = http://localhost:5157
+
+GET {{MIBO.IdentityService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

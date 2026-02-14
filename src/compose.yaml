@@ -23,3 +23,8 @@
       context: .
       dockerfile: MIBO.CalendarAgent/Dockerfile
 
+  mibo.identityservice:
+    image: mibo.identityservice
+    build:
+      context: .
+      dockerfile: MIBO.IdentityService/Dockerfile
