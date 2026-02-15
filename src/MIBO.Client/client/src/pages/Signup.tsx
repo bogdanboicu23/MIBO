@@ -93,8 +93,10 @@ export default function Signup() {
 
         setBusy(true);
         try {
-            await api.post(endpoints.auth.signup, { user, password: passwords.password });
-
+            await api.post(endpoints.auth.signup, {
+                ...user,
+                password: passwords.password,
+            });
             router.push(paths.auth.login);
         } catch (err: any) {
             setServerError(err?.message ?? "Crearea contului a eșuat. Încearcă din nou.");
