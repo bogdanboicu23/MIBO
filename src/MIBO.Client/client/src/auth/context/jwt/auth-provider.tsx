@@ -40,6 +40,11 @@ export function AuthProvider({ children }: Props) {
             const decoded = jwtDecode<UserType>(jwt);
             setState({
                 user: {
+                    id: decoded.id,
+                    email: decoded.email,
+                    firstName: decoded.firstName,
+                    lastName: decoded.lastName,
+                    username: decoded.username,
                     role: decoded.role,
                 },
                 loading: false
