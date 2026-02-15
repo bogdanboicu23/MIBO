@@ -6,6 +6,9 @@ import { RouterLink } from "@/routes/components";
 import { paths } from "@/routes/paths.ts";
 import { useRouter } from "@/routes/hooks";
 
+import type { UserType } from "@/auth/types";
+import { useAxios } from "@/axios/hooks";
+import { endpoints } from "@/axios/endpoints.ts";
 
 const passwordHint = "Parola trebuie să aibă minim 8 caractere și să conțină litere mari, mici și cifre.";
 
@@ -18,6 +21,8 @@ const schema = z
             .max(30, "Username-ul trebuie să aibă maxim 30 caractere.")
             .regex(/^[a-zA-Z0-9._-]+$/, "Folosește doar litere/cifre și . _ -"),
         email: z.string().trim().email("Email invalid."),
+        firstName: z.string().trim().min(2, "Prenumele trebuie să aibă minim 2 caractere."),
+        lastName: z.string().trim().min(2, "Numele trebuie să aibă minim 2 caractere."),
         password: z
             .string()
             .min(8, passwordHint)
@@ -31,15 +36,20 @@ const schema = z
         path: ["confirmPassword"],
     });
 
+type SignupForm = UserType & { password: string; confirmPassword: string };
+
 export default function Signup() {
     const router = useRouter();
+    const { api } = useAxios();
 
-    const [form, setForm] = useState({
+    const [user, setUser] = useState<UserType>({
         username: "",
         email: "",
-        password: "",
-        confirmPassword: "",
+        firstName: "",
+        lastName: "",
     });
+
+    const [passwords, setPasswords] = useState({ password: "", confirmPassword: "" });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
@@ -47,20 +57,25 @@ export default function Signup() {
 
     const canSubmit = useMemo(() => {
         return (
-            !!form.username.trim() &&
-            !!form.email.trim() &&
-            !!form.password &&
-            !!form.confirmPassword &&
+            !!user.username.trim() &&
+            !!user.email.trim() &&
+            !!user.firstName.trim() &&
+            !!user.lastName.trim() &&
+            !!passwords.password &&
+            !!passwords.confirmPassword &&
             !busy
         );
-    }, [form, busy]);
+    }, [user, passwords, busy]);
 
     function validate() {
-        const parsed = schema.safeParse(form);
+        const payload: SignupForm = { ...user, ...passwords };
+        const parsed = schema.safeParse(payload);
+
         if (parsed.success) {
             setErrors({});
             return true;
         }
+
         const next: Record<string, string> = {};
         for (const issue of parsed.error.issues) {
             const key = String(issue.path[0] ?? "form");
@@ -78,8 +93,8 @@ export default function Signup() {
 
         setBusy(true);
         try {
-            // TODO: integrare API signup
-            await new Promise((r) => setTimeout(r, 650));
+            await api.post(endpoints.auth.signup, { user, password: passwords.password });
+
             router.push(paths.auth.login);
         } catch (err: any) {
             setServerError(err?.message ?? "Crearea contului a eșuat. Încearcă din nou.");
@@ -102,14 +117,58 @@ export default function Signup() {
 
                     <Card className="p-5 sm:p-6">
                         <form onSubmit={onSubmit} className="space-y-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="sm:col-span-1">
+                                    <label
+                                        className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                        Prenume
+                                    </label>
+                                    <Input
+                                        value={user.firstName}
+                                        onChange={(e) => {
+                                            setUser({ ...user, firstName: e.target.value });
+                                            setErrors({ ...errors, firstName: "" });
+                                            setServerError(null);
+                                        }}
+                                        placeholder="Prenume"
+                                        autoComplete="given-name"
+                                    />
+                                    {errors.firstName ? (
+                                        <div
+                                            className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.firstName}</div>
+                                    ) : null}
+                                </div>
+
+                                <div className="sm:col-span-1">
+                                    <label
+                                        className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                        Nume
+                                    </label>
+                                    <Input
+                                        value={user.lastName}
+                                        onChange={(e) => {
+                                            setUser({ ...user, lastName: e.target.value });
+                                            setErrors({ ...errors, lastName: "" });
+                                            setServerError(null);
+                                        }}
+                                        placeholder="Nume"
+                                        autoComplete="family-name"
+                                    />
+                                    {errors.lastName ? (
+                                        <div
+                                            className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.lastName}</div>
+                                    ) : null}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                     Username
                                 </label>
                                 <Input
-                                    value={form.username}
+                                    value={user.username}
                                     onChange={(e) => {
-                                        setForm({ ...form, username: e.target.value });
+                                        setUser({ ...user, username: e.target.value });
                                         setErrors({ ...errors, username: "" });
                                         setServerError(null);
                                     }}
@@ -127,9 +186,9 @@ export default function Signup() {
                                 </label>
                                 <Input
                                     type="email"
-                                    value={form.email}
+                                    value={user.email}
                                     onChange={(e) => {
-                                        setForm({ ...form, email: e.target.value });
+                                        setUser({ ...user, email: e.target.value });
                                         setErrors({ ...errors, email: "" });
                                         setServerError(null);
                                     }}
@@ -147,18 +206,19 @@ export default function Signup() {
                                 </label>
                                 <Input
                                     type="password"
-                                    value={form.password}
+                                    value={passwords.password}
                                     onChange={(e) => {
-                                        setForm({ ...form, password: e.target.value });
+                                        setPasswords({ ...passwords, password: e.target.value });
                                         setErrors({ ...errors, password: "" });
                                         setServerError(null);
                                     }}
                                     placeholder="••••••••"
                                     autoComplete="new-password"
                                 />
-                                {errors.password && (
-                                    <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.password}</div>
-                                )
+                                {
+                                    errors.password && (
+                                        <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.password}</div>
+                                    )
                                 }
                             </div>
 
@@ -168,9 +228,9 @@ export default function Signup() {
                                 </label>
                                 <Input
                                     type="password"
-                                    value={form.confirmPassword}
+                                    value={passwords.confirmPassword}
                                     onChange={(e) => {
-                                        setForm({ ...form, confirmPassword: e.target.value });
+                                        setPasswords({ ...passwords, confirmPassword: e.target.value });
                                         setErrors({ ...errors, confirmPassword: "" });
                                         setServerError(null);
                                     }}
@@ -196,8 +256,10 @@ export default function Signup() {
 
                             <div className="text-sm text-zinc-500 dark:text-zinc-400">
                                 Ai deja cont?{" "}
-                                <RouterLink href={paths.auth.login}
-                                            className="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
+                                <RouterLink
+                                    href={paths.auth.login}
+                                    className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
+                                >
                                     Login
                                 </RouterLink>
                             </div>
@@ -210,7 +272,6 @@ export default function Signup() {
                             </div>
                         </form>
                     </Card>
-
                 </div>
             </div>
         </div>

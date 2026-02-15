@@ -23,6 +23,7 @@
     "react-i18next": "^16.5.4",
     "react-router-dom": "^7.13.0",
     "react-toastify": "^11.0.5",
+    "react-turnstile": "^1.1.5",
     "tailwindcss": "^4.1.18",
     "vite-plugin-checker": "^0.12.0"
   },
