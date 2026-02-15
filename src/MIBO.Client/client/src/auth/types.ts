@@ -5,7 +5,11 @@ export type LoginData = {
 };
 
 export type UserType = {
-    role: string;
+    id?: string;
+    email: string;
+    username: string;
+    firstName: string;
+    lastName: string;
 }
 
 export type AuthState = {

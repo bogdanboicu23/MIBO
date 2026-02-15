@@ -1,29 +1,36 @@
 import { useMemo, useState } from "react";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router-dom";
+import Turnstile from "react-turnstile";
+
 import { Button, Card, Divider, Input } from "@/components/ui";
 import { ThemeToggle } from "@/components/chat/ThemeToggle.tsx";
 import { RouterLink } from "@/routes/components";
 import { paths } from "@/routes/paths.ts";
-
+import { useRouter } from "@/routes/hooks";
+import { useAuthContext } from "@/auth/hooks";
+import type { LoginData } from "@/auth/types.ts";
+import { useTheme } from "@/hooks/useTheme.ts";
 
 const schema = z.object({
-    identifier: z.string().trim().min(3, "Introdu username sau email (minim 3 caractere)."),
+    email: z.string().trim().min(3, "Introdu email (minim 3 caractere)."),
     password: z.string().min(8, "Parola trebuie să aibă minim 8 caractere."),
 });
 
 export default function Login() {
-    const navigate = useNavigate();
+    const router = useRouter();
+    const { login } = useAuthContext();
+    const { theme } = useTheme();
 
-    const [form, setForm] = useState({ identifier: "", password: "" });
+    const [form, setForm] = useState<LoginData>({ email: "", password: "" });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
     const [serverError, setServerError] = useState<string | null>(null);
 
-    const canSubmit = useMemo(
-        () => !!form.identifier.trim() && !!form.password && !busy,
-        [form.identifier, form.password, busy]
-    );
+    const [tsToken, setTsToken] = useState<string | null>(null);
+
+    const canSubmit = useMemo(() => {
+        return !!form.email.trim() && !!form.password && !!tsToken && !busy;
+    }, [form.email, form.password, tsToken, busy]);
 
     function validate() {
         const parsed = schema.safeParse(form);
@@ -44,15 +51,23 @@ export default function Login() {
         e.preventDefault();
         setServerError(null);
 
+        if (!tsToken) {
+            setServerError("Confirmă captcha înainte de autentificare.");
+            return;
+        }
+
         if (!validate()) return;
 
         setBusy(true);
         try {
-            // TODO: integrare API login
-            await new Promise((r) => setTimeout(r, 450));
-            navigate("/");
+            await login({ email: form.email, password: form.password, turnstileToken: tsToken });
+
+            setTsToken(null);
+
+            router.push(paths.root);
         } catch (err: any) {
             setServerError(err?.message ?? "Autentificare eșuată. Încearcă din nou.");
+            setTsToken(null);
         } finally {
             setBusy(false);
         }
@@ -77,17 +92,17 @@ export default function Login() {
                                     Email
                                 </label>
                                 <Input
-                                    value={form.identifier}
+                                    value={form.email}
                                     onChange={(e) => {
-                                        setForm({ ...form, identifier: e.target.value });
-                                        setErrors({ ...errors, identifier: "" });
+                                        setForm({ ...form, email: e.target.value });
+                                        setErrors({ ...errors, email: "" });
                                         setServerError(null);
                                     }}
                                     placeholder="example@mail.com"
+                                    autoComplete="email"
                                 />
-                                {errors.identifier ? (
-                                    <div
-                                        className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.identifier}</div>
+                                {errors.email ? (
+                                    <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email}</div>
                                 ) : null}
                             </div>
 
@@ -104,9 +119,29 @@ export default function Login() {
                                         setServerError(null);
                                     }}
                                     placeholder="••••••••"
+                                    autoComplete="current-password"
                                 />
                                 {errors.password ? (
                                     <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.password}</div>
+                                ) : null}
+                            </div>
+
+                            {/* Turnstile */}
+                            <div className="pt-1">
+                                <div className="flex w-full justify-center">
+                                    <Turnstile
+                                        sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                                        onVerify={(t) => setTsToken(t)}
+                                        onExpire={() => setTsToken(null)}
+                                        onError={() => setTsToken(null)}
+                                        theme={theme === "dark" ? "dark" : "light"}
+                                    />
+                                </div>
+
+                                {!tsToken ? (
+                                    <div className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                                        Completează captcha pentru a activa butonul de login.
+                                    </div>
                                 ) : null}
                             </div>
 
@@ -122,21 +157,22 @@ export default function Login() {
                             </Button>
 
                             <div className="flex items-center justify-between text-sm">
-                                <Link
-                                    to="/forgot-password"
+                                <RouterLink
+                                    href={paths.auth.forgotPassword}
                                     className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                                 >
                                     Ai uitat parola?
-                                </Link>
+                                </RouterLink>
+
                                 <span className="text-zinc-500 dark:text-zinc-400">
-                                  Nu ai cont?{" "}
+                                    Nu ai cont?{" "}
                                     <RouterLink
                                         href={paths.auth.signup}
                                         className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
                                     >
-                                        Sign up
-                                    </RouterLink>
-                                </span>
+                                Sign up
+                              </RouterLink>
+                            </span>
                             </div>
 
                             <Divider />
@@ -146,7 +182,6 @@ export default function Login() {
                             </div>
                         </form>
                     </Card>
-
                 </div>
             </div>
         </div>
