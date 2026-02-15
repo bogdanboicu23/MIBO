@@ -1,6 +1,12 @@
 image:
   repository: registry.digitalocean.com/mibo/identity-service
-  tag: test-latest
+  tag: test-fix-amd64
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8080
 
 env:
   - name: ConnectionStrings__DefaultConnection
@@ -10,6 +16,8 @@ env:
         key: connection-string
   - name: ASPNETCORE_ENVIRONMENT
     value: "Development"
+  - name: ASPNETCORE_URLS
+    value: "http://+:8080"
   - name: Jwt__Key
     valueFrom:
       secretKeyRef:
