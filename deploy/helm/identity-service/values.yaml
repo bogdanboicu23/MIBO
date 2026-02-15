@@ -26,6 +26,7 @@ resources:
     cpu: "100m"
     memory: "128Mi" 
 
-env:
-  ASPNETCORE_ENVIRONMENT: test
-  DisableSwagger: "true"
+env: []
+  # Example:
+  # - name: ASPNETCORE_ENVIRONMENT
+  #   value: "test"
