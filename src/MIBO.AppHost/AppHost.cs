@@ -14,10 +14,13 @@ var visualization = builder.AddProject<Projects.MIBO_VisualisationService>("visu
 var calendarAgent = builder.AddProject<Projects.MIBO_CalendarAgent>("calendar-agent")
     .WithReference(postgres);
 
+var identityService = builder.AddProject<Projects.MIBO_IdentityService>("identity-service")
+    .WithReference(postgres);
 // API Gateway
 builder.AddProject<Projects.MIBO_ApiGateway>("api-gateway")
     .WithReference(conversation)
     .WithReference(visualization)
+    .WithReference(identityService)
     .WithReference(calendarAgent);
 
 // Python agents
