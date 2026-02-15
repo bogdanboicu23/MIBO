@@ -6,4 +6,3 @@ resources:
   - secrets.yaml
   - api-gateway-deployment.yaml
   - app-host-deployment.yaml
-  - other-services-deployment.yaml
