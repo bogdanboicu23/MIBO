@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
 using MIBO.IdentityService.Services;
@@ -14,12 +16,18 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authenticationService;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _config;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authenticationService, IHttpClientFactory httpClientFactory, IConfiguration config)
+    public AuthController(
+        IAuthService authenticationService,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration config,
+        ILogger<AuthController> logger)
     {
         _authenticationService = authenticationService;
         _httpClientFactory = httpClientFactory;
         _config = config;
+        _logger = logger;
     }
 
    [HttpPost("login")]
@@ -31,18 +39,28 @@ public class AuthController : ControllerBase
         if (turnstileEnabled)
         {
             if (string.IsNullOrWhiteSpace(data.TurnstileToken))
-                return BadRequest("Captcha missing");
+                return BadRequest(new { message = "Captcha verification required" });
 
             var secret = _config["Turnstile:SecretKey"];
             if (string.IsNullOrWhiteSpace(secret))
-                return StatusCode(500, "Turnstile secret not configured");
+            {
+                // Log this as a critical error in production
+                return StatusCode(500, new { message = "Turnstile configuration error" });
+            }
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var http = _httpClientFactory.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(10); // Set timeout for Turnstile verification
 
             var (ok, errors) = await TurnstileVerifier.VerifyAsync(data.TurnstileToken, secret, ip, http, ct);
             if (!ok)
-                return Unauthorized(new { message = "Captcha failed", errors });
+            {
+                var errorMessage = errors?.Length > 0 ? string.Join(", ", errors) : "Captcha verification failed";
+                _logger.LogWarning("Turnstile verification failed for IP {IP}: {Errors}", ip, errorMessage);
+                return Unauthorized(new { message = "Captcha verification failed", details = errorMessage });
+            }
+
+            _logger.LogInformation("Turnstile verification successful for IP {IP}", ip);
         }
 
         var userDto = new UserDto
@@ -122,6 +140,31 @@ public class AuthController : ControllerBase
             message = $"Hello {userId}, you are authenticated!",
             timestamp = DateTime.UtcNow,
             claims = User.Claims.Select(c => new { c.Type, c.Value })
+        });
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult GetCurrentUser()
+    {
+        var userInfo = new UserInfo
+        {
+            Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                 ?? string.Empty,
+            Email = User.FindFirst(ClaimTypes.Email)?.Value
+                    ?? User.FindFirst(JwtRegisteredClaimNames.Email)?.Value
+                    ?? string.Empty,
+            Username = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty,
+            FirstName = User.FindFirst("firstName")?.Value,
+            LastName = User.FindFirst("lastName")?.Value
+        };
+
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        return Ok(new {
+            user = userInfo,
+            roles = roles
         });
     }
 
