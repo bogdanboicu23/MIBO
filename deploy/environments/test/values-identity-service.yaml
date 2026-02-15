@@ -4,7 +4,7 @@ image:
 
 env:
   - name: ConnectionStrings__DefaultConnection
-    value: "Host=postgres.test.svc.cluster.local;Port=5432;Database=mibo_identity_test;Username=postgres;Password=admintest"
+    value: "Host=postgres.test.svc.cluster.local;Port=5432;Database=mibo_identity_test;Username=postgres;Password=admintest;Pooling=true;Maximum Pool Size=100;Connection Idle Lifetime=300;Connection Pruning Interval=10;Timeout=30;Command Timeout=30"
   - name: ASPNETCORE_ENVIRONMENT
     value: "Development"
   - name: Jwt__Key
@@ -16,11 +16,33 @@ env:
     value: "MIBO.IdentityService"
   - name: Jwt__Audience
     value: "MIBO.Services"
+  - name: JwtSettings__AccessTokenSecret
+    valueFrom:
+      secretKeyRef:
+        name: identity-secrets
+        key: jwt-key
+  - name: JwtSettings__RefreshTokenSecret
+    valueFrom:
+      secretKeyRef:
+        name: identity-secrets
+        key: jwt-key
+  - name: JwtSettings__Issuer
+    value: "MIBO.IdentityService"
+  - name: JwtSettings__Audience
+    value: "MIBO.Services"
+  - name: JwtSettings__AccessTokenExpirationMinutes
+    value: "15"
+  - name: JwtSettings__RefreshTokenExpirationDays
+    value: "7"
+  - name: Turnstile__SecretKey
+    value: "1x0000000000000000000000000000000AA"
+  - name: Turnstile__Enabled
+    value: "false"
 
 resources:
   requests:
-    memory: "64Mi"
-    cpu: "10m"
+    memory: "256Mi"
+    cpu: "250m"
   limits:
-    memory: "128Mi"
-    cpu: "50m"
+    memory: "512Mi"
+    cpu: "500m"
