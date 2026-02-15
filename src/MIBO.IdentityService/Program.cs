@@ -77,14 +77,19 @@ builder.Services.AddAuthorization();
 // Add Token Service
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+// Add Authentication Service
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("SuperOpen", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy
+            .SetIsOriginAllowed(_ => true)  
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -99,7 +104,7 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("SuperOpen");
 
 app.UseAuthentication();
 app.UseAuthorization();
