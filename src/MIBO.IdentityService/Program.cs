@@ -162,24 +162,39 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Apply migrations in background to not block startup
-if (app.Environment.IsDevelopment())
+// Seed roles on startup
+_ = Task.Run(async () =>
 {
-    _ = Task.Run(async () =>
+    await Task.Delay(2000); // Small delay to let the app start
+    using var scope = app.Services.CreateScope();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    try
     {
-        await Task.Delay(1000); // Small delay to let the app start
-        using var scope = app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        try
+        // Apply migrations only in development
+        if (app.Environment.IsDevelopment())
         {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await dbContext.Database.MigrateAsync();
             Console.WriteLine("Database migrations applied successfully");
         }
-        catch (Exception ex)
+
+        // Seed default roles (in all environments)
+        var roles = new[] { "Admin", "User", "Manager" };
+        foreach (var role in roles)
         {
-            Console.WriteLine($"Error applying migrations: {ex.Message}");
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+                Console.WriteLine($"Created role: {role}");
+            }
         }
-    });
-}
+        Console.WriteLine("Role seeding completed");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error seeding roles: {ex.Message}");
+    }
+});
 
 app.Run();
