@@ -73,6 +73,8 @@ public class ApiResponse
 
 public static class TurnstileVerifier
 {
+    private const string VerifyUrl = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
     public static async Task<(bool ok, string[] errors)> VerifyAsync(
         string token,
         string secret,
@@ -80,9 +82,58 @@ public static class TurnstileVerifier
         HttpClient client,
         CancellationToken ct)
     {
-        // This is a placeholder - you'll need to implement the actual Turnstile verification
-        // For now, returning true to allow testing
-        await Task.Delay(1, ct);
-        return (true, Array.Empty<string>());
+        try
+        {
+            var formData = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("secret", secret),
+                new KeyValuePair<string, string>("response", token),
+                new KeyValuePair<string, string>("remoteip", ip ?? string.Empty)
+            });
+
+            var response = await client.PostAsync(VerifyUrl, formData, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, new[] { $"HTTP error: {response.StatusCode}" });
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var result = System.Text.Json.JsonSerializer.Deserialize<TurnstileResponse>(json);
+
+            if (result == null)
+            {
+                return (false, new[] { "Invalid response from Turnstile API" });
+            }
+
+            return (result.Success, result.ErrorCodes ?? Array.Empty<string>());
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, new[] { "Request timeout" });
+        }
+        catch (HttpRequestException ex)
+        {
+            return (false, new[] { $"Network error: {ex.Message}" });
+        }
+        catch (Exception ex)
+        {
+            return (false, new[] { $"Unexpected error: {ex.Message}" });
+        }
+    }
+
+    private class TurnstileResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("success")]
+        public bool Success { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("error-codes")]
+        public string[]? ErrorCodes { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("challenge_ts")]
+        public string? ChallengeTimestamp { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("hostname")]
+        public string? Hostname { get; set; }
     }
 }

@@ -4,7 +4,10 @@ image:
 
 env:
   - name: ConnectionStrings__DefaultConnection
-    value: "Host=postgres.test.svc.cluster.local;Port=5432;Database=mibo_identity_test;Username=postgres;Password=admintest;Pooling=true;Maximum Pool Size=100;Connection Idle Lifetime=300;Connection Pruning Interval=10;Timeout=30;Command Timeout=30"
+    valueFrom:
+      secretKeyRef:
+        name: database-secret
+        key: connection-string
   - name: ASPNETCORE_ENVIRONMENT
     value: "Development"
   - name: Jwt__Key
@@ -35,14 +38,14 @@ env:
   - name: JwtSettings__RefreshTokenExpirationDays
     value: "7"
   - name: Turnstile__SecretKey
-    value: "1x0000000000000000000000000000000AA"
+    value: "0x4AAAAAACdNx0rdcbwZeI10k_wDvTwCOTE"
   - name: Turnstile__Enabled
-    value: "false"
+    value: "true"
 
 resources:
   requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
     memory: "256Mi"
     cpu: "250m"
-  limits:
-    memory: "512Mi"
-    cpu: "500m"
