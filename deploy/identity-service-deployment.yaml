@@ -29,15 +29,24 @@ spec:
         - name: ASPNETCORE_URLS
           value: "http://+:8080"
         - name: Jwt__Key
-          value: "ThisIsAVerySecureKeyWith32CharactersForHS256!!!"
+          valueFrom:
+            secretKeyRef:
+              name: identity-secrets
+              key: jwt-key
         - name: Jwt__Issuer
           value: "MIBO.IdentityService"
         - name: Jwt__Audience
           value: "MIBO.Services"
         - name: JwtSettings__AccessTokenSecret
-          value: "ThisIsAVerySecureKeyWith32CharactersForHS256!!!"
+          valueFrom:
+            secretKeyRef:
+              name: identity-secrets
+              key: jwt-key
         - name: JwtSettings__RefreshTokenSecret
-          value: "ThisIsAnotherVerySecureKeyWith32CharsForRefresh"
+          valueFrom:
+            secretKeyRef:
+              name: identity-secrets
+              key: refresh-token-key
         - name: JwtSettings__Issuer
           value: "MIBO.IdentityService"
         - name: JwtSettings__Audience
@@ -47,7 +56,10 @@ spec:
         - name: JwtSettings__RefreshTokenExpirationDays
           value: "7"
         - name: Turnstile__SecretKey
-          value: "0x4AAAAAACdNx0rdcbwZeI10k_wDvTwCOTE"
+          valueFrom:
+            secretKeyRef:
+              name: identity-secrets
+              key: turnstile-secret
         - name: Turnstile__Enabled
           value: "true"
         resources:

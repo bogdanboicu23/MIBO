@@ -28,7 +28,7 @@ env:
     valueFrom:
       secretKeyRef:
         name: identity-secrets
-        key: jwt-key
+        key: refresh-token-key
   - name: JwtSettings__Issuer
     value: "MIBO.IdentityService"
   - name: JwtSettings__Audience
@@ -38,7 +38,10 @@ env:
   - name: JwtSettings__RefreshTokenExpirationDays
     value: "7"
   - name: Turnstile__SecretKey
-    value: "0x4AAAAAACdNx0rdcbwZeI10k_wDvTwCOTE"
+    valueFrom:
+      secretKeyRef:
+        name: identity-secrets
+        key: turnstile-secret
   - name: Turnstile__Enabled
     value: "true"
 
