@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
 using MIBO.IdentityService.Services;
@@ -11,239 +13,170 @@ namespace MIBO.IdentityService.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly ITokenService _tokenService;
-    private readonly ApplicationDbContext _context;
+    private readonly IAuthService _authenticationService;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _config;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
-        ITokenService tokenService,
-        ApplicationDbContext context,
+        IAuthService authenticationService,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration config,
         ILogger<AuthController> logger)
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _tokenService = tokenService;
-        _context = context;
+        _authenticationService = authenticationService;
+        _httpClientFactory = httpClientFactory;
+        _config = config;
         _logger = logger;
     }
 
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterModel model)
+   [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] UserDto data, CancellationToken ct)
     {
-        // Check if user exists
-        var existingUser = await _userManager.FindByEmailAsync(model.Email);
-        if (existingUser != null)
+        // Check if Turnstile is enabled
+        var turnstileEnabled = _config.GetValue<bool>("Turnstile:Enabled", true);
+
+        if (turnstileEnabled)
         {
-            return BadRequest(new { message = "User with this email already exists" });
+            if (string.IsNullOrWhiteSpace(data.TurnstileToken))
+                return BadRequest(new { message = "Captcha verification required" });
+
+            var secret = _config["Turnstile:SecretKey"];
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                // Log this as a critical error in production
+                return StatusCode(500, new { message = "Turnstile configuration error" });
+            }
+
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var http = _httpClientFactory.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(10); // Set timeout for Turnstile verification
+
+            var (ok, errors) = await TurnstileVerifier.VerifyAsync(data.TurnstileToken, secret, ip, http, ct);
+            if (!ok)
+            {
+                var errorMessage = errors?.Length > 0 ? string.Join(", ", errors) : "Captcha verification failed";
+                _logger.LogWarning("Turnstile verification failed for IP {IP}: {Errors}", ip, errorMessage);
+                return Unauthorized(new { message = "Captcha verification failed", details = errorMessage });
+            }
+
+            _logger.LogInformation("Turnstile verification successful for IP {IP}", ip);
         }
 
-        existingUser = await _userManager.FindByNameAsync(model.Username);
-        if (existingUser != null)
+        var userDto = new UserDto
         {
-            return BadRequest(new { message = "Username is already taken" });
-        }
-
-        // Create new user
-        var user = new ApplicationUser
-        {
-            UserName = model.Username,
-            Email = model.Email,
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-            CreatedAt = DateTime.UtcNow
+            Email = data.Email,
+            Password = data.Password
         };
 
-        var result = await _userManager.CreateAsync(user, model.Password);
+        var result = await _authenticationService.UserLogin(userDto);
+        if (string.IsNullOrEmpty(result.AccessToken)) return BadRequest("Login Failed");
 
-        if (!result.Succeeded)
+        SetAuthCookies(result.RefreshToken);
+        return Ok(new { jwtToken = result.AccessToken });
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterDto model, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userDto = new RegisterDto()
         {
-            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            Email = model.Email,
+            Password = model.Password,
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            Username = model.Username
+        };
+
+        var result = await _authenticationService.UserSignUp(userDto);
+
+        if (!result.Success)
+            return BadRequest(new { message = result.Message });
+
+        return Ok(new { message = "User registered successfully" });
+    }
+
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken(RefreshTokenRequest request)
+    {
+        var refreshToken = Request.Cookies["refreshToken"];
+
+        if (string.IsNullOrEmpty(refreshToken) || string.IsNullOrEmpty(request.JwtToken))
+        {
+            return Unauthorized("Token Refresh Failed");
         }
 
-        // Generate tokens
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshToken = _tokenService.GenerateRefreshToken();
-
-        // Save refresh token (you'll need to add a RefreshTokens table)
-        // For now, we'll store it in user's SecurityStamp
-        user.SecurityStamp = refreshToken;
-        await _userManager.UpdateAsync(user);
-
-        _logger.LogInformation("User {Username} registered successfully", user.UserName);
-
-        return Ok(new AuthResponse
+        var result = await _authenticationService.RefreshToken(new TokenDto
         {
-            Message = "User created successfully",
-            Token = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            User = new UserInfo
-            {
-                Id = user.Id,
-                Email = user.Email!,
-                Username = user.UserName!,
-                FirstName = user.FirstName,
-                LastName = user.LastName
-            }
+            AccessToken = request.JwtToken,
+            RefreshToken = refreshToken
         });
+
+        if (string.IsNullOrEmpty(result.AccessToken)) return Unauthorized("Token Refresh Failed");
+
+        SetAuthCookies(result.RefreshToken);
+        return Ok(new { jwtToken = result.AccessToken });
     }
 
     [HttpGet("test")]
     public IActionResult Test()
     {
-        return Ok(new { message = "Auth service is working 🚀" });
-    }
-    
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginModel model)
-    {
-        // Find user by email or username
-        ApplicationUser? user;
-        if (model.UsernameOrEmail.Contains('@'))
-        {
-            user = await _userManager.FindByEmailAsync(model.UsernameOrEmail);
-        }
-        else
-        {
-            user = await _userManager.FindByNameAsync(model.UsernameOrEmail);
-        }
-
-        if (user == null)
-        {
-            return Unauthorized(new { message = "Invalid credentials" });
-        }
-
-        // Verify password
-        var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-        if (!result.Succeeded)
-        {
-            return Unauthorized(new { message = "Invalid credentials" });
-        }
-
-        // Update last login
-        user.LastLoginAt = DateTime.UtcNow;
-        await _userManager.UpdateAsync(user);
-
-        // Generate tokens
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshToken = _tokenService.GenerateRefreshToken();
-
-        // Save refresh token
-        user.SecurityStamp = refreshToken;
-        await _userManager.UpdateAsync(user);
-
-        _logger.LogInformation("User {Username} logged in successfully", user.UserName);
-
-        return Ok(new AuthResponse
-        {
-            Message = "Auth service reached succesfully",
-            Token = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            User = new UserInfo
-            {
-                Id = user.Id,
-                Email = user.Email!,
-                Username = user.UserName!,
-                FirstName = user.FirstName,
-                LastName = user.LastName
-            }
+        return Ok(new {
+            message = "Authentication service is running",
+            timestamp = DateTime.UtcNow,
+            version = "1.0.0"
         });
     }
 
-    [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenModel model)
+    [HttpGet("test-auth")]
+    [Authorize]
+    public IActionResult TestAuth()
     {
-        var principal = _tokenService.ValidateToken(model.Token);
-        if (principal == null)
-        {
-            return Unauthorized(new { message = "Invalid token" });
-        }
-
-        var userId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized(new { message = "Invalid token" });
-        }
-
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user == null || user.SecurityStamp != model.RefreshToken)
-        {
-            return Unauthorized(new { message = "Invalid refresh token" });
-        }
-
-        // Generate new tokens
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshToken = _tokenService.GenerateRefreshToken();
-
-        // Save new refresh token
-        user.SecurityStamp = refreshToken;
-        await _userManager.UpdateAsync(user);
-
-        return Ok(new AuthResponse
-        {
-            Message = "Auth service reached succesfully",
-            Token = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            User = new UserInfo
-            {
-                Id = user.Id,
-                Email = user.Email!,
-                Username = user.UserName!,
-                FirstName = user.FirstName,
-                LastName = user.LastName
-            }
+        var userId = User.Identity?.Name ?? "Unknown";
+        return Ok(new {
+            message = $"Hello {userId}, you are authenticated!",
+            timestamp = DateTime.UtcNow,
+            claims = User.Claims.Select(c => new { c.Type, c.Value })
         });
     }
 
-    [Authorize]
-    [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
-    {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (!string.IsNullOrEmpty(userId))
-        {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
-            {
-                // Invalidate refresh token
-                user.SecurityStamp = Guid.NewGuid().ToString();
-                await _userManager.UpdateAsync(user);
-                _logger.LogInformation("User {Username} logged out", user.UserName);
-            }
-        }
-
-        return Ok(new { message = "Logged out successfully" });
-    }
-
-    [Authorize]
     [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentUser()
+    [Authorize]
+    public IActionResult GetCurrentUser()
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId))
+        var userInfo = new UserInfo
         {
-            return Unauthorized();
-        }
+            Id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                 ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                 ?? string.Empty,
+            Email = User.FindFirst(ClaimTypes.Email)?.Value
+                    ?? User.FindFirst(JwtRegisteredClaimNames.Email)?.Value
+                    ?? string.Empty,
+            Username = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty,
+            FirstName = User.FindFirst("firstName")?.Value,
+            LastName = User.FindFirst("lastName")?.Value
+        };
 
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user == null)
-        {
-            return NotFound();
-        }
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
 
-        return Ok(new UserInfo
-        {
-            Id = user.Id,
-            Email = user.Email!,
-            Username = user.UserName!,
-            FirstName = user.FirstName,
-            LastName = user.LastName
+        return Ok(new {
+            user = userInfo,
+            roles = roles
         });
+    }
+
+    private void SetAuthCookies(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.None,
+            Secure = true
+        };
+
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 }

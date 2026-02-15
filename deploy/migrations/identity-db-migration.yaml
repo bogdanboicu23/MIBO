@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: identity-db-migration
+  namespace: test
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: do-registry-secret
+      initContainers:
+      - name: wait-for-db
+        image: postgres:16-alpine
+        command: ['sh', '-c', 'until pg_isready -h postgres -p 5432; do echo waiting for database; sleep 2; done;']
+      containers:
+      - name: migration
+        image: registry.digitalocean.com/mibo/identity-service:test-latest
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "Running Entity Framework migrations..."
+          # Try to update database - this will apply all pending migrations
+          dotnet ef database update --no-build || echo "EF tools not available, trying alternative..."
+
+          # Alternative: Run the application in migration mode
+          # Most .NET apps apply migrations on startup in Development mode
+          echo "Starting application to trigger auto-migration..."
+          timeout 30 dotnet MIBO.IdentityService.dll || true
+
+          echo "Migration attempt completed"
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          value: "Host=postgres.test.svc.cluster.local;Port=5432;Database=mibo_identity_test;Username=postgres;Password=admintest"
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
+        - name: Jwt__Key
+          valueFrom:
+            secretKeyRef:
+              name: identity-secrets
+              key: jwt-key
+        - name: Jwt__Issuer
+          value: "MIBO.IdentityService"
+        - name: Jwt__Audience
+          value: "MIBO.Services"

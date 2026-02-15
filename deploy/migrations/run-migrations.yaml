@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: identity-db-migration
+  namespace: test  # Change to 'prod' for production
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: wait-for-db
+        image: postgres:16-alpine
+        command: ['sh', '-c', 'until pg_isready -h $POSTGRES_HOST -p 5432; do echo waiting for database; sleep 2; done;']
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres.test.svc.cluster.local"  # Change for prod
+      containers:
+      - name: migration
+        image: registry.digitalocean.com/mibo/identity-service:test-latest  # Change tag for prod
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          dotnet ef database update --project /app/MIBO.IdentityService.dll --no-build || \
+          dotnet MIBO.IdentityService.dll migrate
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          value: "Host=postgres.test.svc.cluster.local;Port=5432;Database=mibo_identity_test;Username=postgres;Password=your-test-password-here"
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Development"
