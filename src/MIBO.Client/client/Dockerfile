@@ -20,8 +20,8 @@ RUN npm run build
 # Stage 2: Serve the application with nginx
 FROM nginx:alpine
 
-# Copy custom nginx config (use simple one if main doesn't exist)
-COPY nginx-simple.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config with API proxy
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
