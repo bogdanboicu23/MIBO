@@ -122,7 +122,8 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(
                 "https://mibo.monster",
-                "https://www.mibo.monster"
+                "https://www.mibo.monster",
+                "https://api.mibo.monster"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
