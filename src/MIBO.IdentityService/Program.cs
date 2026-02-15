@@ -114,12 +114,16 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Add CORS
+// TODO - add appsettings config for CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("SuperOpen", policy =>
     {
         policy
-            .SetIsOriginAllowed(_ => true)  
+            .WithOrigins(
+                "https://mibo.monster",
+                "https://www.mibo.monster",
+            )
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
