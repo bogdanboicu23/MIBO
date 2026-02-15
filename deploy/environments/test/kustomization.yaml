@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: prod
+namespace: test
 
 resources:
   - ../../base
@@ -10,25 +10,24 @@ helmCharts:
   - name: api-gateway
     path: ../../helm/api-gateway
     valuesFile: values-api-gateway.yaml
-    namespace: prod
+    namespace: test
   - name: app-host
     path: ../../helm/app-host
     valuesFile: values-app-host.yaml
-    namespace: prod
+    namespace: test
   - name: calendar-agent
     path: ../../helm/calendar-agent
     valuesFile: values-calendar-agent.yaml
-    namespace: prod
+    namespace: test
   - name: conversation-service
     path: ../../helm/conversation-service
     valuesFile: values-conversation-service.yaml
-    namespace: prod
+    namespace: test
   - name: visualisation-service
     path: ../../helm/visualisation-service
     valuesFile: values-visualisation-service.yaml
-    namespace: prod
+    namespace: test
   - name: identity-service
     path: ../../helm/identity-service
     valuesFile: values-identity-service.yaml
-    namespace: prod
-    
+    namespace: test
