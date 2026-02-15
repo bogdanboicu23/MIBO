@@ -4,23 +4,23 @@ metadata:
   name: traefik-dashboard
   namespace: traefik
   annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: traefik-dashboard-auth@kubernetescrd
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
 spec:
   ingressClassName: traefik
   rules:
-    - http:
+    - host: traefik.mibo.monster
+      http:
         paths:
-          - path: /dashboard
+          - path: /
             pathType: Prefix
             backend:
               service:
-                name: traefik
+                name: traefik-dashboard
                 port:
-                  number: 8080
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: traefik
-                port:
-                  number: 8080
+                  number: 9000
+  tls:
+    - hosts:
+        - traefik.mibo.monster

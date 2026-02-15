@@ -10,5 +10,7 @@ export function getStorage<T>(key: string, fallback: T): T {
 export function setStorage<T>(key: string, value: T) {
     try {
         localStorage.setItem(key, JSON.stringify(value));
-    } catch {}
+    } catch {
+        console.error("Failed to set storage");
+    }
 }
