@@ -199,6 +199,7 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
+
             return null;
         }
     }
