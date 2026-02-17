@@ -1,4 +1,4 @@
-name: Test - Deploy mibo-client
+name: Deploy Client
 
 on:
   push:
@@ -7,13 +7,13 @@ on:
       - "src/MIBO.Client/client/**"
       - "k8s/apps/**"
       - "k8s/ci/**"
-      - ".github/workflows/test-client.yml"
+      - ".github/workflows/deploy-client.yml"
   workflow_dispatch: {}
 
 env:
   NAMESPACE: test
   DEPLOYMENT: mibo-client
-  CONTAINER: mibo-client
+  CONTAINER: client
   IMAGE: registry.digitalocean.com/mibo/client
 
 jobs:
