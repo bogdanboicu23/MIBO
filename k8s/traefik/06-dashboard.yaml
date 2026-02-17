@@ -1,25 +1,62 @@
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: dashboard-redirect
+  name: dashboard-auth
+  namespace: traefik
+spec:
+  basicAuth:
+    secret: dashboard-auth
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: dashboard-root-redirect
   namespace: traefik
 spec:
   redirectRegex:
-    regex: ^/$
-    replacement: /dashboard/
+    regex: ^https?://([^/]+)/$
+    replacement: https://$1/dashboard/
     permanent: true
 ---
 apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: traefik
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+# HTTP (web:80) -> redirect la HTTPS
+apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: traefik-dashboard
+  name: traefik-dashboard-http
   namespace: traefik
 spec:
   entryPoints:
     - web
   routes:
-    # Dashboard + API (protejate cu auth)
-    - match: PathPrefix(`/dashboard`) || PathPrefix(`/api`)
+    - match: Host(`traefik.mibo.monster`) && PathPrefix(`/`)
+      kind: Rule
+      middlewares:
+        - name: https-redirect
+      services:
+        - name: api@internal
+          kind: TraefikService
+---
+# HTTPS (websecure:443) -> dashboard + api (cu auth) + root redirect la /dashboard/
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard-https
+  namespace: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`traefik.mibo.monster`) && (PathPrefix(`/dashboard`) || PathPrefix(`/api`))
       kind: Rule
       middlewares:
         - name: dashboard-auth
@@ -27,11 +64,12 @@ spec:
         - name: api@internal
           kind: TraefikService
 
-    # Root redirect către /dashboard/
-    - match: Path(`/`)
+    - match: Host(`traefik.mibo.monster`) && Path(`/`)
       kind: Rule
       middlewares:
-        - name: dashboard-redirect
+        - name: dashboard-root-redirect
       services:
         - name: api@internal
           kind: TraefikService
+  tls:
+    certResolver: le

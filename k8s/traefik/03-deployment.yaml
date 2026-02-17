@@ -16,6 +16,7 @@ spec:
         app: traefik
     spec:
       serviceAccountName: traefik
+
       containers:
         - name: traefik
           image: traefik:v3.1
@@ -40,6 +41,13 @@ spec:
 
             # (important) detectează corect IP-ul public la DO LB
             - "--providers.kubernetesingress.ingressendpoint.publishedservice=traefik/traefik"
+
+            # ===== ACME / Let's Encrypt (HTTP-01) =====
+            - "--certificatesresolvers.le.acme.email=mihail.musteata@isa.utm.md"
+            - "--certificatesresolvers.le.acme.storage=/data/acme.json"
+            - "--certificatesresolvers.le.acme.httpchallenge=true"
+            - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+
           ports:
             - name: web
               containerPort: 80
@@ -47,15 +55,26 @@ spec:
               containerPort: 443
             - name: admin
               containerPort: 9000
+
+          volumeMounts:
+            - name: traefik-acme
+              mountPath: /data
+
           readinessProbe:
             httpGet:
               path: /ping
               port: 9000
             initialDelaySeconds: 5
             periodSeconds: 5
+
           livenessProbe:
             httpGet:
               path: /ping
               port: 9000
             initialDelaySeconds: 10
             periodSeconds: 10
+
+      volumes:
+        - name: traefik-acme
+          persistentVolumeClaim:
+            claimName: traefik-acme

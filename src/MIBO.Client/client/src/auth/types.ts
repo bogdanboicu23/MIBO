@@ -1,0 +1,28 @@
+export type LoginData = {
+    email: string;
+    password: string;
+    turnstileToken?: string;
+};
+
+export type UserType = {
+    id?: string;
+    email: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+}
+
+export type AuthState = {
+    user: UserType | undefined;
+    loading: boolean;
+};
+
+export type AuthContextValue = {
+    user: UserType | undefined;
+    loading: boolean;
+    authenticated: boolean;
+    unauthenticated: boolean;
+    checkUserSession?: () => Promise<void>;
+    login: (request: LoginData) => Promise<void>;
+};

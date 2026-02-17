@@ -1,18 +1,24 @@
-# Multi-stage build for React application
+# Multi-stage build for React (Vite) application
+
 # Stage 1: Build the application
 FROM node:20-alpine AS builder
-
-# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-
-# Install dependencies (including devDependencies for build)
 RUN npm ci
 
 # Copy application files
 COPY . .
+
+# ---- Build-time env for Vite ----
+# These come from `docker build --build-arg ...`
+ARG VITE_API_SERVER_URL
+ARG VITE_TURNSTILE_SITE_KEY
+
+# Make them available to the Vite build process
+ENV VITE_API_SERVER_URL=${VITE_API_SERVER_URL}
+ENV VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}
 
 # Build the application
 RUN npm run build
@@ -20,8 +26,8 @@ RUN npm run build
 # Stage 2: Serve the application with nginx
 FROM nginx:alpine
 
-# Copy custom nginx config with API proxy
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config
+COPY nginx-simple.conf /etc/nginx/conf.d/default.conf
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
@@ -30,8 +36,5 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost || exit 1
 
-# Expose port
 EXPOSE 80
-
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

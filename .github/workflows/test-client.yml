@@ -32,9 +32,14 @@ jobs:
       - name: Login DOCR
         run: doctl registry login --expiry-seconds 1200
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & Push image (tag = commit SHA)
         run: |
           docker buildx build --platform linux/amd64 \
+            --build-arg VITE_API_SERVER_URL="${{ secrets.VITE_API_SERVER_URL }}" \
+            --build-arg VITE_TURNSTILE_SITE_KEY="${{ secrets.VITE_TURNSTILE_SITE_KEY }}" \
             -t "${{ env.IMAGE }}:test-${{ github.sha }}" \
             -t "${{ env.IMAGE }}:test-latest" \
             --push \
@@ -43,7 +48,7 @@ jobs:
       # --- Kubernetes auth with DigitalOcean ---
       - name: Setup kubectl
         run: |
-          doctl kubernetes cluster kubeconfig save ${{ secrets.CLUSTER_NAME }}
+          doctl kubernetes cluster kubeconfig save "${{ secrets.CLUSTER_NAME }}"
           kubectl version --client=true
 
       - name: Check if deployment exists

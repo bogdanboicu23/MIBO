@@ -92,7 +92,7 @@ export function ExpensesDashboard(props: ExpensesDashboardProps) {
     useEffect(() => {
         // initial fetch
         scheduleFetch(query);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, []);
 
     const update = (patch: Partial<ExpensesQuery>, options?: { resetPage?: boolean }) => {
