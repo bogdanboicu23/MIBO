@@ -2,23 +2,23 @@ name: Test - Deploy Backend Services
 
 on:
   push:
-    branches: [develop, test]
+    branches: [main, "SCRUM-*", test, develop]
     paths:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
-      - 'src/MIBO.ConversationService/**'
-      - 'src/MIBO.VisualisationService/**'
-      - 'src/MIBO.CalendarAgent/**'
+      # - 'src/MIBO.ConversationService/**'
+      # - 'src/MIBO.VisualisationService/**'
+      # - 'src/MIBO.CalendarAgent/**'
       - 'deploy/**'
-      - '.github/workflows/test-backend.yml'
+      - '.github/workflows/deploy-backend-services.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
-      - 'src/MIBO.ConversationService/**'
-      - 'src/MIBO.VisualisationService/**'
-      - 'src/MIBO.CalendarAgent/**'
+      # - 'src/MIBO.ConversationService/**'
+      # - 'src/MIBO.VisualisationService/**'
+      # - 'src/MIBO.CalendarAgent/**'
   workflow_dispatch:
 
 env:
@@ -39,15 +39,15 @@ jobs:
           - name: api-gateway
             path: ./src/MIBO.ApiGateway
             dockerfile: Dockerfile
-          - name: conversation-service
-            path: ./src/MIBO.ConversationService
-            dockerfile: Dockerfile
-          - name: visualisation-service
-            path: ./src/MIBO.VisualisationService
-            dockerfile: Dockerfile
-          - name: calendar-agent
-            path: ./src/MIBO.CalendarAgent
-            dockerfile: Dockerfile
+          # - name: conversation-service
+          #   path: ./src/MIBO.ConversationService
+          #   dockerfile: Dockerfile
+          # - name: visualisation-service
+          #   path: ./src/MIBO.VisualisationService
+          #   dockerfile: Dockerfile
+          # - name: calendar-agent
+          #   # path: ./src/MIBO.CalendarAgent
+          #   # dockerfile: Dockerfile
 
     steps:
       - name: Checkout code
@@ -115,24 +115,6 @@ jobs:
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway
 
-          helm upgrade --install conversation-service deploy/helm/conversation-service \
-            --namespace ${{ env.NAMESPACE }} \
-            --values deploy/environments/test/values-conversation-service.yaml \
-            --set image.tag=test-${{ github.sha }} \
-            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
-
-          helm upgrade --install visualisation-service deploy/helm/visualisation-service \
-            --namespace ${{ env.NAMESPACE }} \
-            --values deploy/environments/test/values-visualisation-service.yaml \
-            --set image.tag=test-${{ github.sha }} \
-            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/visualisation-service
-
-          helm upgrade --install calendar-agent deploy/helm/calendar-agent \
-            --namespace ${{ env.NAMESPACE }} \
-            --values deploy/environments/test/values-calendar-agent.yaml \
-            --set image.tag=test-${{ github.sha }} \
-            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/calendar-agent
-
           helm upgrade --install identity-service deploy/helm/identity-service \
             --namespace ${{ env.NAMESPACE }} \
             --values deploy/environments/test/values-identity-service.yaml \
@@ -143,10 +125,7 @@ jobs:
         run: |
           kubectl rollout status deployment/identity-service -n ${{ env.NAMESPACE }} --timeout=300s || true
           kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=300s || true
-          kubectl rollout status deployment/conversation-service -n ${{ env.NAMESPACE }} --timeout=300s || true
-          kubectl rollout status deployment/visualisation-service -n ${{ env.NAMESPACE }} --timeout=300s || true
-          kubectl rollout status deployment/calendar-agent -n ${{ env.NAMESPACE }} --timeout=300s || true
-
+          
       - name: Get deployment status
         if: always()
         run: |
