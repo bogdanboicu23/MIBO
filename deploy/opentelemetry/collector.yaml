@@ -1,0 +1,32 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: cluster-collector
+  namespace: observability
+spec:
+  mode: daemonset
+  image: otel/opentelemetry-collector:0.145.0
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc: {}
+          http: {}
+
+    processors:
+      batch: {}
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 15
+
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          processors: [batch, memory_limiter]
+          exporters: [prometheus]
