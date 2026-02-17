@@ -1,19 +1,19 @@
-name: Prod - Deploy mibo-client
+name: Deploy Client
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "SCRUM-*", "test", "develop"]
     paths:
       - "src/MIBO.Client/client/**"
       - "k8s/apps/**"
       - "k8s/ci/**"
-      - ".github/workflows/prod-client.yml"
+      - ".github/workflows/deploy-client.yml"
   workflow_dispatch: {}
 
 env:
-  NAMESPACE: mibo
+  NAMESPACE: test
   DEPLOYMENT: mibo-client
-  CONTAINER: mibo-client
+  CONTAINER: client
   IMAGE: registry.digitalocean.com/mibo/client
 
 jobs:
@@ -40,8 +40,8 @@ jobs:
           docker buildx build --platform linux/amd64 \
             --build-arg VITE_API_SERVER_URL="${{ secrets.VITE_API_SERVER_URL }}" \
             --build-arg VITE_TURNSTILE_SITE_KEY="${{ secrets.VITE_TURNSTILE_SITE_KEY }}" \
-            -t "${{ env.IMAGE }}:${{ github.sha }}" \
-            -t "${{ env.IMAGE }}:latest" \
+            -t "${{ env.IMAGE }}:test-${{ github.sha }}" \
+            -t "${{ env.IMAGE }}:test-latest" \
             --push \
             ./src/MIBO.Client/client
 
@@ -51,15 +51,36 @@ jobs:
           doctl kubernetes cluster kubeconfig save "${{ secrets.CLUSTER_NAME }}"
           kubectl version --client=true
 
-      - name: Apply app manifests
+      - name: Check if deployment exists
+        id: check
         run: |
-          kubectl apply -f k8s/apps/00-mibo-namespace.yaml
-          kubectl apply -f k8s/apps/
+          if kubectl get deployment ${{ env.DEPLOYMENT }} -n ${{ env.NAMESPACE }} 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Update deployment image + wait rollout
+      - name: Create deployment if not exists
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          kubectl create deployment ${{ env.DEPLOYMENT }} \
+            --image=${{ env.IMAGE }}:test-${{ github.sha }} \
+            --replicas=1 \
+            -n ${{ env.NAMESPACE }}
+
+          kubectl expose deployment ${{ env.DEPLOYMENT }} \
+            --port=80 \
+            --target-port=80 \
+            --type=ClusterIP \
+            -n ${{ env.NAMESPACE }}
+
+      - name: Update deployment image
+        if: steps.check.outputs.exists == 'true'
         run: |
           kubectl -n "${{ env.NAMESPACE }}" set image deployment/"${{ env.DEPLOYMENT }}" \
-            "${{ env.CONTAINER }}"="${{ env.IMAGE }}:${{ github.sha }}"
+            "${{ env.CONTAINER }}"="${{ env.IMAGE }}:test-${{ github.sha }}"
 
+      - name: Wait for rollout
+        run: |
           kubectl -n "${{ env.NAMESPACE }}" rollout status deployment/"${{ env.DEPLOYMENT }}"
           kubectl -n "${{ env.NAMESPACE }}" get pods -o wide
