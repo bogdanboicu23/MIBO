@@ -1,4 +1,4 @@
-name: Test - Deploy Backend Services
+name: Deploy Backend Services
 
 on:
   push:
