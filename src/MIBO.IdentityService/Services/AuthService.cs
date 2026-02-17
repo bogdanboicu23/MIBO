@@ -51,7 +51,7 @@ public class AuthService : IAuthService
             return ApiResponse.Fail(string.Join("; ", result.Errors.Select(e => e.Description)));
 
         // Optionally assign default role
-        await _userManager.AddToRoleAsync(user, "User");
+        // await _userManager.AddToRoleAsync(user, "User");
 
         return ApiResponse.Ok();
     }

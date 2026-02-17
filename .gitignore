@@ -337,3 +337,5 @@ deploy-to-do.sh
 .do/
 do-env.sh
 deploy/environments/test/database-secret.yaml
+.env.*
+!.env.example

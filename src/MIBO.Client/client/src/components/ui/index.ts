@@ -8,3 +8,4 @@ export * from "./Divider";
 export * from "./Spinner";
 export * from "./IconButton";
 export * from "./Textarea";
+export * from "./LoadingOverlay";
