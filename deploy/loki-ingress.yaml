@@ -1,0 +1,27 @@
+# --- Loki HTTPS ingress ---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: loki-https
+  namespace: observability
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: loki.mibo.monster
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: loki
+                port:
+                  number: 3100
+  tls:
+    - hosts:
+        - loki.mibo.monster
