@@ -13,7 +13,7 @@ on:
 env:
   NAMESPACE: test
   DEPLOYMENT: mibo-client
-  CONTAINER: client
+  CONTAINER: mibo-client
   IMAGE: registry.digitalocean.com/mibo/client
 
 jobs:
@@ -45,37 +45,18 @@ jobs:
             --push \
             ./src/MIBO.Client/client
 
-      # --- Kubernetes auth with DigitalOcean ---
       - name: Setup kubectl
         run: |
           doctl kubernetes cluster kubeconfig save "${{ secrets.CLUSTER_NAME }}"
           kubectl version --client=true
 
-      - name: Check if deployment exists
-        id: check
+      - name: Apply Kubernetes manifests (namespace + service/deploy + ingress)
         run: |
-          if kubectl get deployment ${{ env.DEPLOYMENT }} -n ${{ env.NAMESPACE }} 2>/dev/null; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+          kubectl apply -f k8s/apps/00-mibo-namespace.yaml
+          kubectl apply -f k8s/apps/10-mibo-client.yaml
+          kubectl apply -f k8s/apps/11-mibo-client-ingress.yaml
 
-      - name: Create deployment if not exists
-        if: steps.check.outputs.exists == 'false'
-        run: |
-          kubectl create deployment ${{ env.DEPLOYMENT }} \
-            --image=${{ env.IMAGE }}:test-${{ github.sha }} \
-            --replicas=1 \
-            -n ${{ env.NAMESPACE }}
-
-          kubectl expose deployment ${{ env.DEPLOYMENT }} \
-            --port=80 \
-            --target-port=80 \
-            --type=ClusterIP \
-            -n ${{ env.NAMESPACE }}
-
-      - name: Update deployment image
-        if: steps.check.outputs.exists == 'true'
+      - name: Update deployment image (SHA tag)
         run: |
           kubectl -n "${{ env.NAMESPACE }}" set image deployment/"${{ env.DEPLOYMENT }}" \
             "${{ env.CONTAINER }}"="${{ env.IMAGE }}:test-${{ github.sha }}"
@@ -84,3 +65,4 @@ jobs:
         run: |
           kubectl -n "${{ env.NAMESPACE }}" rollout status deployment/"${{ env.DEPLOYMENT }}"
           kubectl -n "${{ env.NAMESPACE }}" get pods -o wide
+          kubectl -n "${{ env.NAMESPACE }}" get svc,ingress -o wide
