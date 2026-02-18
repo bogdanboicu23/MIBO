@@ -110,10 +110,10 @@ jobs:
         run: |
           kubectl create secret generic conversation-service-secrets \
             --namespace=${{ env.NAMESPACE }} \
-            --from-literal=Groq__ApiKey="${{ secrets.GROQ_API_KEY }}" \
-            --from-literal=Groq__Model="${{ secrets.GROQ_MODEL }}"" \
+            --from-literal=Groq__ApiKey='${{ secrets.GROQ_API_KEY }}' \
+            --from-literal=Groq__Model='${{ secrets.GROQ_MODEL }}' \
             --dry-run=client -o yaml | kubectl apply -f -
-
+      
       - name: Deploy with Helm
         run: |
           # Deploy each Helm chart
