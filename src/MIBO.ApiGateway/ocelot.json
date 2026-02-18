@@ -27,10 +27,7 @@
       ],
       "UpstreamPathTemplate": "/api/conversations/{everything}",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer",
-        "AllowedScopes": []
-      },
+      
       "RouteIsCaseSensitive": false
     },
     {
