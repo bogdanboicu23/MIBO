@@ -1,30 +1,39 @@
 replicaCount: 1
 
 image:
-  repository: mibo/conversation-service
-  tag: latest
-  pullPolicy: IfNotPresent
+  repository: registry.digitalocean.com/mibo/conversation-service
+  tag: test-latest
+  pullPolicy: Always
 
 service:
   type: ClusterIP
   port: 8080
 
+env:
+  ASPNETCORE_URLS: "http://+:8080"
+  ASPNETCORE_ENVIRONMENT: "Production"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
 ingress:
-  enabled: false
-  className: nginx
+  enabled: true
+  className: traefik
+  annotations: {}
   hosts:
-    - host: conversation.dev.mibo.local
+    - host: conversation.test.example.com
       paths:
         - path: /
           pathType: Prefix
+  tls: []
 
-resources:
-  limits:
-    cpu: "500m"
-    memory: "512Mi"
-  requests:
-    cpu: "100m"
-    memory: "128Mi"
-
-env:
-  ASPNETCORE_ENVIRONMENT: Development
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
