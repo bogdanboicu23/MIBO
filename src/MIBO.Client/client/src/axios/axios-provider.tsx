@@ -48,8 +48,8 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
     }, [jwt]);
 
     const setJwt = useCallback((token?: string) => {
-        if (token) sessionStorage.setItem(JWT_STORAGE_KEY, token);
-        else sessionStorage.removeItem(JWT_STORAGE_KEY);
+        if (token) localStorage.setItem(JWT_STORAGE_KEY, token);
+        else localStorage.removeItem(JWT_STORAGE_KEY);
 
         jwtRef.current = token;
         setJwtState(token);
