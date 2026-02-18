@@ -10,9 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Ocelot configuration
 builder.Configuration
     .SetBasePath(builder.Environment.ContentRootPath)
-    .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile("ocelot.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"ocelot.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true)
     .AddEnvironmentVariables();
+
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -80,6 +81,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 

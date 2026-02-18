@@ -1,6 +1,0 @@
-@MIBO.ConversationService_HostAddress = http://localhost:5053
-
-GET {{MIBO.ConversationService_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
