@@ -7,6 +7,8 @@ import { GuestGuard } from "../auth/guard/guest-guard";
 import { LoadingOverlay } from "@/components/ui";
 import ChatPage from "@/pages/ChatPage.tsx";
 import AppLayout from "@/layouts/AppLayout.tsx";
+import { AuthGuard } from "@/auth/guard/auth-guard.tsx";
+import { Outlet } from "react-router-dom";
 
 
 export const Signup = lazy(() => import('@/pages/Signup.tsx'));
@@ -17,39 +19,36 @@ const renderFallback = () => (
 );
 
 export const routesSection: RouteObject[] = [
-        {
-            element: (
-                // <AuthGuard>
+    {
+        element: (
+            <AuthGuard>
                 <Suspense fallback={renderFallback()}>
                     <AppLayout />
                 </Suspense>
-                // </AuthGuard>
-            ),
-            children: [
-                { index: true, element: <ChatPage /> },
-            ],
-        },
-        {
-            path: 'auth',
-            children:
-                [
-                    {
-                        path: 'login',
-                        element: (
-                            <GuestGuard>
-                                <Login />
-                            </GuestGuard>
-                        ),
-                    },
-                    {
-                        path: 'signup',
-                        element: (
-                            <GuestGuard>
-                                <Signup />
-                            </GuestGuard>
-                        ),
-                    },
-                ],
-        }
-    ]
-;
+            </AuthGuard>
+        ),
+        children: [
+            { index: true, element: <ChatPage /> },
+        ],
+    },
+    {
+        path: "auth",
+        element: (
+            <GuestGuard>
+                <Suspense fallback={renderFallback()}>
+                    <Outlet />
+                </Suspense>
+            </GuestGuard>
+        ),
+        children: [
+            {
+                path: "login",
+                element: <Login />,
+            },
+            {
+                path: "signup",
+                element: <Signup />,
+            },
+        ],
+    },
+];
