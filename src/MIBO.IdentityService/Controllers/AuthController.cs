@@ -174,7 +174,8 @@ public class AuthController : ControllerBase
         {
             HttpOnly = true,
             SameSite = SameSiteMode.None,
-            Secure = true
+            Secure = true,
+			Domain = "mibo.monster",
         };
 
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);

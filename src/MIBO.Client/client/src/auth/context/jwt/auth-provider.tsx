@@ -10,6 +10,7 @@ import { JWT_STORAGE_KEY } from "./constant";
 import { AuthContext } from '../auth-context';
 
 import type { UserType, LoginData, AuthState } from "../../types";
+import { useRouter } from "@/routes/hooks";
 
 type Props = {
     children: ReactNode;
@@ -18,13 +19,15 @@ type Props = {
 export function AuthProvider({ children }: Props) {
     const [ state, setState ] = useState<AuthState>({ user: undefined, loading: true });
     const { jwt, axiosLogin, setJwt } = useAxios();
+    const router = useRouter();
     const login = (request: LoginData) =>
         axiosLogin
             .post(endpoints.auth.login, request)
             .then((response) => {
-                const { accessToken } = response.data;
-                sessionStorage.setItem(JWT_STORAGE_KEY, accessToken);
-                setJwt(accessToken);
+                const { jwtToken } = response.data;
+                localStorage.setItem(JWT_STORAGE_KEY, jwtToken);
+                setJwt(jwtToken);
+                router.refresh();
             })
             .catch((error) => {
                 throw error;
