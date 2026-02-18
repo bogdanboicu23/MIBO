@@ -10,6 +10,16 @@ interface ApiClient {
     delete: <T = any>(url: string) => Promise<T>;
     postBlob: (url: string, data: any) => Promise<Blob>;
     uploadFile: <T = any>(url: string, formData: FormData) => Promise<T>;
+    postStream: (
+        url: string,
+        data: any,
+        options: {
+            signal?: AbortSignal;
+            onToken: (token: string) => void;
+            onDone?: () => void;
+            onError?: (err: unknown) => void;
+        }
+    ) => Promise<void>;
 }
 
 interface AxiosContextProps {

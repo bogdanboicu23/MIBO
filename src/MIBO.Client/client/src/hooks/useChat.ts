@@ -1,8 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import type { Conversation, Message } from "../types/chat";
 import { getMockConversations, uidStr } from "../_mock/conversations";
+import { endpoints } from "@/axios/endpoints.ts";
+import { useAxios } from "@/axios/hooks";
 
 export function useChat() {
+    const { api } = useAxios();
+
     const [conversations, setConversations] = useState<Conversation[]>(() => getMockConversations());
     const [activeId, setActiveId] = useState(conversations[0]?.id ?? "");
     const [model, setModel] = useState<"AI Agent" | "AI Agent Pro">("AI Agent");
@@ -14,6 +18,13 @@ export function useChat() {
     );
 
     const listRef = useRef<HTMLDivElement>(null as any);
+
+    // pentru Stop streaming
+    const abortRef = useRef<AbortController | null>(null);
+
+    const updateConversation = useCallback((convId: string, updater: (c: Conversation) => Conversation) => {
+        setConversations((p) => p.map((c) => (c.id === convId ? updater(c) : c)));
+    }, []);
 
     function newChat() {
         const now = Date.now();
@@ -45,42 +56,101 @@ export function useChat() {
         }
     }
 
+    function stop() {
+        abortRef.current?.abort();
+        abortRef.current = null;
+        setIsTyping(false);
+    }
+
     async function send(text: string) {
         if (!active || !text.trim() || isTyping) return;
 
+        // oprește stream anterior dacă există
+        abortRef.current?.abort();
+
         const now = Date.now();
-        const userMsg: Message = { id: uidStr(), role: "user", content: text.trim(), createdAt: now };
+        const trimmed = text.trim();
 
-        setConversations((p) =>
-            p.map((c) =>
-                c.id === active.id
-                    ? {
-                        ...c,
-                        messages: [...c.messages, userMsg],
-                        updatedAt: now,
-                        title:
-                            c.title === "New chat"
-                                ? userMsg.content.slice(0, 28) + (userMsg.content.length > 28 ? "…" : "")
-                                : c.title,
-                    }
-                    : c
-            )
-        );
+        const userMsg: Message = { id: uidStr(), role: "user", content: trimmed, createdAt: now };
 
+        // mesaj assistant placeholder (gol) – aici facem append tokens
+        const assistantId = uidStr();
+        const assistantMsg: Message = { id: assistantId, role: "assistant", content: "", createdAt: now };
+
+        // 1) update conversație: adaugă user + placeholder
+        updateConversation(active.id, (c) => ({
+            ...c,
+            messages: [...c.messages, userMsg, assistantMsg],
+            updatedAt: now,
+            title:
+                c.title === "New chat"
+                    ? trimmed.slice(0, 28) + (trimmed.length > 28 ? "…" : "")
+                    : c.title,
+        }));
+
+        // 2) pornește streaming
         setIsTyping(true);
-        await new Promise((r) => setTimeout(r, 600));
+        const ac = new AbortController();
+        abortRef.current = ac;
 
-        const assistantMsg: Message = {
-            id: uidStr(),
-            role: "assistant",
-            content: `Mock reply (${model}):\n\nAm primit: "${userMsg.content}".`,
-            createdAt: Date.now(),
-        };
+        try {
+            await api.postStream(
+                endpoints.conversations.stream,
+                {
+                    message: trimmed,
+                    // dacă backend-ul tău acceptă model, trimite-l:
+                    // model: model === "AI Agent Pro" ? "..." : "..."
+                },
+                {
+                    signal: ac.signal,
+                    onToken: (tok) => {
+                        // append la mesajul assistant
+                        updateConversation(active.id, (c) => ({
+                            ...c,
+                            messages: c.messages.map((m) =>
+                                m.id === assistantId ? { ...m, content: m.content + tok } : m
+                            ),
+                            updatedAt: Date.now(),
+                        }));
+                    },
+                    onDone: () => {
+                        setIsTyping(false);
+                        abortRef.current = null;
+                    },
+                    onError: () => {
+                        setIsTyping(false);
+                        abortRef.current = null;
 
-        setConversations((p) =>
-            p.map((c) => (c.id === active.id ? { ...c, messages: [...c.messages, assistantMsg], updatedAt: Date.now() } : c))
-        );
-        setIsTyping(false);
+                        // fallback dacă nu a venit nimic
+                        updateConversation(active.id, (c) => ({
+                            ...c,
+                            messages: c.messages.map((m) =>
+                                m.id === assistantId && m.content.trim() === ""
+                                    ? { ...m, content: "Eroare la răspunsul AI. Încearcă din nou." }
+                                    : m
+                            ),
+                            updatedAt: Date.now(),
+                        }));
+                    },
+                }
+            );
+        } catch (e) {
+            // dacă a fost abort, e ok
+            if ((e as any)?.name === "AbortError") return;
+
+            setIsTyping(false);
+            abortRef.current = null;
+
+            updateConversation(active.id, (c) => ({
+                ...c,
+                messages: c.messages.map((m) =>
+                    m.id === assistantId && m.content.trim() === ""
+                        ? { ...m, content: "Eroare la conexiune/stream." }
+                        : m
+                ),
+                updatedAt: Date.now(),
+            }));
+        }
     }
 
     return {
@@ -96,5 +166,6 @@ export function useChat() {
         renameConversation,
         deleteConversation,
         send,
+        stop,
     };
 }
