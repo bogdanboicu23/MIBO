@@ -6,7 +6,7 @@ on:
     paths:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
-      # - 'src/MIBO.ConversationService/**'
+      - 'src/MIBO.ConversationService/**'
       # - 'src/MIBO.VisualisationService/**'
       # - 'src/MIBO.CalendarAgent/**'
       - 'deploy/**'
@@ -16,7 +16,7 @@ on:
     paths:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
-      # - 'src/MIBO.ConversationService/**'
+      - 'src/MIBO.ConversationService/**'
       # - 'src/MIBO.VisualisationService/**'
       # - 'src/MIBO.CalendarAgent/**'
   workflow_dispatch:
@@ -39,9 +39,9 @@ jobs:
           - name: api-gateway
             path: ./src/MIBO.ApiGateway
             dockerfile: Dockerfile
-          # - name: conversation-service
-          #   path: ./src/MIBO.ConversationService
-          #   dockerfile: Dockerfile
+          - name: conversation-service
+            path: ./src/MIBO.ConversationService
+            dockerfile: Dockerfile
           # - name: visualisation-service
           #   path: ./src/MIBO.VisualisationService
           #   dockerfile: Dockerfile
@@ -106,6 +106,14 @@ jobs:
             --namespace=${{ env.NAMESPACE }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Create conversation-service secrets
+        run: |
+          kubectl create secret generic conversation-service-secrets \
+            --namespace=${{ env.NAMESPACE }} \
+            --from-literal=Groq__ApiKey="${{ secrets.GROQ_API_KEY }}" \
+            --from-literal=Groq__Model="${{ secrets.GROQ_MODEL }}"" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy with Helm
         run: |
           # Deploy each Helm chart
@@ -121,11 +129,18 @@ jobs:
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/identity-service
 
+          helm upgrade --install conversation-service deploy/helm/conversation-service \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/test/values-conversation-service.yaml \
+            --set image.tag=test-${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
+
       - name: Wait for deployments
         run: |
           kubectl rollout status deployment/identity-service -n ${{ env.NAMESPACE }} --timeout=300s || true
           kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=300s || true
-          
+          kubectl rollout status deployment/conversation-service -n ${{ env.NAMESPACE }} --timeout=300s || true
+
       - name: Get deployment status
         if: always()
         run: |
