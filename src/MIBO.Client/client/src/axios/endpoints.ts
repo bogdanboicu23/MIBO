@@ -4,4 +4,7 @@ export const endpoints = {
         signup: '/auth/register',
         refresh: '/auth/refresh-token',
     },
+    conversations: {
+        stream: "/conversations/stream",
+    },
 }

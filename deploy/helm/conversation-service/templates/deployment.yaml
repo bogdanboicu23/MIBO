@@ -18,10 +18,14 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.port }}
+          envFrom:
+            - secretRef:
+                name: conversation-service-secrets
           env:
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: "{{ $value }}"
             {{- end }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
