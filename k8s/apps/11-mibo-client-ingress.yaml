@@ -2,7 +2,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: https-redirect
-  namespace: mibo
+  namespace: test
 spec:
   redirectScheme:
     scheme: https
@@ -12,7 +12,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: mibo-client-http
-  namespace: mibo
+  namespace: test
   annotations:
     kubernetes.io/ingress.class: traefik
     traefik.ingress.kubernetes.io/router.entrypoints: web
@@ -35,7 +35,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: mibo-client
-  namespace: mibo
+  namespace: test
   annotations:
     kubernetes.io/ingress.class: traefik
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
