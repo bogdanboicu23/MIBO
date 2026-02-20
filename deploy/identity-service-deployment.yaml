@@ -3,6 +3,13 @@ kind: Deployment
 metadata:
   name: identity-service
   namespace: test
+securityContext:
+  allowPrivilegeEscalation: false
+  runasNonRoot: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
 spec:
   replicas: 1
   selector:
