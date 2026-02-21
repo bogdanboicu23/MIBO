@@ -14,7 +14,10 @@ export function useUiHub(params: {
 
     // păstrăm handler-ul stabil, fără să reinițializăm conexiunea
     const onPatchRef = useRef(onPatch);
-    onPatchRef.current = onPatch;
+
+    useEffect(() => {
+        onPatchRef.current = onPatch;
+    }, [onPatch]);
 
     const hubUrl = useMemo(() => `https://localhost:7286/hubs/ui`, []);
 
@@ -25,7 +28,6 @@ export function useUiHub(params: {
             .withUrl(hubUrl, {
                 transport: signalR.HttpTransportType.WebSockets,
                 // skipNegotiation: true,
-                // dacă ai JWT:
                 // accessTokenFactory: () => localStorage.getItem("token") ?? ""
             })
             .withAutomaticReconnect()
@@ -40,8 +42,8 @@ export function useUiHub(params: {
         const start = async () => {
             try {
                 await conn.start();
+
                 if (cancelled) {
-                    // dacă s-a făcut cleanup între timp, oprește după ce start a terminat
                     await conn.stop();
                     return;
                 }
@@ -63,9 +65,6 @@ export function useUiHub(params: {
         return () => {
             cancelled = true;
             setConnected(false);
-
-            // important: nu te baza pe invoke în cleanup (poate pica dacă nu e connected)
-            // doar oprește conexiunea în siguranță
             void conn.stop();
         };
     }, [conversationId, hubUrl]);
