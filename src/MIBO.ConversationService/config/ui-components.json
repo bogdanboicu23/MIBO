@@ -1,0 +1,26 @@
+{
+  "components": [
+    {
+      "name": "pieChart",
+      "propsSchema": {
+        "dataKey": "string",
+        "title": "string"
+      }
+    },
+    {
+      "name": "productCarousel",
+      "propsSchema": {
+        "dataKey": "string",
+        "title": "string",
+        "actionType": "string"
+      }
+    },
+    {
+      "name": "kpiCard",
+      "propsSchema": {
+        "label": "string",
+        "valueKey": "string"
+      }
+    }
+  ]
+}
