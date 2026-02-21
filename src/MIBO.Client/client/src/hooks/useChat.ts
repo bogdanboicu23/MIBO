@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState, useCallback } from "react";
 import type { Conversation, Message } from "../types/chat";
-import { getMockConversations, uidStr } from "../_mock/conversations";
 import { endpoints } from "@/axios/endpoints.ts";
 import { useAxios } from "@/axios/hooks";
+import { uidStr } from "@/_mock/conversations.ts";
 
 /**
  * MIBO useChat (integrat cu noul backend .NET):

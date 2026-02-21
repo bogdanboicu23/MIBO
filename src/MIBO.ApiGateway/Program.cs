@@ -86,6 +86,7 @@ app.UseAuthorization();
 app.MapHealthChecks("/health");
 
 // Add Ocelot middleware
+app.UseWebSockets();
 await app.UseOcelot();
 
 app.Run();
