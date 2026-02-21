@@ -1,0 +1,26 @@
+{
+  "routes": [
+    {
+      "actionType": "shop.buy",
+      "tool": "shop.buyProduct",
+      "argMap": {
+        "productId": "productId",
+        "quantity": "quantity"
+      },
+      "publish": {
+        "subject": "finance.expense_created",
+        "fromActionPayload": {
+          "productId": "productId",
+          "quantity": "quantity"
+        },
+        "fromToolResultJsonPath": {
+          "amount": "$.totalAmount",
+          "currency": "$.currency"
+        },
+        "fixed": {
+          "sourceType": "shop.buyProduct"
+        }
+      }
+    }
+  ]
+}
