@@ -1,0 +1,23 @@
+{
+  "tools": [
+    {
+      "name": "shop.searchExternalProducts",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/search?q={q}&limit={limit}",
+      "requiredArgs": ["q", "limit"],
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2
+    },
+
+    {
+      "name": "shop.buyProduct",
+      "method": "POST",
+      "urlTemplate": "http://shop-data-service/api/v1/buy",
+      "requiredArgs": ["productId", "quantity"],
+      "cacheTtlSeconds": 0,
+      "timeoutMs": 3000,
+      "retryCount": 1
+    }
+  ]
+}
