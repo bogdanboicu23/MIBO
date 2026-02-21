@@ -1,0 +1,29 @@
+name: mibo-planner
+
+networks:
+  planner_net:
+    driver: bridge
+
+services:
+  langchain-planner:
+    container_name: mibo-langchain-planner
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    environment:
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL}
+
+    ports:
+      - "8088:8088"
+
+    networks:
+      - planner_net
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
