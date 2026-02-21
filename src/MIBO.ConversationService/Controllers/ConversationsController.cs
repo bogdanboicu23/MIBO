@@ -1,7 +1,8 @@
 using System.Text.Json;
+using MIBO.ConversationService.Models;
 using Microsoft.AspNetCore.Mvc;
 using MIBO.ConversationService.Services;
-using MIBO.IdentityService.Models;
+using MIBO.ConversationService.Services.GroqChat;
 
 namespace MIBO.ConversationService.Controllers;
 
