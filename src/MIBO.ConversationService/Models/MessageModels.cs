@@ -1,4 +1,4 @@
-namespace MIBO.IdentityService.Models;
+namespace MIBO.ConversationService.Models;
 
 public class SendMessageRequest
 {
