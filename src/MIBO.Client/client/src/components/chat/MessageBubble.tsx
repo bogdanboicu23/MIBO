@@ -1,24 +1,12 @@
-import type {  Message } from "@/types/chat.ts";
+import type { Message } from "@/types/chat.ts";
 import { cn } from "@/utils/cn.ts";
-// import { GenerativeUI } from "../sandbox/GenerativeUI.tsx";
-// import { type UiSpec } from "../sandbox/uiRuntime";
+import { applyBindings } from "@/components/sandbox/uiRuntime/applyBindings.ts";
+import { GenerativeUI } from "@/components/sandbox/GenerativeUI.tsx";
+
 
 function formatTime(ts: number) {
     return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-
-// const mockSpec: UiSpec = {
-//     version: "1",
-//     view: {
-//         kind: "expenses.dashboard",
-//         title: "Cheltuieli din ultima săptămână",
-//         props: {
-//             defaultRange: "last_7_days",
-//             defaultCategory: "All",
-//             allowExport: true,
-//         },
-//     },
-// };
 
 function Avatar({ label, isUser }: { label: string; isUser: boolean }) {
     return (
@@ -47,33 +35,32 @@ function TypingDots() {
     );
 }
 
-export function MessageBubble({
-                                  msg,
-                                  showTypingDots = false,
-                              }: {
+export function MessageBubble({ msg, showTypingDots = false, onUiAction, }: {
     msg: Message;
     showTypingDots?: boolean;
+    onUiAction?: (type: string, payload: Record<string, unknown>) => void;
 }) {
     const isUser = msg.role === "user";
 
-    // const [mockState] = useState<ChatState>({
-    //     conversationId: "1",
-    //     status: "idle",
-    //     error: null,
-    //     clientContext: { timezone: "test", locale: "ro" },
-    //     messages: [],
-    //     lastUiSpec: mockSpec,
-    // });
-
-    // ChatGPT-like:
-    // - AI bubble full width
-    // - User bubble constrained and right-aligned
+    // bubble styles:
     const bubbleClass = cn(
         "whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm break-words",
         isUser
             ? "ml-auto max-w-[88%] sm:max-w-[76%] lg:max-w-[62%] bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
             : "w-full bg-zinc-100 text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
     );
+
+    // UI exists only for assistant messages
+    const rawUi = !isUser ? (msg as any).uiV1 : null;
+    const ui = rawUi
+        ? (() => {
+            try {
+                return applyBindings(rawUi);
+            } catch {
+                return rawUi;
+            }
+        })()
+        : null;
 
     return (
         <div className="w-full">
@@ -86,18 +73,16 @@ export function MessageBubble({
                 {/* Center bubble */}
                 <div className="min-w-0 w-full">
                     <div className={bubbleClass}>
-                        {/* Dacă e placeholder assistant gol și încă se scrie => dots */}
-                        {!isUser && showTypingDots ? (
-                            <TypingDots />
-                        ) : (
-                            <>
-                                {msg.content}
-                                {/* Dacă vrei generative UI doar când ai conținut real */}
-                                {/* {!isUser && msg.content ? <GenerativeUI state={mockState} /> : null} */}
-                                {/*<GenerativeUI state={mockState} />*/}
-                            </>
-                        )}
+                        {!isUser && showTypingDots ? <TypingDots /> : <>{msg.content}</>}
                     </div>
+
+                    {/* ✅ Generative UI INSIDE assistant message bubble (persistent in history) */}
+                    {!isUser && ui ? (
+                            <GenerativeUI
+                                activeUi={ui}
+                                handleAction={(type, payload) => onUiAction?.(type, payload)}
+                            />
+                    ) : null}
 
                     <div
                         className={cn(

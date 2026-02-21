@@ -6,5 +6,12 @@ export const endpoints = {
     },
     conversations: {
         stream: "/conversations/stream",
+
+        // NEW (backend .NET)
+        chat: "/v1/chat",
+        action: "/v1/action",
+    },
+    hubs: {
+        ui: "/hubs/ui",
     },
 }
