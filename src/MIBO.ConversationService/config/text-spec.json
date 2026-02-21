@@ -1,0 +1,11 @@
+{
+  "template": "Buget disponibil: {{available}} {{currency}}. Venit: {{income}} {{currency}}. Cheltuieli: {{expense}} {{currency}}.",
+  "missingValue": "N/A",
+  "bindings": [
+    { "key": "available", "toolRef": "finance.getBudgetSnapshot", "jsonPath": "$.availableToSpend", "format": "currency" },
+    { "key": "currency", "toolRef": "finance.getBudgetSnapshot", "jsonPath": "$.currency" },
+
+    { "key": "income", "toolRef": "finance.getIncomeExpenseSummary", "jsonPath": "$.totalIncome", "format": "currency" },
+    { "key": "expense", "toolRef": "finance.getIncomeExpenseSummary", "jsonPath": "$.totalExpense", "format": "currency" }
+  ]
+}

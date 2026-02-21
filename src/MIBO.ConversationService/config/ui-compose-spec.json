@@ -1,0 +1,25 @@
+{
+  "schema": "ui.v1",
+  "includeToolDataSnapshot": true,
+
+  "allowedToolRefs": [
+    "finance.getBudgetSnapshot",
+    "finance.getIncomeExpenseSummary",
+    "shop.searchExternalProducts"
+  ],
+
+  "includeBindings": true,
+  "includeSubscriptions": true,
+
+  "computeRules": [
+    {
+      "targetDataKey": "affordableProducts",
+      "sourceToolRef": "shop.searchExternalProducts",
+      "budgetToolRef": "finance.getBudgetSnapshot",
+      "sourceArrayPath": "$.products",
+      "pricePath": "$.price",
+      "budgetValuePath": "$.availableToSpend",
+      "maxItems": 12
+    }
+  ]
+}
