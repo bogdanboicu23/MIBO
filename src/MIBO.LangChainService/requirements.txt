@@ -1,0 +1,7 @@
+fastapi>=0.116
+uvicorn[standard]>=0.35
+pydantic>=2.12
+pydantic-settings>=2.10
+langchain>=0.3.20
+langchain-core>=0.3.40
+langchain-groq>=0.3.0
