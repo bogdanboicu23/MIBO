@@ -1,53 +1,71 @@
-import type { UiSpec } from "./specTypes";
-import { validateUiSpec } from "./specValidation";
-import { normalizeUiSpec } from "./specNormalizer";
-import { getPlugin } from "./Registry";
-import { FallbackView } from "./FallbackView";
+import React from "react";
+import { registry } from "./registry";
 
-export type UiRendererProps = {
-    spec: UiSpec | unknown | null | undefined;
+export type UiV1 = {
+    schema: "ui.v1";
+    root: UiNode;
+    data: Record<string, unknown>;
+    bindings: UiBinding[];
+    subscriptions: UiSubscription[];
 };
 
+export type UiNode =
+    | {
+    type: "layout";
+    name: "column" | "row" | "grid";
+    props?: Record<string, unknown>;
+    children: UiNode[];
+    id?: string;
+}
+    | {
+    type: "component";
+    name: string; // ex: pieChart, dataTable, productCarousel, kpiCard
+    props?: Record<string, unknown>;
+    children?: UiNode[];
+    id?: string;
+};
 
-export function UiRenderer({ spec }: UiRendererProps) {
-    if (!spec) {
-        return <FallbackView title="Nu există UI" reason="Asistentul nu a furnizat un UiSpec." />;
+export type UiBinding = {
+    componentPath: string; // "/root/children/0"
+    prop: string;          // "dataKey"
+    from: string;          // key în ui.data
+};
+
+export type UiSubscription = {
+    event: string;
+    refresh: Array<{ tool: string; args: Record<string, unknown>; patchPath: string }>;
+};
+
+export type UiComponentProps = {
+    props?: Record<string, unknown>;
+    data?: Record<string, unknown>;
+    onAction?: (type: string, payload: Record<string, unknown>) => void;
+};
+
+export function UiRenderer(props: {
+    ui: UiV1;
+    onAction: (type: string, payload: Record<string, unknown>) => void;
+}) {
+    const { ui, onAction } = props;
+    return <div>{renderNode(ui.root, ui.data ?? {}, onAction)}</div>;
+}
+
+function renderNode(
+    node: UiNode,
+    data: Record<string, unknown>,
+    onAction: (type: string, payload: Record<string, unknown>) => void
+): React.ReactNode {
+    if (node.type === "layout") {
+        const children = (node.children ?? []).map((c, idx) => (
+            <React.Fragment key={c.id ?? idx}>{renderNode(c, data, onAction)}</React.Fragment>
+        ));
+
+        if (node.name === "row") return <div style={{ display: "flex", gap: 12 }}>{children}</div>;
+        if (node.name === "grid") return <div style={{ display: "grid", gap: 12 }}>{children}</div>;
+
+        return <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div>;
     }
 
-    const validated = validateUiSpec(spec);
-    if (!validated.ok) {
-        return <FallbackView title="UiSpec invalid" reason={validated.error} />;
-    }
-
-    const normalized = normalizeUiSpec(validated.value);
-    const kind = normalized.view.kind;
-
-    const plugin = getPlugin(kind);
-    if (!plugin) {
-        return (
-            <FallbackView
-                title="Widget necunoscut"
-                kind={kind}
-                reason={`Nu există plugin înregistrat pentru kind='${kind}'. Înregistrează un plugin în Registry.`}
-            />
-        );
-    }
-
-    const adapted = plugin.adapt(normalized.view.props);
-    if (!adapted.ok) {
-        return <FallbackView title="Props invalide" kind={kind} reason={adapted.error} />;
-    }
-
-    const Component = plugin.Component;
-    // Cast props to correct type since we know it's valid after adapt
-    const componentProps = adapted.props as Record<string, unknown>;
-
-    return (
-        <div className="space-y-3">
-            {normalized.view.title ? (
-                <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{normalized.view.title}</div>
-            ) : null}
-            <Component {...componentProps} />
-        </div>
-    );
+    const Cmp = registry[node.name] ?? registry["__unknown__"];
+    return <Cmp props={node.props} data={data} onAction={onAction} />;
 }
