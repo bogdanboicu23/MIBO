@@ -1,0 +1,56 @@
+name: mibo-local
+
+networks:
+  mibo:
+    driver: bridge
+
+volumes:
+  nats_data:
+  redis_data:
+
+services:
+  # -----------------------------
+  # NATS (JetStream enabled)
+  # -----------------------------
+  nats:
+    image: nats:2.10-alpine
+    container_name: mibo-nats
+    command: >
+      -js
+      -sd /data
+      -m 8222
+      -p 4222
+      --name mibo-nats
+    ports:
+      - "4222:4222"   # NATS client
+      - "8222:8222"   # Monitoring
+    volumes:
+      - nats_data:/data
+    networks:
+      - mibo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/varz >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # -----------------------------
+  # Redis
+  # -----------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: mibo-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mibo
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+#  

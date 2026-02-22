@@ -1,0 +1,51 @@
+{
+  "routes": [
+    {
+      "actionType": "shop.search",
+      "mode": "prompt",
+      "promptTemplate": "Caută produse: {{query}}"
+    },
+    {
+      "actionType": "shop.select_category",
+      "mode": "prompt",
+      "promptTemplate": "Arată produse din categoria {{category}}"
+    },
+    {
+      "actionType": "shop.open_product",
+      "mode": "prompt",
+      "promptTemplate": "Arată detalii pentru produsul cu id={{productId}}"
+    },
+    {
+      "actionType": "shop.change_page",
+      "mode": "prompt",
+      "promptTemplate": "Arată pagina (skip={{skip}}, limit={{limit}}) pentru contextul curent"
+    },
+
+    {
+      "actionType": "shop.add_to_cart",
+      "mode": "tool",
+      "tool": "shop.addToCart",
+      "argMap": {
+        "userId": "userId",
+        "products": "products"
+      },
+      "publish": {
+        "subject": "shop.cart_updated",
+        "fromToolResultJsonPath": {
+          "cartId": "$.id",
+          "total": "$.total",
+          "discountedTotal": "$.discountedTotal",
+          "totalProducts": "$.totalProducts",
+          "totalQuantity": "$.totalQuantity"
+        },
+        "fixed": { "sourceType": "shop.addToCart" }
+      }
+    },
+    {
+      "actionType": "shop.view_cart",
+      "mode": "tool",
+      "tool": "shop.getCart",
+      "argMap": { "cartId": "cartId" }
+    }
+  ]
+}

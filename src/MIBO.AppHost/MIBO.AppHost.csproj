@@ -11,10 +11,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\MIBO.ApiGateway\MIBO.ApiGateway.csproj" />
-      <ProjectReference Include="..\MIBO.CalendarAgent\MIBO.CalendarAgent.csproj" />
       <ProjectReference Include="..\MIBO.ConversationService\MIBO.ConversationService.csproj" />
       <ProjectReference Include="..\MIBO.IdentityService\MIBO.IdentityService.csproj" />
-      <ProjectReference Include="..\MIBO.VisualisationService\MIBO.VisualisationService.csproj" />
     </ItemGroup>
 
     <ItemGroup>
