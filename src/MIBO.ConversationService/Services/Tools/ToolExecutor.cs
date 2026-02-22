@@ -1,11 +1,11 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using MIBO.Cache.Redis.Tools;
 using MIBO.ConversationService.DTOs.Options;
 using MIBO.ConversationService.DTOs.Tools;
 using MIBO.ConversationService.Helper;
 using MIBO.ConversationService.Middleware.Http;
-using MIBO.ConversationService.Services.Redis;
 using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Extensions.Http;

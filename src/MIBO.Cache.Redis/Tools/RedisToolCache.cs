@@ -1,4 +1,3 @@
-using MIBO.ConversationService.Services.Redis;
 using StackExchange.Redis;
 
 namespace MIBO.Cache.Redis.Tools;
