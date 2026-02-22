@@ -148,9 +148,11 @@ jobs:
         run: |
           kubectl create secret generic conversation-service-secrets \
             --namespace=${{ env.NAMESPACE }} \
+            --from-literal=Mongo__ConnectionString='${{ secrets.MONGO_CONNECTION_STRING }}' \
             --from-literal=Groq__ApiKey='${{ secrets.GROQ_API_KEY }}' \
             --from-literal=Groq__Model='${{ secrets.GROQ_MODEL }}' \
-            --from-literal=Mongo__ConnectionString='${{ secrets.MONGO_CONNECTION_STRING }}' \
+            --from-literal=ConnectionStrings__Redis='${{ secrets.REDIS_CONNECTION_STRING }}' \
+            --from-literal=Nats__Url='${{ secrets.NATS_URL }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Create langchain-service secrets
