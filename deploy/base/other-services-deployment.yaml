@@ -3,6 +3,13 @@ kind: Deployment
 metadata:
   name: calendar-agent
   namespace: mibo
+securityContext:
+  allowPrivilegeEscalation: false
+  runasNonRoot: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
 spec:
   replicas: 1
   selector:
@@ -29,6 +36,13 @@ kind: Deployment
 metadata:
   name: conversation-service
   namespace: mibo
+securityContext:
+  allowPrivilegeEscalation: false
+  runasNonRoot: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
 spec:
   replicas: 1
   selector:
@@ -55,6 +69,13 @@ kind: Deployment
 metadata:
   name: visualisation-service
   namespace: mibo
+securityContext:
+  allowPrivilegeEscalation: false
+  runasNonRoot: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
 spec:
   replicas: 1
   selector:
