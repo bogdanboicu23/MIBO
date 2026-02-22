@@ -6,6 +6,10 @@ import { Composer } from "../components/chat/Composer";
 import { useChat } from "../hooks/useChat";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { EmptyState } from "../sections/chat/EmptyState";
+import { useUiHub } from "@/realtime/useUiHub.ts";
+// import { applyBindings } from "@/components/sandbox/uiRuntime/applyBindings.ts";
+
+// UI runtime
 
 export default function ChatPage() {
     const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -13,19 +17,38 @@ export default function ChatPage() {
 
     const chat = useChat();
 
+    // Realtime UI patches (SignalR UiHub -> "UiPatch")
+    useUiHub({
+        conversationId: chat.activeId,
+        onPatch: (patch) => chat.applyPatchFromRealtime(patch),
+    });
+
     useEffect(() => {
         if (isDesktop) setSidebarOpen(false);
     }, [isDesktop]);
 
+    // autoscroll
     useEffect(() => {
-        // autoscroll
         const el = chat.listRef.current;
         if (!el) return;
         el.scrollTop = el.scrollHeight;
-    }, [chat.active?.messages.length, chat.isTyping]);
+    }, [chat.active?.messages.length, chat.isTyping, chat.active?.uiV1]);
 
     const activeTitle = chat.active?.title ?? "Chat";
     const activeMessages = chat.active?.messages ?? [];
+
+    //TODO: Check this part
+    // // Apply bindings (optional, but recommended) before render
+    // const activeUi = useMemo(() => {
+    //     const ui = (chat.active as any)?.uiV1 ?? null;
+    //     if (!ui) return null;
+    //     try {
+    //         return applyBindings(ui);
+    //     } catch {
+    //         // if bindings are malformed, render raw UI
+    //         return ui;
+    //     }
+    // }, [chat.active?.uiV1]);
 
     return (
         <div className="flex h-screen w-screen overflow-hidden">
@@ -44,7 +67,10 @@ export default function ChatPage() {
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <div className="fixed inset-0 z-40 md:hidden">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+                    <div
+                        className="absolute inset-0 bg-black/40"
+                        onClick={() => setSidebarOpen(false)}
+                    />
                     <div className="absolute left-0 top-0 h-full w-[86%] max-w-[320px] border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
                         <Sidebar
                             conversations={chat.conversations}
@@ -84,6 +110,16 @@ export default function ChatPage() {
                             listRef={chat.listRef}
                             empty={<EmptyState onPick={(t) => void chat.send(t)} />}
                         />
+
+                        {/*/!* Generative UI area (single UI instance per conversation) *!/*/}
+                        {/*{activeUi ? (*/}
+                        {/*    <div className="mx-4 mb-3 rounded-2xl border border-zinc-200/70 bg-white p-3 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">*/}
+                        {/*        <UiRenderer*/}
+                        {/*            ui={activeUi}*/}
+                        {/*            onAction={(type, payload) => chat.sendAction(type, payload)}*/}
+                        {/*        />*/}
+                        {/*    </div>*/}
+                        {/*) : null}*/}
                     </div>
                 </div>
 

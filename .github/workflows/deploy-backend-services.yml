@@ -1,25 +1,29 @@
 name: Deploy Backend Services
 
 on:
-  push:
-    branches: [main, "SCRUM-*", test, develop]
-    paths:
-      - 'src/MIBO.IdentityService/**'
-      - 'src/MIBO.ApiGateway/**'
-      - 'src/MIBO.ConversationService/**'
-      # - 'src/MIBO.VisualisationService/**'
-      # - 'src/MIBO.CalendarAgent/**'
-      - 'deploy/**'
-      - '.github/workflows/deploy-backend-services.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
       - 'src/MIBO.ConversationService/**'
-      # - 'src/MIBO.VisualisationService/**'
-      # - 'src/MIBO.CalendarAgent/**'
+      - 'src/MIBO.LangChainService/**'
+      - 'deploy/**'
+      - '.github/workflows/deploy-backend-services.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/MIBO.IdentityService/**'
+      - 'src/MIBO.ApiGateway/**'
+      - 'src/MIBO.ConversationService/**'
+      - 'src/MIBO.LangChainService/**'
+      - 'deploy/**'
+      - '.github/workflows/deploy-backend-services.yml'
   workflow_dispatch:
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: registry.digitalocean.com
@@ -28,54 +32,88 @@ env:
   NAMESPACE: test
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         service:
           - name: identity-service
             path: ./src/MIBO.IdentityService
             dockerfile: Dockerfile
+            context: ./src
           - name: api-gateway
             path: ./src/MIBO.ApiGateway
             dockerfile: Dockerfile
+            context: ./src
           - name: conversation-service
             path: ./src/MIBO.ConversationService
             dockerfile: Dockerfile
-          # - name: visualisation-service
-          #   path: ./src/MIBO.VisualisationService
-          #   dockerfile: Dockerfile
-          # - name: calendar-agent
-          #   # path: ./src/MIBO.CalendarAgent
-          #   # dockerfile: Dockerfile
+            context: ./src
+          - name: langchain-service
+            path: ./src/MIBO.LangChainService
+            dockerfile: Dockerfile
+            context: ./src/MIBO.LangChainService
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login DOCR doar când avem voie să folosim secrets (nu PR din fork)
       - name: Install doctl
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Log in to DigitalOcean Container Registry
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: doctl registry login --expiry-seconds 1200
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push ${{ matrix.service.name }}
+      # Tag logic:
+      # - pe PR: pr-<nr>-<sha>
+      # - pe main: test-<sha> + test-latest
+      - name: Compute image tags
+        id: tags
+        shell: bash
         run: |
-          docker buildx build --platform linux/amd64 \
-            -t ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ matrix.service.name }}:test-${{ github.sha }} \
-            -t ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ matrix.service.name }}:test-latest \
-            --push \
-            -f ${{ matrix.service.path }}/${{ matrix.service.dockerfile }} \
-            ./src
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "TAG=pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+            echo "PUSH=false" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=test-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "PUSH=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build (PR) or Build & Push (main)
+        shell: bash
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ matrix.service.name }}:${{ steps.tags.outputs.TAG }}"
+
+          if [[ "${{ steps.tags.outputs.PUSH }}" == "true" ]]; then
+            docker buildx build --platform linux/amd64 \
+              -t "${IMAGE}" \
+              -t "${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ matrix.service.name }}:test-latest" \
+              --push \
+              -f "${{ matrix.service.path }}/${{ matrix.service.dockerfile }}" \
+              "${{ matrix.service.context }}"
+          else
+            # PR: doar build (fără push) ca să nu ai nevoie de secrets și să fie rapid
+            docker buildx build --platform linux/amd64 \
+              -t "${IMAGE}" \
+              --load \
+              -f "${{ matrix.service.path }}/${{ matrix.service.dockerfile }}" \
+              "${{ matrix.service.context }}"
+          fi
 
   deploy:
-    needs: build-and-deploy
+    needs: build-and-push
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -112,11 +150,19 @@ jobs:
             --namespace=${{ env.NAMESPACE }} \
             --from-literal=Groq__ApiKey='${{ secrets.GROQ_API_KEY }}' \
             --from-literal=Groq__Model='${{ secrets.GROQ_MODEL }}' \
+            --from-literal=Mongo__ConnectionString='${{ secrets.MONGO_CONNECTION_STRING }}' \
             --dry-run=client -o yaml | kubectl apply -f -
-      
+
+      - name: Create langchain-service secrets
+        run: |
+          kubectl create secret generic langchain-service-secrets \
+            --namespace=${{ env.NAMESPACE }} \
+            --from-literal=GROQ_API_KEY='${{ secrets.GROQ_API_KEY }}' \
+            --from-literal=GROQ_MODEL='${{ secrets.GROQ_MODEL }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy with Helm
         run: |
-          # Deploy each Helm chart
           helm upgrade --install api-gateway deploy/helm/api-gateway \
             --namespace ${{ env.NAMESPACE }} \
             --values deploy/environments/test/values-api-gateway.yaml \
@@ -135,11 +181,18 @@ jobs:
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
 
+          helm upgrade --install langchain-service deploy/helm/langchain-service \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/test/values-langchain-service.yaml \
+            --set image.tag=test-${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/langchain-service
+
       - name: Wait for deployments
         run: |
           kubectl rollout status deployment/identity-service -n ${{ env.NAMESPACE }} --timeout=300s || true
           kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=300s || true
           kubectl rollout status deployment/conversation-service -n ${{ env.NAMESPACE }} --timeout=300s || true
+          kubectl rollout status deployment/langchain-service -n ${{ env.NAMESPACE }} --timeout=300s || true
 
       - name: Get deployment status
         if: always()

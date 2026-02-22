@@ -1,0 +1,17 @@
+{
+  "schema": "ui.v1",
+  "includeToolDataSnapshot": true,
+  "allowedToolRefs": [
+    "shop.listProducts",
+    "shop.searchProducts",
+    "shop.getProduct",
+    "shop.listCategories",
+    "shop.listProductsByCategory",
+    "shop.listProductsSorted",
+    "shop.getCart",
+    "shop.addToCart"
+  ],
+  "includeBindings": true,
+  "includeSubscriptions": true,
+  "computeRules": []
+}

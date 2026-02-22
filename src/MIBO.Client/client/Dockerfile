@@ -14,10 +14,12 @@ COPY . .
 # ---- Build-time env for Vite ----
 # These come from `docker build --build-arg ...`
 ARG VITE_API_SERVER_URL
+ARG VITE_HUB_SERVER_URL
 ARG VITE_TURNSTILE_SITE_KEY
 
 # Make them available to the Vite build process
 ENV VITE_API_SERVER_URL=${VITE_API_SERVER_URL}
+ENV VITE_HUB_SERVER_URL=${VITE_HUB_SERVER_URL}
 ENV VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}
 
 # Build the application

@@ -1,0 +1,125 @@
+{
+  "tools": [
+    {
+      "name": "shop.listProducts",
+      "description": "List products with pagination.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products?limit={limit}&skip={skip}",
+      "requiredArgs": ["limit", "skip"],
+      "defaultArgs": { "limit": 12, "skip": 0 },
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "limitPath": "$.limit",
+        "skipPath": "$.skip"
+      }
+    },
+    {
+      "name": "shop.searchProducts",
+      "description": "Search products by query string q.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/search?q={q}&limit={limit}&skip={skip}",
+      "requiredArgs": ["q", "limit", "skip"],
+      "defaultArgs": { "limit": 12, "skip": 0 },
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "limitPath": "$.limit",
+        "skipPath": "$.skip"
+      }
+    },
+    {
+      "name": "shop.getProduct",
+      "description": "Get a single product by id.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/{id}",
+      "requiredArgs": ["id"],
+      "cacheTtlSeconds": 300,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": { "productPath": "$" }
+    },
+    {
+      "name": "shop.listCategories",
+      "description": "List all product categories.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/categories",
+      "requiredArgs": [],
+      "cacheTtlSeconds": 3600,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": { "categoriesPath": "$" }
+    },
+    {
+      "name": "shop.listProductsByCategory",
+      "description": "List products in a category (slug).",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/category/{category}?limit={limit}&skip={skip}",
+      "requiredArgs": ["category", "limit", "skip"],
+      "defaultArgs": { "limit": 12, "skip": 0 },
+      "cacheTtlSeconds": 120,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "limitPath": "$.limit",
+        "skipPath": "$.skip"
+      }
+    },
+    {
+      "name": "shop.listProductsSorted",
+      "description": "List products sorted by key and order.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products?limit={limit}&skip={skip}&sortBy={sortBy}&order={order}",
+      "requiredArgs": ["limit", "skip", "sortBy", "order"],
+      "defaultArgs": { "limit": 12, "skip": 0, "sortBy": "rating", "order": "desc" },
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "shop.getCart",
+      "description": "Get cart by id (DummyJSON).",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/carts/{cartId}",
+      "requiredArgs": ["cartId"],
+      "cacheTtlSeconds": 5,
+      "timeoutMs": 4000,
+      "retryCount": 1,
+      "returns": {
+        "cartPath": "$",
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "discountedTotalPath": "$.discountedTotal",
+        "totalProductsPath": "$.totalProducts",
+        "totalQuantityPath": "$.totalQuantity"
+      }
+    },
+    {
+      "name": "shop.addToCart",
+      "description": "Add products to cart (DummyJSON).",
+      "method": "POST",
+      "urlTemplate": "https://dummyjson.com/carts/add",
+      "requiredArgs": ["userId", "products"],
+      "defaultArgs": { "userId": 1 },
+      "cacheTtlSeconds": 0,
+      "timeoutMs": 4000,
+      "retryCount": 1,
+      "returns": {
+        "cartPath": "$",
+        "cartIdPath": "$.id"
+      }
+    }
+  ]
+}
