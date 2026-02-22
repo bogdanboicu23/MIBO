@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as signalR from "@microsoft/signalr";
+import { CONFIG } from "@/global-config.ts";
 
 export type UiPatchV1 = any;
 
@@ -19,7 +20,7 @@ export function useUiHub(params: {
         onPatchRef.current = onPatch;
     }, [onPatch]);
 
-    const hubUrl = useMemo(() => `https://localhost:7286/hubs/ui`, []);
+    const hubUrl = useMemo(() => `${CONFIG.hubServerUrl}/hubs/ui`, []);
 
     useEffect(() => {
         let cancelled = false;
