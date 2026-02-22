@@ -1,15 +1,13 @@
-{{- if .Values.autoscaling.enabled -}}
+{{- if .Values.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "langchain-service.fullname" . }}
-  labels:
-    {{- include "langchain-service.labels" . | nindent 4 }}
+  name: {{ .Chart.Name }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "langchain-service.fullname" . }}
+    name: {{ .Chart.Name }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

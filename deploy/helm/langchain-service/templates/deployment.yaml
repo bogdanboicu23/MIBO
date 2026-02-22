@@ -1,33 +1,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "langchain-service.fullname" . }}
+  name: {{ .Chart.Name }}
   labels:
-    {{- include "langchain-service.labels" . | nindent 4 }}
+    app: {{ .Chart.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "langchain-service.selectorLabels" . | nindent 6 }}
+      app: {{ .Chart.Name }}
   template:
     metadata:
       labels:
-        {{- include "langchain-service.selectorLabels" . | nindent 8 }}
+        app: {{ .Chart.Name }}
     spec:
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- else }}
+      imagePullSecrets:
+        - name: do-registry-secret
       {{- end }}
       containers:
-        - name: langchain-service
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.targetPort }}
+              containerPort: {{ .Values.service.port }}
           env:
             - name: PORT
-              value: "{{ .Values.service.targetPort }}"
+              value: "{{ .Values.service.port }}"
           envFrom:
             - secretRef:
                 name: {{ .Values.secrets.name }}
