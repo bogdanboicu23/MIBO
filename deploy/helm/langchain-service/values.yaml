@@ -16,7 +16,7 @@ secrets:
   name: langchain-service-secrets
 
 probes:
-  path: /healthz
+  path: /langchain/healthz
   initialDelaySeconds: 5
   periodSeconds: 10
   timeoutSeconds: 5
