@@ -1,4 +1,4 @@
-namespace MIBO.ConversationService.Services.Redis;
+namespace MIBO.Cache.Redis.Tools;
 
 public interface IToolCache
 {

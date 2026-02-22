@@ -30,7 +30,6 @@ using MIBO.ConversationService.Services.Planner.Client;
 using MIBO.ConversationService.Services.Planner.Factory;
 using MIBO.ConversationService.Services.Planner.Fallback;
 using MIBO.ConversationService.Services.Planner.Validator;
-using MIBO.ConversationService.Services.Redis;
 using MIBO.ConversationService.Services.Tools;
 using MIBO.ConversationService.Services.Tools.BindingResolver;
 using MIBO.ConversationService.Services.Tools.PlanExecutor;
