@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: test
+  labels:
+    app: nats
+spec:
+  type: ClusterIP
+  selector:
+    app: nats
+  ports:
+    - name: client
+      port: 4222
+      targetPort: 4222
+    - name: monitor
+      port: 8222
+      targetPort: 8222
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  namespace: test
+spec:
+  serviceName: nats
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: nats
+          image: nats:2.10-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-js"
+            - "-sd"
+            - "/data"
+            - "-m"
+            - "8222"
+            - "-p"
+            - "4222"
+            - "--name"
+            - "mibo-nats"
+          ports:
+            - containerPort: 4222
+              name: client
+            - containerPort: 8222
+              name: monitor
+          volumeMounts:
+            - name: nats-data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /varz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /varz
+              port: monitor
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
