@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "langchain-service.fullname" . }}
+  labels:
+    {{- include "langchain-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "langchain-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "langchain-service.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: langchain-service
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+          env:
+            - name: PORT
+              value: "{{ .Values.service.targetPort }}"
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secrets.name }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: http
+            initialDelaySeconds: {{ add .Values.probes.initialDelaySeconds 5 }}
+            periodSeconds: {{ .Values.probes.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

@@ -7,8 +7,7 @@ on:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
       - 'src/MIBO.ConversationService/**'
-      # - 'src/MIBO.VisualisationService/**'
-      # - 'src/MIBO.CalendarAgent/**'
+      - 'src/MIBO.LangChainService/**'
       - 'deploy/**'
       - '.github/workflows/deploy-backend-services.yml'
   pull_request:
@@ -17,8 +16,7 @@ on:
       - 'src/MIBO.IdentityService/**'
       - 'src/MIBO.ApiGateway/**'
       - 'src/MIBO.ConversationService/**'
-      # - 'src/MIBO.VisualisationService/**'
-      # - 'src/MIBO.CalendarAgent/**'
+      - 'src/MIBO.LangChainService/**'
   workflow_dispatch:
 
 env:
@@ -28,7 +26,7 @@ env:
   NAMESPACE: test
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -36,18 +34,19 @@ jobs:
           - name: identity-service
             path: ./src/MIBO.IdentityService
             dockerfile: Dockerfile
+            context: ./src
           - name: api-gateway
             path: ./src/MIBO.ApiGateway
             dockerfile: Dockerfile
+            context: ./src
           - name: conversation-service
             path: ./src/MIBO.ConversationService
             dockerfile: Dockerfile
-          # - name: visualisation-service
-          #   path: ./src/MIBO.VisualisationService
-          #   dockerfile: Dockerfile
-          # - name: calendar-agent
-          #   # path: ./src/MIBO.CalendarAgent
-          #   # dockerfile: Dockerfile
+            context: ./src
+          - name: langchain-service
+            path: ./src/MIBO.LangChainService
+            dockerfile: Dockerfile
+            context: ./src/MIBO.LangChainService
 
     steps:
       - name: Checkout code
@@ -71,10 +70,10 @@ jobs:
             -t ${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ matrix.service.name }}:test-latest \
             --push \
             -f ${{ matrix.service.path }}/${{ matrix.service.dockerfile }} \
-            ./src
+            ${{ matrix.service.context }}
 
   deploy:
-    needs: build-and-deploy
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -113,10 +112,17 @@ jobs:
             --from-literal=Groq__ApiKey='${{ secrets.GROQ_API_KEY }}' \
             --from-literal=Groq__Model='${{ secrets.GROQ_MODEL }}' \
             --dry-run=client -o yaml | kubectl apply -f -
-      
+
+      - name: Create langchain-service secrets
+        run: |
+          kubectl create secret generic langchain-service-secrets \
+            --namespace=${{ env.NAMESPACE }} \
+            --from-literal=GROQ_API_KEY='${{ secrets.GROQ_API_KEY }}' \
+            --from-literal=GROQ_MODEL='${{ secrets.GROQ_MODEL }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy with Helm
         run: |
-          # Deploy each Helm chart
           helm upgrade --install api-gateway deploy/helm/api-gateway \
             --namespace ${{ env.NAMESPACE }} \
             --values deploy/environments/test/values-api-gateway.yaml \
@@ -135,11 +141,18 @@ jobs:
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
 
+          helm upgrade --install langchain-service deploy/helm/langchain-service \
+            --namespace ${{ env.NAMESPACE }} \
+            --values deploy/environments/test/values-langchain-service.yaml \
+            --set image.tag=test-${{ github.sha }} \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/langchain-service
+
       - name: Wait for deployments
         run: |
           kubectl rollout status deployment/identity-service -n ${{ env.NAMESPACE }} --timeout=300s || true
           kubectl rollout status deployment/api-gateway -n ${{ env.NAMESPACE }} --timeout=300s || true
           kubectl rollout status deployment/conversation-service -n ${{ env.NAMESPACE }} --timeout=300s || true
+          kubectl rollout status deployment/langchain-service -n ${{ env.NAMESPACE }} --timeout=300s || true
 
       - name: Get deployment status
         if: always()
