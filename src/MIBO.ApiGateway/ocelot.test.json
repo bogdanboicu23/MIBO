@@ -1,0 +1,53 @@
+{
+  "GlobalConfiguration": {
+    "BaseUrl": "http://api-gateway:8080"
+  },
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/auth/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "RouteIsCaseSensitive": false
+    },
+    {
+      "DownstreamPathTemplate": "/api/users/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "identity-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/users/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "RouteIsCaseSensitive": false
+    },
+
+    {
+      "DownstreamPathTemplate": "/api/conversations/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/conversations/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "RouteIsCaseSensitive": false
+    },
+
+    {
+      "DownstreamPathTemplate": "/hubs/ui",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/hubs/ui",
+      "UpstreamHttpMethod": ["GET", "POST", "OPTIONS"],
+      "RouteIsCaseSensitive": false
+    },
+    {
+      "DownstreamPathTemplate": "/hubs/ui/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/hubs/ui/{everything}",
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "RouteIsCaseSensitive": false
+    }
+  ]
+}
