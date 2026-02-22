@@ -39,6 +39,7 @@ jobs:
         run: |
           docker buildx build --platform linux/amd64 \
             --build-arg VITE_API_SERVER_URL="${{ secrets.VITE_API_SERVER_URL }}" \
+            --build-arg VITE_HUB_SERVER_URL="${{ secrets.VITE_HUB_SERVER_URL }}" \
             --build-arg VITE_TURNSTILE_SITE_KEY="${{ secrets.VITE_TURNSTILE_SITE_KEY }}" \
             -t "${{ env.IMAGE }}:test-${{ github.sha }}" \
             -t "${{ env.IMAGE }}:test-latest" \
