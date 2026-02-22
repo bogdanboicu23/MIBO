@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1.6
 FROM python:3.11-slim AS runtime
 
-# --- Runtime env ---
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -10,32 +9,30 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# --- System deps (minim) ---
-# wget -> util pentru HEALTHCHECK (și îți ține compatibilitatea cu compose-ul tău)
+# system deps (wget doar pentru HEALTHCHECK)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
   && rm -rf /var/lib/apt/lists/*
 
-# --- Dependencies (layer cache) ---
+# deps first (cache layer)
 COPY requirements.txt /app/requirements.txt
 RUN python -m pip install --upgrade pip \
  && python -m pip install -r /app/requirements.txt
 
-# --- App code ---
+# app code
 COPY . /app
 
-# --- Security: non-root user ---
+# non-root
 RUN useradd -m -u 10001 appuser \
  && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8088
 
-# Optional: container-level healthcheck (K8s probes tot sunt recomandate)
+# container healthcheck (K8s probes are still recommended)
 HEALTHCHECK --interval=10s --timeout=5s --retries=10 \
   CMD wget -qO- http://127.0.0.1:${PORT}/healthz || exit 1
 
-# --- Run FastAPI ---
-# ai/main.py -> "ai.main:app"
-CMD ["sh", "-c", "python -m uvicorn ai.main:app --host 0.0.0.0 --port ${PORT}"]
+# IMPORTANT: main.py is at /app/main.py => "main:app"
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
