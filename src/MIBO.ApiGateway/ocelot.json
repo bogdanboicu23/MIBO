@@ -34,19 +34,19 @@
     },
 
     {
+      "DownstreamPathTemplate": "/hubs/ui",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/hubs/ui",
+      "UpstreamHttpMethod": ["GET", "POST", "OPTIONS"],
+      "RouteIsCaseSensitive": false
+    },
+    {
       "DownstreamPathTemplate": "/hubs/ui/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
       "UpstreamPathTemplate": "/hubs/ui/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
-      "RouteIsCaseSensitive": false
-    },
-    {
-      "DownstreamPathTemplate": "/hubs/ui/negotiate",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
-      "UpstreamPathTemplate": "/hubs/ui/negotiate",
-      "UpstreamHttpMethod": [ "POST", "OPTIONS" ],
+      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       "RouteIsCaseSensitive": false
     }
   ]
