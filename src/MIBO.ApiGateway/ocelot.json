@@ -23,7 +23,14 @@
       },
       "RouteIsCaseSensitive": false
     },
-
+    {
+      "DownstreamPathTemplate": "/api/v1/chat",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/v1/chat",
+      "UpstreamHttpMethod": ["POST", "OPTIONS"],
+      "RouteIsCaseSensitive": false
+    },
     {
       "DownstreamPathTemplate": "/api/conversations/{everything}",
       "DownstreamScheme": "http",
