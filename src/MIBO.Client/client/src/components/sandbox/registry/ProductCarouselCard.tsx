@@ -1,22 +1,18 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
 
 type Product = {
-    id: string | number;
+    id: number | string;
     title?: string;
-    name?: string;
     description?: string;
     price?: number;
-    thumbnail?: string;
-    images?: string[];
-    image?: string;
+    rating?: number;
     brand?: string;
     category?: string;
+    thumbnail?: string;
+    images?: string[];
+    stock?: number;
 };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-    return !!v && typeof v === "object" && !Array.isArray(v);
-}
 
 function getDot(obj: unknown, path: string): unknown {
     if (!path) return undefined;
@@ -29,218 +25,222 @@ function getDot(obj: unknown, path: string): unknown {
     return cur;
 }
 
-function resolveProducts(
-    props: Record<string, unknown> | undefined,
-    data: Record<string, unknown> | undefined
-): Product[] {
-    const p: any = props ?? {};
-    const d: any = data ?? {};
+function resolveToolResult(data: any, dataKey?: string): any {
+    const key = (dataKey ?? "").trim();
+    if (!key) return undefined;
 
-    const direct = (p.items ?? p.products ?? p.data) as unknown;
-    if (Array.isArray(direct)) return direct as Product[];
+    // direct key
+    if (data?.[key] !== undefined) return data[key];
 
-    const dataKey = typeof p.dataKey === "string" ? p.dataKey.trim() : "";
-    if (dataKey) {
-        const v1 = d[dataKey];
-        if (Array.isArray(v1)) return v1 as Product[];
+    // dot-path
+    const dotted = getDot(data, key);
+    if (dotted !== undefined) return dotted;
 
-        const v2 = getDot(d, dataKey);
-        if (Array.isArray(v2)) return v2 as Product[];
+    // fallback last segment
+    const last = key.split(".").filter(Boolean).at(-1);
+    if (last && data?.[last] !== undefined) return data[last];
 
-        const last = dataKey.split(".").filter(Boolean).at(-1);
-        if (last) {
-            const v3 = d[last];
-            if (Array.isArray(v3)) return v3 as Product[];
-        }
-    }
+    return undefined;
+}
 
-    for (const key of Object.keys(d)) {
-        const val = d[key];
-        if (isRecord(val) && Array.isArray((val as any).products)) {
-            return (val as any).products as Product[];
-        }
-    }
-
-    const arrays = Object.values(d).filter(Array.isArray) as unknown[][];
-    if (arrays.length === 1) return arrays[0] as Product[];
-
+function resolveProducts(toolResult: any): Product[] {
+    if (!toolResult) return [];
+    if (Array.isArray(toolResult)) return toolResult as Product[];
+    if (Array.isArray(toolResult.products)) return toolResult.products as Product[];
+    if (Array.isArray(toolResult.items)) return toolResult.items as Product[];
     return [];
 }
 
-function normalizeActionType(raw: unknown): string {
-    const t = String(raw ?? "").trim();
-    if (!t) return "shop.buy";
-    if (t === "buy") return "shop.buy";
-    return t;
+function formatMoney(value: unknown): string {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return "N/A";
+    return `$${n}`;
 }
 
-function pickImage(p: Product): string | null {
-    return (
-        p.thumbnail ??
-        p.image ??
-        (Array.isArray(p.images) && p.images.length ? p.images[0] : null) ??
-        null
-    );
+function clamp(n: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, n));
 }
 
 export function ProductCarouselCard({ props, data, onAction }: UiComponentProps) {
-    const title = String(props?.title ?? "Available Products");
-    const actionType = normalizeActionType((props as any)?.actionType);
-    const maxItems = Number((props as any)?.limit ?? 12);
+    const title = String((props as any)?.title ?? "Products");
+    const dataKey = String((props as any)?.dataKey ?? "").trim();
 
-    const products = useMemo(() => resolveProducts(props, data).slice(0, maxItems), [props, data, maxItems]);
+    // click on card
+    const actionType = String((props as any)?.actionType ?? "shop.open_product").trim() || "shop.open_product";
 
-    const scrollerRef = useRef<HTMLDivElement | null>(null);
+    // optional button action inside card
+    const secondaryActionType = String((props as any)?.secondaryActionType ?? "").trim();
+    const userId = Number((props as any)?.userId ?? 1);
+
+    // card width
+    const cardWidthPx = clamp(Number((props as any)?.cardWidthPx ?? 260), 180, 420);
+
+    // how many cards to scroll per "Next/Prev"
+    const scrollCards = clamp(Number((props as any)?.scrollCards ?? 3), 1, 10);
+
+    const toolResult = useMemo(() => resolveToolResult(data as any, dataKey), [data, dataKey]);
+    const products = useMemo(() => resolveProducts(toolResult), [toolResult]);
+
+    const railRef = useRef<HTMLDivElement | null>(null);
     const [canPrev, setCanPrev] = useState(false);
     const [canNext, setCanNext] = useState(false);
 
     const updateNav = () => {
-        const el = scrollerRef.current;
+        const el = railRef.current;
         if (!el) return;
-        const maxScrollLeft = el.scrollWidth - el.clientWidth;
-        const left = el.scrollLeft;
-
-        setCanPrev(left > 2);
-        setCanNext(left < maxScrollLeft - 2);
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        setCanPrev(el.scrollLeft > 4);
+        setCanNext(el.scrollLeft < maxScroll - 4);
     };
 
     useEffect(() => {
         updateNav();
-        const el = scrollerRef.current;
+        const el = railRef.current;
         if (!el) return;
 
         const onScroll = () => updateNav();
-        el.addEventListener("scroll", onScroll, { passive: true });
+        const onResize = () => updateNav();
 
-        const ro = new ResizeObserver(() => updateNav());
-        ro.observe(el);
+        el.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onResize);
 
         return () => {
             el.removeEventListener("scroll", onScroll);
-            ro.disconnect();
+            window.removeEventListener("resize", onResize);
         };
-    }, [products.length]);
+    }, [products.length, cardWidthPx]);
 
-    const scrollByPage = (dir: -1 | 1) => {
-        const el = scrollerRef.current;
+    const scrollByCards = (dir: -1 | 1) => {
+        const el = railRef.current;
         if (!el) return;
+        const gap = 12;
+        const delta = dir * (scrollCards * (cardWidthPx + gap));
+        el.scrollBy({ left: delta, behavior: "smooth" });
+    };
 
-        // scroll “cam o pagină”, minus un pic ca să păstreze context
-        const delta = Math.max(240, Math.floor(el.clientWidth * 0.9));
-        el.scrollBy({ left: dir * delta, behavior: "smooth" });
+    const firePrimary = (p: Product) => {
+        onAction?.(actionType, { productId: p.id });
+    };
+
+    const fireSecondary = (p: Product) => {
+        if (!secondaryActionType) return;
+
+        if (secondaryActionType === "shop.add_to_cart") {
+            onAction?.(secondaryActionType, {
+                userId,
+                products: [{ id: p.id, quantity: 1 }],
+            });
+            return;
+        }
+
+        onAction?.(secondaryActionType, { productId: p.id, quantity: 1 });
     };
 
     return (
         <div className="rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
                 <div>
                     <div className="text-sm font-semibold">{title}</div>
-                    <div className="text-xs opacity-70">{products.length ? `${products.length} items` : ""}</div>
+                    <div className="mt-0.5 text-xs opacity-60">
+                        {products.length ? `${products.length} items` : "No data"}
+                        {dataKey ? ` • dataKey: ${dataKey}` : ""}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <button
-                        className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                        disabled={!canPrev}
-                        onClick={() => scrollByPage(-1)}
-                        aria-label="Previous"
                         type="button"
+                        disabled={!canPrev}
+                        onClick={() => scrollByCards(-1)}
+                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
                     >
                         Prev
                     </button>
                     <button
-                        className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                        disabled={!canNext}
-                        onClick={() => scrollByPage(1)}
-                        aria-label="Next"
                         type="button"
+                        disabled={!canNext}
+                        onClick={() => scrollByCards(1)}
+                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
                     >
                         Next
                     </button>
                 </div>
             </div>
 
-            {products.length === 0 ? (
+            {!products.length ? (
                 <div className="mt-3 text-sm opacity-70">
-                    Nu am găsit produse de afișat.
-                    <div className="mt-2 text-xs opacity-60">
-                        Aștept fie <code>props.items</code>, fie <code>props.dataKey</code> care să pointeze către o listă,
-                        sau <code>ui.data[toolName].products</code>.
+                    Nu există produse în date. Aștept:
+                    <div className="mt-1 font-mono text-xs opacity-70">
+                        {dataKey || "shop.searchProducts"} → {"{ products: [...] }"} (sau direct array)
                     </div>
                 </div>
             ) : (
-                <div className="mt-3">
+                <>
+                    {/* Rail (real carousel) */}
                     <div
-                        ref={scrollerRef}
-                        className="
-              flex gap-3 overflow-x-auto pb-2
-              snap-x snap-mandatory
-              [-ms-overflow-style:none] [scrollbar-width:none]
-            "
-                        style={{ scrollBehavior: "smooth" }}
+                        ref={railRef}
+                        className="mt-4 flex gap-3 overflow-x-auto pb-2"
+                        style={{
+                            scrollSnapType: "x mandatory",
+                            WebkitOverflowScrolling: "touch",
+                        }}
                     >
-                        {/* hide scrollbar in webkit */}
-                        <style>{`
-              .hide-scrollbar::-webkit-scrollbar { display: none; }
-            `}</style>
-
                         {products.map((p) => {
-                            const name = p.title ?? p.name ?? `Product ${String(p.id)}`;
-                            const price = p.price != null ? String(p.price) : "N/A";
-                            const img = pickImage(p);
+                            const img = p.thumbnail ?? (Array.isArray(p.images) ? p.images[0] : undefined);
 
                             return (
                                 <div
                                     key={String(p.id)}
-                                    className="
-                    snap-start
-                    w-[82%] sm:w-[46%] lg:w-[31%]
-                    flex-shrink-0
-                    rounded-xl border border-zinc-200/70 p-3
-                    dark:border-zinc-800/70
-                  "
+                                    className="flex-shrink-0 snap-start"
+                                    style={{ width: `${cardWidthPx}px`, scrollSnapAlign: "start" as any }}
                                 >
-                                    {img ? (
-                                        <img
-                                            src={img}
-                                            alt={name}
-                                            className="h-32 w-full rounded-lg object-cover"
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        <div className="flex h-32 items-center justify-center rounded-lg bg-zinc-100 text-xs opacity-70 dark:bg-zinc-900">
-                                            no image
-                                        </div>
-                                    )}
+                                    <div className="group overflow-hidden rounded-2xl border border-zinc-200/70 bg-white shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">
+                                        <button type="button" onClick={() => firePrimary(p)} className="w-full text-left">
+                                            <div className="h-40 w-full bg-zinc-100 dark:bg-zinc-900">
+                                                {img ? (
+                                                    <img src={img} alt={p.title ?? "product"} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="flex h-full items-center justify-center text-xs opacity-60">no image</div>
+                                                )}
+                                            </div>
 
-                                    <div className="mt-2 line-clamp-2 text-sm font-medium">{name}</div>
+                                            <div className="p-3">
+                                                <div className="line-clamp-1 text-sm font-semibold">{p.title ?? `Product ${p.id}`}</div>
+                                                <div className="mt-1 line-clamp-2 text-xs opacity-70">{p.description ?? ""}</div>
 
-                                    <div className="mt-1 flex items-center justify-between text-sm">
-                                        <span className="opacity-70">{p.brand ?? p.category ?? ""}</span>
-                                        <span className="font-semibold">{price}</span>
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <div className="text-sm font-semibold">{formatMoney(p.price)}</div>
+                                                    <div className="text-xs opacity-70">{p.rating != null ? `⭐ ${p.rating}` : ""}</div>
+                                                </div>
+
+                                                <div className="mt-1 text-xs opacity-60">
+                                                    {p.brand ? p.brand : ""}
+                                                    {p.brand && p.category ? " • " : ""}
+                                                    {p.category ? p.category : ""}
+                                                </div>
+                                            </div>
+                                        </button>
+
+                                        {secondaryActionType ? (
+                                            <div className="px-3 pb-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => fireSecondary(p)}
+                                                    className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+                                                >
+                                                    {secondaryActionType === "shop.add_to_cart" ? "Add to cart" : "Action"}
+                                                </button>
+                                            </div>
+                                        ) : null}
                                     </div>
-
-                                    {p.description ? (
-                                        <div className="mt-2 line-clamp-2 text-xs opacity-70">{p.description}</div>
-                                    ) : null}
-
-                                    <button
-                                        className="mt-3 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-                                        onClick={() => onAction?.(actionType, { productId: p.id, quantity: 1 })}
-                                        type="button"
-                                    >
-                                        Buy
-                                    </button>
                                 </div>
                             );
                         })}
                     </div>
 
-                    {/* optional: little progress hint */}
-                    <div className="mt-1 text-xs opacity-60">
-                        Tip: poți da scroll orizontal (trackpad / swipe) sau folosește Prev/Next.
-                    </div>
-                </div>
+                    {/* Hint */}
+                    <div className="mt-2 text-xs opacity-60">Poți face scroll cu mouse/trackpad. Snap e activ.</div>
+                </>
             )}
         </div>
     );

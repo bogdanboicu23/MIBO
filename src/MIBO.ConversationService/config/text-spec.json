@@ -1,11 +1,9 @@
 {
-  "template": "Buget disponibil: {{available}} {{currency}}. Venit: {{income}} {{currency}}. Cheltuieli: {{expense}} {{currency}}.",
+  "template": "Am găsit {{total}} produse. Le-am afișat în carousel.",
   "missingValue": "N/A",
   "bindings": [
-    { "key": "available", "toolRef": "finance.getBudgetSnapshot", "jsonPath": "$.availableToSpend", "format": "currency" },
-    { "key": "currency", "toolRef": "finance.getBudgetSnapshot", "jsonPath": "$.currency" },
-
-    { "key": "income", "toolRef": "finance.getIncomeExpenseSummary", "jsonPath": "$.totalIncome", "format": "currency" },
-    { "key": "expense", "toolRef": "finance.getIncomeExpenseSummary", "jsonPath": "$.totalExpense", "format": "currency" }
+    { "key": "total", "toolRef": "shop.searchProducts", "jsonPath": "$.total" },
+    { "key": "total", "toolRef": "shop.listProductsByCategory", "jsonPath": "$.total" },
+    { "key": "total", "toolRef": "shop.listProducts", "jsonPath": "$.total" }
   ]
 }

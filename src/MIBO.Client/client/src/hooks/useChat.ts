@@ -28,8 +28,6 @@ export function useChat() {
     );
 
     const listRef = useRef<HTMLDivElement>(null as any);
-
-    // cancel request (no streaming, but we keep stop)
     const abortRef = useRef<AbortController | null>(null);
 
     const updateConversation = useCallback(
@@ -53,12 +51,12 @@ export function useChat() {
                     createdAt: now,
                 },
             ],
-            // NEW: last UI for this conversation
             uiV1: null,
             correlationId: null,
         };
         setConversations((p: any) => [c, ...p]);
         setActiveId(c.id);
+        return c;
     }
 
     function selectConversation(id: string) {
@@ -88,9 +86,11 @@ export function useChat() {
      * Backend returns text + optional uiV1 (ui.v1)
      */
     async function send(text: string) {
-        if (!active || !text.trim() || isTyping) return;
+        if (!text.trim() || isTyping) return;
 
-        // cancel previous request
+        const currentActive = active ?? newChat();
+        if (!currentActive) return;
+
         abortRef.current?.abort();
 
         const now = Date.now();
@@ -107,8 +107,7 @@ export function useChat() {
             uiV1: null,
         };
 
-        // optimistic update
-        updateConversation(active.id, (c: any) => ({
+        updateConversation(currentActive.id, (c: any) => ({
             ...c,
             messages: [...c.messages, userMsg, assistantMsg],
             updatedAt: now,
@@ -121,11 +120,11 @@ export function useChat() {
         setIsTyping(true);
         const ac = new AbortController();
         abortRef.current = ac;
+        console.log("send", trimmed);
 
         try {
-            // NOTE: adapt userId from auth later; for now keep demo user id
             const payload = {
-                conversationId: active.id,
+                conversationId: currentActive.id,
                 userId: "u-demo-001",
                 prompt: trimmed,
             };
@@ -135,7 +134,7 @@ export function useChat() {
 
             const data = res as { text: string; uiV1: any | null; correlationId: string };
 
-            updateConversation(active.id, (c: any) => ({
+            updateConversation(currentActive.id, (c: any) => ({
                 ...c,
                 messages: c.messages.map((m: any) =>
                     m.id === assistantId
@@ -155,7 +154,7 @@ export function useChat() {
             setIsTyping(false);
             abortRef.current = null;
 
-            updateConversation(active.id, (c: any) => ({
+            updateConversation(currentActive.id, (c: any) => ({
                 ...c,
                 messages: c.messages.map((m: any) =>
                     m.id === assistantId && (m.content ?? "").trim() === ""
@@ -185,7 +184,6 @@ export function useChat() {
         const res = await api.post(endpoints.conversations.action, req);
         const data = res.data as { schema: string; text?: string | null; uiPatch?: any | null; correlationId?: string };
 
-        // optional assistant text
         if (data.text) {
             const now = Date.now();
             const msg: any = { id: uidStr(), role: "assistant", content: data.text, createdAt: now };
@@ -196,7 +194,6 @@ export function useChat() {
             }));
         }
 
-        // optional immediate patch
         if (data.uiPatch) {
             applyPatchToConversation(active.id, data.uiPatch);
         }
@@ -266,7 +263,6 @@ export function useChat() {
         send,
         stop,
 
-        // NEW:
         sendAction,
         applyPatchFromRealtime,
     };
