@@ -165,27 +165,31 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy with Helm
-        run: |
+         run: |
           helm upgrade --install api-gateway deploy/helm/api-gateway \
             --namespace ${{ env.NAMESPACE }} \
+            --history-max 5 \
             --values deploy/environments/test/values-api-gateway.yaml \
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/api-gateway
 
           helm upgrade --install identity-service deploy/helm/identity-service \
             --namespace ${{ env.NAMESPACE }} \
+            --history-max 5 \
             --values deploy/environments/test/values-identity-service.yaml \
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/identity-service
 
           helm upgrade --install conversation-service deploy/helm/conversation-service \
             --namespace ${{ env.NAMESPACE }} \
+            --history-max 5 \
             --values deploy/environments/test/values-conversation-service.yaml \
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/conversation-service
 
           helm upgrade --install langchain-service deploy/helm/langchain-service \
             --namespace ${{ env.NAMESPACE }} \
+            --history-max 5 \
             --values deploy/environments/test/values-langchain-service.yaml \
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/langchain-service
