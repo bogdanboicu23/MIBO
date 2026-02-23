@@ -18,4 +18,8 @@ RUN dotnet publish "MIBO.ApiGateway.csproj" -c $BUILD_CONFIGURATION -o /app/publ
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+  
 ENTRYPOINT ["dotnet", "MIBO.ApiGateway.dll"]
