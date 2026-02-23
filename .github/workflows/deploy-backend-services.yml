@@ -165,7 +165,7 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy with Helm
-         run: |
+        run: |
           helm upgrade --install api-gateway deploy/helm/api-gateway \
             --namespace ${{ env.NAMESPACE }} \
             --history-max 5 \
