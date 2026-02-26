@@ -120,6 +120,25 @@
         "cartPath": "$",
         "cartIdPath": "$.id"
       }
+    },
+    {
+      "name": "finance.getSummary",
+      "description": "Get financial summary for a user including total balance, income, expenses, account balances, and expense breakdown by category.",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/summary/user/{userId}",
+      "requiredArgs": ["userId"],
+      "defaultArgs": { "userId": 1 },
+      "cacheTtlSeconds": 30,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "summaryPath": "$",
+        "totalBalancePath": "$.totalBalance",
+        "totalIncomePath": "$.totalIncome",
+        "totalExpensesPath": "$.totalExpenses",
+        "accountBalancesPath": "$.accountBalances",
+        "expenseSummaryPath": "$.expenseSummary"
+      }
     }
   ]
 }

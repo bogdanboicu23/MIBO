@@ -69,7 +69,7 @@ public class AuthController : ControllerBase
             Password = data.Password
         };
 
-        var result = await _authenticationService.UserLogin(userDto);
+        var result = await _authenticationService.UserLogin(userDto, ct);
         if (string.IsNullOrEmpty(result.AccessToken)) return BadRequest("Login Failed");
 
         SetAuthCookies(result.RefreshToken);
@@ -91,7 +91,7 @@ public class AuthController : ControllerBase
             Username = model.Username
         };
 
-        var result = await _authenticationService.UserSignUp(userDto);
+        var result = await _authenticationService.UserSignUp(userDto, ct);
 
         if (!result.Success)
             return BadRequest(new { message = result.Message });
@@ -100,7 +100,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken(RefreshTokenRequest request)
+    public async Task<IActionResult> RefreshToken(RefreshTokenRequest request, CancellationToken ct)
     {
         var refreshToken = Request.Cookies["refreshToken"];
 
@@ -112,8 +112,8 @@ public class AuthController : ControllerBase
         var result = await _authenticationService.RefreshToken(new TokenDto
         {
             AccessToken = request.JwtToken,
-            RefreshToken = refreshToken
-        });
+            RefreshToken = refreshToken,
+        }, ct);
 
         if (string.IsNullOrEmpty(result.AccessToken)) return Unauthorized("Token Refresh Failed");
 

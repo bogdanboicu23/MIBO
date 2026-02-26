@@ -10,9 +10,9 @@ namespace MIBO.IdentityService.Services;
 
 public interface IAuthService
 {
-    Task<LoginResponse> UserLogin(UserDto data);
-    Task<ApiResponse> UserSignUp(RegisterDto data);
-    Task<LoginResponse> RefreshToken(TokenDto data);
+    Task<LoginResponse> UserLogin(UserDto data, CancellationToken ct = default);
+    Task<ApiResponse> UserSignUp(RegisterDto data, CancellationToken ct = default);
+    Task<LoginResponse> RefreshToken(TokenDto data, CancellationToken ct = default);
 }
 
 public class AuthService : IAuthService
@@ -26,15 +26,15 @@ public class AuthService : IAuthService
         _configuration = configuration;
     }
 
-    public async Task<LoginResponse> UserLogin(UserDto data)
+    public async Task<LoginResponse> UserLogin(UserDto data, CancellationToken ct = default)
     {
         var user = await _userManager.FindByEmailAsync(data.Email);
         if (user is null || !await _userManager.CheckPasswordAsync(user, data.Password))
             return new LoginResponse { };
-        return await GenerateLoginResponse(user);
+        return await GenerateLoginResponse(user, ct);
     }
 
-    public async Task<ApiResponse> UserSignUp(RegisterDto data)
+    public async Task<ApiResponse> UserSignUp(RegisterDto data, CancellationToken ct = default)
     {
         var user = new ApplicationUser
         {
@@ -56,7 +56,7 @@ public class AuthService : IAuthService
         return ApiResponse.Ok();
     }
 
-    public async Task<LoginResponse> RefreshToken(TokenDto data)
+    public async Task<LoginResponse> RefreshToken(TokenDto data, CancellationToken ct = default)
     {
         var jwtClaimsPrincipal = GetTokenPrincipal(data.AccessToken);
 
@@ -71,10 +71,10 @@ public class AuthService : IAuthService
         if (user is null || user.RefreshToken != data.RefreshToken || IsJwtExpired(data.RefreshToken))
             return new LoginResponse { };
 
-        return await GenerateLoginResponse(user);
+        return await GenerateLoginResponse(user, ct);
     }
 
-    private async Task<LoginResponse> GenerateLoginResponse(ApplicationUser user)
+    private async Task<LoginResponse> GenerateLoginResponse(ApplicationUser user, CancellationToken ct = default)
     {
         var accessTokenKey =
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:AccessTokenSecret"] ??
