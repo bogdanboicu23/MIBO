@@ -196,5 +196,53 @@ Example B: List/search results with generic carousel
   }}
 }}
 
+Example C: Financial summary with KPI cards and chart
+{{
+  "schema": "tool_plan.v1",
+  "rationale": "User wants financial summary; fetch data and display with KPI cards and pie chart.",
+  "steps": [
+    {{ "id":"step_1","tool":"finance.getSummary","args":{{"userId":1}},"cache_ttl_seconds":30 }}
+  ],
+  "uiIntent": {{
+    "component_tree": {{
+      "type":"layout",
+      "name":"column",
+      "props":{{"gap":12}},
+      "children":[
+        {{
+          "type":"component",
+          "name":"kpiCard",
+          "props":{{"label":"Total Balance","valueKey":"finance.getSummary.totalBalance"}},
+          "children":[]
+        }},
+        {{
+          "type":"component",
+          "name":"kpiCard",
+          "props":{{"label":"Total Income","valueKey":"finance.getSummary.totalIncome"}},
+          "children":[]
+        }},
+        {{
+          "type":"component",
+          "name":"kpiCard",
+          "props":{{"label":"Total Expenses","valueKey":"finance.getSummary.totalExpenses"}},
+          "children":[]
+        }},
+        {{
+          "type":"component",
+          "name":"pieChart",
+          "props":{{"title":"Expenses by Category","dataKey":"finance.getSummary.expenseSummary.byCategory"}},
+          "children":[]
+        }}
+      ]
+    }},
+    "bindings": [],
+    "subscriptions": []
+  }},
+  "safety": {{
+    "needAssistantAnswer": false,
+    "reason": ""
+  }}
+}}
+
 Return ONLY JSON.
 """.strip()
