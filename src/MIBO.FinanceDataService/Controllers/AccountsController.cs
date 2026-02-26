@@ -36,7 +36,7 @@ public class AccountsController : ControllerBase
 
     // GET: api/accounts/{id}
     [HttpGet("{id}")]
-    public IActionResult GetAccountById(int id)
+    public IActionResult GetAccountById(int id, CancellationToken cancellationToken)
     {
         var account = _financialService.GetAccountById(id);
         if (account == null)
