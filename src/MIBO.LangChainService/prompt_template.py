@@ -197,6 +197,8 @@ Example B: List/search results with generic carousel
 }}
 
 Example C: Financial summary with KPI cards and chart
+Note: Tool results are stored in ui.data keyed by tool name (e.g. "finance.getSummary").
+Dot-path access works: "finance.getSummary.totalBalance" resolves data["finance.getSummary"].totalBalance.
 {{
   "schema": "tool_plan.v1",
   "rationale": "User wants financial summary; fetch data and display with KPI cards and pie chart.",
