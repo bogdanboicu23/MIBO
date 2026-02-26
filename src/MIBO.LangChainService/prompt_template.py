@@ -199,11 +199,12 @@ Example B: List/search results with generic carousel
 Example C: Financial summary with KPI cards and chart
 Note: Tool results are stored in ui.data keyed by tool name (e.g. "finance.getSummary").
 Dot-path access works: "finance.getSummary.totalBalance" resolves data["finance.getSummary"].totalBalance.
+IMPORTANT: finance tools have no required args. Do NOT pass userId — it is built into the URL.
 {{
   "schema": "tool_plan.v1",
   "rationale": "User wants financial summary; fetch data and display with KPI cards and pie chart.",
   "steps": [
-    {{ "id":"step_1","tool":"finance.getSummary","args":{{"userId":1}},"cache_ttl_seconds":30 }}
+    {{ "id":"step_1","tool":"finance.getSummary","args":{{}},"cache_ttl_seconds":30 }}
   ],
   "uiIntent": {{
     "component_tree": {{
