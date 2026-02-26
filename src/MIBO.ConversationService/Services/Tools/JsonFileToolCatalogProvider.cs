@@ -27,6 +27,7 @@ public sealed class JsonFileToolCatalogProvider : IToolCatalogProvider
         {
             defs.Add(new ToolDefinition(
                 Name: t.GetProperty("name").GetString()!,
+                Description: t.TryGetProperty("description", out var desc) ? desc.GetString()! : "",
                 Method: t.GetProperty("method").GetString()!,
                 UrlTemplate: t.GetProperty("urlTemplate").GetString()!,
                 TimeoutMs: t.TryGetProperty("timeoutMs", out var to) ? to.GetInt32() : 0,
