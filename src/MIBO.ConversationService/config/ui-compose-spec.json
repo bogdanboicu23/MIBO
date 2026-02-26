@@ -9,7 +9,8 @@
     "shop.listProductsByCategory",
     "shop.listProductsSorted",
     "shop.getCart",
-    "shop.addToCart"
+    "shop.addToCart",
+    "finance.getSummary"
   ],
   "includeBindings": true,
   "includeSubscriptions": true,
