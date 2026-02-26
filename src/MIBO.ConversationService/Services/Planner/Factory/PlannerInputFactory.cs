@@ -42,6 +42,7 @@ public sealed class PlannerInputFactory : IPlannerInputFactory
             tools = _tools.All().Select(t => new
             {
                 name = t.Name,
+                description = t.Description,
                 method = t.Method,
                 requiredArgs = t.RequiredArgs
             }).ToArray()

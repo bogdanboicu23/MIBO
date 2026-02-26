@@ -2,6 +2,7 @@ namespace MIBO.ConversationService.DTOs.Tools;
 
 public sealed record ToolDefinition(
     string Name,              // e.g. "finance.getBudgetSnapshot"
+    string Description,       // human-readable description for LLM
     string Method,            // GET/POST
     string UrlTemplate,       // e.g. "http://finance-data/api/v1/budget-snapshot"
     int TimeoutMs,
