@@ -55,9 +55,25 @@ export function getByPath(obj: unknown, path: string): unknown {
     if (!path) return undefined;
     const parts = path.split(".").filter(Boolean);
     let cur: any = obj;
-    for (const k of parts) {
+    let i = 0;
+    while (i < parts.length) {
         if (cur == null) return undefined;
-        cur = cur[k];
+        // Try greedy match: "finance.getSummary" as a single key before splitting
+        if (typeof cur === "object") {
+            let found = false;
+            for (let j = parts.length; j > i; j--) {
+                const composite = parts.slice(i, j).join(".");
+                if (Object.prototype.hasOwnProperty.call(cur, composite)) {
+                    cur = cur[composite];
+                    i = j;
+                    found = true;
+                    break;
+                }
+            }
+            if (found) continue;
+        }
+        cur = cur[parts[i]];
+        i++;
     }
     return cur;
 }
