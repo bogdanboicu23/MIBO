@@ -172,7 +172,40 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             );
         }
 
-        // Case B: try deterministic from tools
+        // Case B: tools returned data — let LLM compose a contextual summary
+        if (toolResults.Count > 0)
+        {
+            var toolDataSummary = new System.Text.StringBuilder();
+            toolDataSummary.AppendLine("The following data was retrieved from tools:");
+            foreach (var (tool, body) in toolResults)
+            {
+                var json = body.ToString();
+                // Truncate large payloads to avoid exceeding context
+                if (json.Length > 2000)
+                    json = json[..2000] + "... (truncated)";
+                toolDataSummary.AppendLine($"[{tool}]: {json}");
+            }
+
+            var enrichedPrompt = $"""
+                User asked: "{userPrompt}"
+
+                {toolDataSummary}
+
+                Based on the data above, provide a brief, friendly summary answering the user's question.
+                If a UI is being shown alongside this text, keep your answer short (1-2 sentences) and refer the user to the displayed data.
+                Do NOT invent data — use only what was provided above.
+                """;
+
+            return await _answerService.AnswerAsync(
+                conversationId,
+                userId,
+                enrichedPrompt,
+                conversationContext,
+                ct
+            );
+        }
+
+        // Case C: tools ran but no results — deterministic fallback
         var deterministic = await _textComposer.ComposeTextAsync(
             conversationId,
             userId,
@@ -181,7 +214,6 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             ct
         );
 
-        // If deterministic is empty/useless (e.g. mostly N/A), fallback to LLM answer
         if (LooksLikeAllMissing(deterministic))
         {
             return await _answerService.AnswerAsync(
