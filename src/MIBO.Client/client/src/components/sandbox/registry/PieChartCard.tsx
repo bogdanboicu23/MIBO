@@ -21,7 +21,11 @@ export function PieChartCard({ props, data }: UiComponentProps) {
                 value: Number((x as any)?.value ?? 0),
             }))
             .filter((x) => Number.isFinite(x.value))
-        : [];
+        : raw && typeof raw === "object"
+            ? Object.entries(raw)
+                .map(([k, v]) => ({ name: k, value: Number(v) }))
+                .filter((x) => Number.isFinite(x.value))
+            : [];
 
     const total = items.reduce((s, x) => s + x.value, 0);
 
