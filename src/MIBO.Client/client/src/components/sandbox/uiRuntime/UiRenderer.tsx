@@ -138,10 +138,10 @@ function normalizeDataTableProps(props: Record<string, unknown>, data: Record<st
         const v = getByPath(data, p.dataKey) ?? (data as any)[p.dataKey];
         if (Array.isArray(v)) {
             p.rows = v;
-        } else if (v && Array.isArray((v as any).products)) {
-            p.rows = (v as any).products;
-        } else if (v && Array.isArray((v as any).items)) {
-            p.rows = (v as any).items;
+        } else if (v && typeof v === "object") {
+            // Find the first array property (products, items, transactions, expenses, etc.)
+            const arrProp = Object.values(v as any).find(Array.isArray);
+            if (arrProp) p.rows = arrProp;
         }
     }
 
