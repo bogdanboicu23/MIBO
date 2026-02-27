@@ -7,9 +7,24 @@ function getDot(obj: unknown, path: string): unknown {
     if (!path) return undefined;
     const parts = path.split(".").filter(Boolean);
     let cur: any = obj;
-    for (const p of parts) {
+    let i = 0;
+    while (i < parts.length) {
         if (cur == null) return undefined;
-        cur = cur[p];
+        if (typeof cur === "object") {
+            let found = false;
+            for (let j = parts.length; j > i; j--) {
+                const composite = parts.slice(i, j).join(".");
+                if (Object.prototype.hasOwnProperty.call(cur, composite)) {
+                    cur = cur[composite];
+                    i = j;
+                    found = true;
+                    break;
+                }
+            }
+            if (found) continue;
+        }
+        cur = cur[parts[i]];
+        i++;
     }
     return cur;
 }
@@ -45,9 +60,11 @@ function resolveItems(toolResult: any, itemsPath?: string): any[] {
         if (Array.isArray(dotted)) return dotted as any[];
     }
 
-    // common shapes
-    if (Array.isArray((toolResult as AnyObj).products)) return (toolResult as AnyObj).products;
-    if (Array.isArray((toolResult as AnyObj).items)) return (toolResult as AnyObj).items;
+    // Find the first array property (products, items, transactions, expenses, etc.)
+    if (toolResult && typeof toolResult === "object") {
+        const arrProp = Object.values(toolResult as AnyObj).find(Array.isArray);
+        if (arrProp) return arrProp as any[];
+    }
 
     return [];
 }
