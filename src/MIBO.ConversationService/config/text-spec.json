@@ -1,9 +1,5 @@
 {
-  "template": "Am găsit {{total}} produse. Le-am afișat în carousel.",
+  "template": "",
   "missingValue": "N/A",
-  "bindings": [
-    { "key": "total", "toolRef": "shop.searchProducts", "jsonPath": "$.total" },
-    { "key": "total", "toolRef": "shop.listProductsByCategory", "jsonPath": "$.total" },
-    { "key": "total", "toolRef": "shop.listProducts", "jsonPath": "$.total" }
-  ]
+  "bindings": []
 }
