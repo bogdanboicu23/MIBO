@@ -10,7 +10,14 @@
     "shop.listProductsSorted",
     "shop.getCart",
     "shop.addToCart",
-    "finance.getSummary"
+    "finance.getSummary",
+    "finance.getAccounts",
+    "finance.getTransactions",
+    "finance.searchTransactions",
+    "finance.getExpenses",
+    "finance.getBudgets",
+    "finance.getExpenseAnalytics",
+    "finance.getTransactionAnalytics"
   ],
   "includeBindings": true,
   "includeSubscriptions": true,
