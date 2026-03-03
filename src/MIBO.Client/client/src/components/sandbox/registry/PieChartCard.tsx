@@ -237,20 +237,3 @@ export function PieChartCard({ props, data }: UiComponentProps) {
         </div>
     );
 }
-
-// ── Usage example ─────────────────────────────────────────────────────────────
-// <PieChartCard
-//   props={{
-//     title: "Cheltuieli pe categorii",
-//     data: [
-//       { name: "Mâncare", value: 420, color: "#6366f1" },
-//       { name: "Transport", value: 180 },
-//       { name: "Utilități", value: 230 },
-//       { name: "Divertisment", value: 95 },
-//       { name: "Sănătate", value: 310 },
-//     ],
-//     showLegend: true,
-//     formatValue: (v: number) => `${v} lei`,
-//   }}
-//   data={{}}
-// />

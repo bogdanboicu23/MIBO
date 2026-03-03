@@ -135,6 +135,14 @@ public sealed class ToolExecutor : IToolExecutor
         var url = template;
         foreach (var (k, v) in args)
             url = url.Replace("{" + k + "}", Uri.EscapeDataString(Convert.ToString(v) ?? ""), StringComparison.OrdinalIgnoreCase);
+
+        // Remove unresolved optional placeholders and clean up query string
+        url = System.Text.RegularExpressions.Regex.Replace(url, @"[?&][^&=]+=\{[^}]+\}", "");
+        url = System.Text.RegularExpressions.Regex.Replace(url, @"\{[^}]+\}", "");
+        // Fix query string: if first param was removed, replace leading & with ?
+        url = System.Text.RegularExpressions.Regex.Replace(url, @"\?&", "?");
+        // Remove trailing ? or &
+        url = url.TrimEnd('?', '&');
         return url;
     }
     
