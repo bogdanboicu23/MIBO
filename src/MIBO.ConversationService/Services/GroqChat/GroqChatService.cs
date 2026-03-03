@@ -53,7 +53,7 @@ public class GroqChatService : IGroqChatService
 
     while (!reader.EndOfStream && !ct.IsCancellationRequested)
     {
-        var line = await reader.ReadLineAsync();
+        var line = await reader.ReadLineAsync(ct);
         if (line is null) break;
 
         if (!line.StartsWith("data:")) continue;

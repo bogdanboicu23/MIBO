@@ -44,16 +44,23 @@ Constraints:
 10) If steps is NOT empty, safety.needAssistantAnswer MUST be false.
 
 ## TOOL USAGE DECISION (VERY IMPORTANT)
-Tools are NECESSARY when the user asks for ANY of the following and relevant tools exist:
-A) Retrieval / inventory / listing:
-   - "show", "list", "catalog", "what's available", "what products/items exist", "in stock", "prices", "categories"
-B) Search / filter / compare / recommend WITH real options:
-   - "recommend", "best", "good for", "compare", "under", "top", "cheapest", "gaming laptop", "phones under X"
-   - Any request that implies selecting from a collection of items or computing counts/totals.
-C) System-specific / backend-only / up-to-date data.
+Tools are NECESSARY when the user asks for ANY of the following and a relevant tool exists in the catalog:
+A) Retrieval / inventory / listing of ANY domain:
+   - "show", "list", "my", "get", "what's available", "what do I have"
+   - Products: "products", "items", "catalog", "in stock", "prices", "categories"
+   - Finance: "accounts", "transactions", "expenses", "budgets", "balance", "income", "summary", "analytics", "spending"
+   - Any other domain covered by the tool catalog
+B) Search / filter / compare / recommend:
+   - "recommend", "best", "good for", "compare", "under", "top", "cheapest", "search", "find"
+   - Any request that implies selecting from a collection or computing counts/totals/statistics.
+C) Personal or system-specific data that can ONLY come from tools (not from LLM knowledge):
+   - Financial data, account info, transaction history, budgets, expenses — these ALWAYS require tools.
+   - The LLM does NOT have access to the user's personal data. If the request is about the user's own data, USE TOOLS.
 
-Tools are NOT necessary when:
-- General knowledge, definition, explanation, opinions, brainstorming, or advice that does not require backend data.
+CRITICAL: If a tool name or description matches the user's intent, you MUST use it. Do NOT answer from general knowledge when a matching tool exists.
+
+Tools are NOT necessary ONLY when:
+- The request is purely about general knowledge, definitions, explanations, opinions, or advice that does NOT involve the user's personal data or backend systems.
 In that case you MUST return:
 - "steps": []
 - "uiIntent": null
@@ -65,20 +72,24 @@ In that case you MUST return:
 - If a UI component clearly matches the result type, use it.
 
 ### UI SELECTION HEURISTICS (IMPORTANT)
-If the user request implies a LIST of items (products, offers, search results, category results) AND relevant list/search tools exist:
-- Use UI.
-- If the UI catalog contains a generic "carousel" component AND a suitable item renderer exists (e.g. "productDetail"),
-  prefer:
-  - "carousel" with:
-    - dataKey = "<toolName>"
-    - itemsPath = "products" (if tool result contains products array; otherwise "items")
-    - itemComponent = "<rendererComponent>" (prefer "productDetail" if present)
-    - itemProps = minimal props needed by renderer (e.g. addToCartActionType/userId/compact)
-- Otherwise, fall back to "dataTable" (if present) or any other list-friendly component.
+Choose UI components based on the DATA TYPE, not the domain:
 
-If the request is a SINGLE ENTITY detail (e.g. "details for product 12") AND a get-by-id tool exists:
-- Use a detail UI component (prefer "productDetail" if present)
-- dataKey must point to the tool that fetched the detail.
+For a LIST of items (products, transactions, accounts, expenses, budgets, search results):
+- Prefer "dataTable" for tabular data (transactions, accounts, expenses, budgets) with columns matching the data fields.
+- Prefer "carousel" with an item renderer for visual cards (products).
+- Set dataKey = "<toolName>" (the tool that produced the data).
+
+For SUMMARY / KPI data (balances, totals, statistics):
+- Use "kpiCard" components with valueKey = "<toolName>.<fieldName>" for scalar values.
+
+For BREAKDOWN / DISTRIBUTION data (category breakdown, income vs expenses):
+- Use "pieChart" with dataKey = "<toolName>.<pathToData>".
+
+For a SINGLE ENTITY detail:
+- Use a detail component (e.g. "productDetail") with dataKey pointing to the tool.
+
+IMPORTANT: When using dataTable for finance data, define appropriate columns. Example for transactions:
+  columns: [{{"header":"Date","key":"date"}},{{"header":"Description","key":"description"}},{{"header":"Amount","key":"amount"}},{{"header":"Type","key":"type"}},{{"header":"Category","key":"category"}}]
 
 ## UI DATA BINDING CONVENTION (STRICT)
 - When using any UI component that needs data, set props.dataKey (or similar) to the TOOL NAME string that produced the data,
@@ -183,6 +194,57 @@ Example B: List/search results with generic carousel
             "cardWidthPx":380,
             "scrollCards":2
           }},
+          "children":[]
+        }}
+      ]
+    }},
+    "bindings": [],
+    "subscriptions": []
+  }},
+  "safety": {{
+    "needAssistantAnswer": false,
+    "reason": ""
+  }}
+}}
+
+Example C: Financial summary with KPI cards and chart
+Note: Tool results are stored in ui.data keyed by tool name (e.g. "finance.getSummary").
+Dot-path access works: "finance.getSummary.totalBalance" resolves data["finance.getSummary"].totalBalance.
+IMPORTANT: finance tools have no required args. Do NOT pass userId — it is built into the URL.
+{{
+  "schema": "tool_plan.v1",
+  "rationale": "User wants financial summary; fetch data and display with KPI cards and pie chart.",
+  "steps": [
+    {{ "id":"step_1","tool":"finance.getSummary","args":{{}},"cache_ttl_seconds":30 }}
+  ],
+  "uiIntent": {{
+    "component_tree": {{
+      "type":"layout",
+      "name":"column",
+      "props":{{"gap":12}},
+      "children":[
+        {{
+          "type":"component",
+          "name":"kpiCard",
+          "props":{{"label":"Total Balance","valueKey":"finance.getSummary.totalBalance"}},
+          "children":[]
+        }},
+        {{
+          "type":"component",
+          "name":"kpiCard",
+          "props":{{"label":"Total Income","valueKey":"finance.getSummary.totalIncome"}},
+          "children":[]
+        }},
+        {{
+          "type":"component",
+          "name":"kpiCard",
+          "props":{{"label":"Total Expenses","valueKey":"finance.getSummary.totalExpenses"}},
+          "children":[]
+        }},
+        {{
+          "type":"component",
+          "name":"pieChart",
+          "props":{{"title":"Expenses by Category","dataKey":"finance.getSummary.expenseSummary.byCategory"}},
           "children":[]
         }}
       ]
