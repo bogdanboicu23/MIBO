@@ -110,16 +110,6 @@ export default function ChatPage() {
                             listRef={chat.listRef}
                             empty={<EmptyState onPick={(t) => void chat.send(t)} />}
                         />
-
-                        {/*/!* Generative UI area (single UI instance per conversation) *!/*/}
-                        {/*{activeUi ? (*/}
-                        {/*    <div className="mx-4 mb-3 rounded-2xl border border-zinc-200/70 bg-white p-3 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">*/}
-                        {/*        <UiRenderer*/}
-                        {/*            ui={activeUi}*/}
-                        {/*            onAction={(type, payload) => chat.sendAction(type, payload)}*/}
-                        {/*        />*/}
-                        {/*    </div>*/}
-                        {/*) : null}*/}
                     </div>
                 </div>
 
