@@ -13,6 +13,10 @@ import { ProductDetailCard } from "@/components/sandbox/registry/ProductDetailCa
 import { Pagination } from "@/components/sandbox/registry/Pagination";
 import { CartSummaryCard } from "@/components/sandbox/registry/CartSummaryCard";
 import { Carousel } from "@/components/sandbox/registry/Carousel";
+import { LineChartCard } from "@/components/sandbox/registry/LineChartCard.tsx";
+import { BarChartCard } from "@/components/sandbox/registry/BarChartCard.tsx";
+import { SummaryPanel } from "@/components/sandbox/registry/SummaryPanel.tsx";
+import { Markdown } from "@/components/sandbox/registry/Markdown.tsx";
 
 // fallback sigur
 export function Unknown(props: UiComponentProps) {
@@ -37,6 +41,10 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     pagination: Pagination,
     cartSummary: CartSummaryCard,
     carousel: Carousel,
+    lineChart: LineChartCard,
+    barChart: BarChartCard,
+    summaryPanel: SummaryPanel,
+    markdown: Markdown,
 
     __unknown__: Unknown,
 };
