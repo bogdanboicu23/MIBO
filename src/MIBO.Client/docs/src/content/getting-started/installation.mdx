@@ -1,0 +1,168 @@
+---
+title: Installation
+description: How to set up and run the MIBO platform locally
+category: getting-started
+order: 2
+---
+
+# Installation
+
+This guide walks you through setting up the MIBO platform for local development.
+
+<SectionDivider />
+
+<SectionHeader title="Prerequisites" description="Make sure you have the following tools installed before proceeding" />
+
+<Callout type="warning" title="Required Software">
+  All of the following must be installed on your machine before you can run the platform. PostgreSQL and NATS can be run via Docker if you prefer not to install them directly.
+</Callout>
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title=".NET 9 SDK"
+    description="Required for building and running all backend microservices"
+    icon="⚙️"
+  />
+  <FeatureCard
+    title="Node.js 22+"
+    description="Required for the React client application and documentation site"
+    icon="🟢"
+  />
+  <FeatureCard
+    title="Docker & Docker Compose"
+    description="Used to run infrastructure services like PostgreSQL and NATS"
+    icon="🐳"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Quick Start with Docker" description="The fastest way to get the entire platform running" />
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/bogdanboicu23/MIBO.git
+    cd MIBO
+    ```
+  </Step>
+
+  <Step title="Start infrastructure services">
+    This launches PostgreSQL and NATS in Docker containers.
+
+    ```bash
+    docker-compose up -d
+    ```
+  </Step>
+
+  <Step title="Run the backend services">
+    Each service needs to be started individually. Open separate terminal windows for each.
+
+    ```bash
+    dotnet run --project src/MIBO.Gateway
+    dotnet run --project src/MIBO.IdentityService
+    dotnet run --project src/MIBO.ConversationService
+    dotnet run --project src/MIBO.FinanceService
+    ```
+  </Step>
+</Steps>
+
+<Callout type="tip" title="Development Tips">
+  Run services individually during development. Each service can be started independently with `dotnet run` or through your IDE. You do not need to run all services at once if you are only working on one.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Frontend Setup" description="Get the React client application running" />
+
+<Steps>
+  <Step title="Navigate to the client directory">
+    ```bash
+    cd src/MIBO.Client/client
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+
+    The client runs on `http://localhost:5173` by default.
+  </Step>
+</Steps>
+
+<SectionDivider />
+
+<SectionHeader title="Documentation Site" description="Run the docs site locally for development" />
+
+<Steps>
+  <Step title="Navigate to the docs directory">
+    ```bash
+    cd src/MIBO.Client/docs
+    ```
+  </Step>
+
+  <Step title="Install and run">
+    ```bash
+    npm install
+    npm run dev
+    ```
+
+    The docs site runs on `http://localhost:3030`.
+  </Step>
+</Steps>
+
+<SectionDivider />
+
+<SectionHeader title="Environment Configuration" description="Configure each service for your local environment" />
+
+<Callout type="info" title="Service Configuration">
+  Each service requires its own configuration. Check the `appsettings.Development.json` files in each service project for database connection strings, NATS URLs, and JWT settings.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Verify Installation" description="Confirm everything is working correctly" />
+
+<Steps>
+  <Step title="Open the client">
+    Navigate to `http://localhost:5173` in your browser.
+  </Step>
+
+  <Step title="Register a new account">
+    Create a test user account through the registration flow.
+  </Step>
+
+  <Step title="Start chatting">
+    Open the chat interface and send a message to the AI assistant.
+  </Step>
+
+  <Step title="Check the API Gateway">
+    Verify the gateway is routing requests correctly at its configured port.
+  </Step>
+</Steps>
+
+<SectionDivider />
+
+<SectionHeader title="Next Steps" description="Continue exploring the platform" />
+
+<LinkCardGrid>
+  <LinkCard
+    title="Project Structure"
+    description="Understand how the codebase is organized"
+    href="/getting-started/project-structure"
+    icon="📁"
+  />
+  <LinkCard
+    title="Architecture"
+    description="Learn about the microservices architecture in detail"
+    href="/architecture"
+    icon="🏛️"
+  />
+</LinkCardGrid>

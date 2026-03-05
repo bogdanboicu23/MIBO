@@ -1,0 +1,93 @@
+---
+title: Card
+description: Compound card component with header, title, content, and footer sections
+category: components
+order: 42
+---
+
+# Card
+
+A compound component for structured content containers with header, title, description, content, and footer sub-components. Cards are the primary way to group related information in the MIBO interface, providing a clean bordered container with consistent spacing.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="A complete card with all sub-components" />
+
+<ComponentPreview
+    code={`<Card className="w-80">
+  <CardHeader>
+    <CardTitle>Account Summary</CardTitle>
+    <CardDescription>Your financial overview</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <p className="text-2xl font-bold">$12,450.00</p>
+    <p className="text-xs text-zinc-500">Total balance</p>
+  </CardContent>
+  <CardFooter>
+    <Button size="sm" variant="ghost">View Details</Button>
+  </CardFooter>
+</Card>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "className", type: "string", description: "Additional CSS classes" },
+            { name: "children", type: "ReactNode", description: "Card content" },
+            { name: "ref", type: "Ref<HTMLDivElement>", description: "Forwarded ref" },
+        ]} />
+    }
+>
+    <Card className="w-80">
+        <CardHeader>
+            <CardTitle>Account Summary</CardTitle>
+            <CardDescription>Your financial overview</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <p className="text-2xl font-bold">$12,450.00</p>
+            <p className="text-xs text-zinc-500">Total balance</p>
+        </CardContent>
+        <CardFooter>
+            <Button size="sm" variant="ghost">View Details</Button>
+        </CardFooter>
+    </Card>
+</ComponentPreview>
+
+<SectionDivider />
+
+<SectionHeader title="Sub-Components" description="The building blocks of a Card" />
+
+<FeatureGrid columns={2}>
+    <FeatureCard title="Card" description="Root container with border and shadow" icon="📦" />
+    <FeatureCard title="CardHeader" description="Top section with bottom border" icon="🔝" />
+    <FeatureCard title="CardTitle" description="Heading text (renders as h2)" icon="✏️" />
+    <FeatureCard title="CardDescription" description="Subtitle text beneath the title" icon="💬" />
+    <FeatureCard title="CardContent" description="Main content area with padding" icon="📄" />
+    <FeatureCard title="CardFooter" description="Bottom section with top border" icon="🔻" />
+</FeatureGrid>
+
+<Callout type="tip" title="Composition">
+  All sub-components are optional. You can use just `Card` and `CardContent` for a simple container, or include all sub-components for a fully structured layout.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Usage" description="How to import and compose the Card component" />
+
+```tsx
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+
+function AccountCard() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Card</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Card content goes here.</p>
+            </CardContent>
+        </Card>
+    );
+}
+```
+
+<Callout type="info" title="Design Note">
+  Cards use the zinc color palette with subtle borders and shadows. In dark mode, borders shift to `zinc-800` for proper contrast.
+</Callout>

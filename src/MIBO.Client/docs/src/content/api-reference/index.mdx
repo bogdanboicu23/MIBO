@@ -1,0 +1,105 @@
+---
+title: API Reference
+description: Complete REST API documentation for the MIBO platform
+category: api-reference
+order: 20
+---
+
+# API Reference
+
+All API requests go through the **Ocelot API Gateway**, which routes them to the appropriate microservice. The gateway runs on port 5000 in development and at `https://api.mibo.monster` in production.
+
+<SectionDivider />
+
+<SectionHeader title="Authentication" description="How to authenticate your API requests" />
+
+Most endpoints require a JWT Bearer token. Include it in the `Authorization` header:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+<Callout type="info" title="Getting a Token">
+  Obtain tokens via the [Auth endpoints](/api-reference/identity/auth). Tokens are issued on login and can be refreshed using the refresh token cookie.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Gateway Routes" description="How the API Gateway maps upstream paths to downstream microservices" />
+
+| Upstream Pattern | Downstream Service | Port (Dev) |
+|-----------------|-------------------|------------|
+| `/api/auth/*` | Identity Service | 5001 |
+| `/api/users/*` | Identity Service | 5001 |
+| `/api/v1/chat` | Conversation Service | 7251 |
+| `/api/v1/*` | Conversation Service | 7251 |
+| `/api/conversations/*` | Conversation Service | 7251 |
+| `/hubs/ui` | Conversation Service (SignalR) | 7251 |
+| `/api/accounts/*` | Finance Data Service | 5003 |
+| `/api/transactions/*` | Finance Data Service | 5003 |
+| `/api/expenses/*` | Finance Data Service | 5003 |
+| `/api/budgets/*` | Finance Data Service | 5003 |
+| `/api/summary/*` | Finance Data Service | 5003 |
+| `/api/analytics/*` | Finance Data Service | 5003 |
+
+<SectionDivider />
+
+<SectionHeader title="API Services" description="Explore all available API endpoints organized by service" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Identity / Auth" description="Login, register, JWT token management and user profiles" icon="🔐" />
+  <FeatureCard title="Chat" description="Main chat endpoint for sending messages to the AI assistant" icon="💬" />
+  <FeatureCard title="Streaming" description="Server-Sent Events for real-time token-by-token responses" icon="📡" />
+  <FeatureCard title="Actions" description="Execute generative UI actions triggered by user interactions" icon="⚡" />
+  <FeatureCard title="Accounts" description="Bank account management and balance queries" icon="🏦" />
+  <FeatureCard title="Transactions" description="Transaction queries, search, and filtering" icon="💳" />
+  <FeatureCard title="Expenses" description="Expense tracking, categorization, and filtering" icon="🧾" />
+  <FeatureCard title="Budgets" description="Create and manage spending budgets by category" icon="📊" />
+  <FeatureCard title="Summary" description="High-level financial summaries and overviews" icon="📋" />
+  <FeatureCard title="Analytics" description="Spending analytics, category breakdowns, and time-series data" icon="📈" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Common Response Patterns" description="Standard response shapes used across all endpoints" />
+
+### Paginated Lists
+
+```json
+{
+    "items": [...],
+    "total": 142,
+    "skip": 0,
+    "limit": 30
+}
+```
+
+### Error Responses
+
+```json
+{
+    "message": "Error description",
+    "details": "Additional context"
+}
+```
+
+<Callout type="warning" title="Rate Limiting">
+  All endpoints are subject to rate limiting through the API Gateway. Exceeding limits will return a `429 Too Many Requests` response.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Explore the API" description="Jump to any service documentation" />
+
+<LinkCardGrid>
+  <LinkCard title="Authentication" description="Login, register, and token management" href="/api-reference/identity/auth" icon="🔐" />
+  <LinkCard title="Chat" description="Send messages to the AI assistant" href="/api-reference/conversation/chat" icon="💬" />
+  <LinkCard title="Streaming" description="SSE streaming responses" href="/api-reference/conversation/streaming" icon="📡" />
+  <LinkCard title="Actions" description="Generative UI action execution" href="/api-reference/conversation/actions" icon="⚡" />
+  <LinkCard title="Accounts" description="Bank account endpoints" href="/api-reference/finance/accounts" icon="🏦" />
+  <LinkCard title="Transactions" description="Transaction queries and search" href="/api-reference/finance/transactions" icon="💳" />
+  <LinkCard title="Expenses" description="Expense tracking endpoints" href="/api-reference/finance/expenses" icon="🧾" />
+  <LinkCard title="Budgets" description="Budget management endpoints" href="/api-reference/finance/budgets" icon="📊" />
+  <LinkCard title="Summary" description="Financial summary endpoints" href="/api-reference/finance/summary" icon="📋" />
+  <LinkCard title="Analytics" description="Spending analytics and insights" href="/api-reference/finance/analytics" icon="📈" />
+</LinkCardGrid>

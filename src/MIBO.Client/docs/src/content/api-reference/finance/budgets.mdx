@@ -1,0 +1,108 @@
+---
+title: Budgets
+description: Budget management endpoints
+category: api-reference
+order: 28
+---
+
+# Budgets API
+
+Create and manage spending budgets.
+
+**Base path:** `/api/budgets`
+
+<Callout type="info" title="Authentication Required">
+  All budget endpoints require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="List Budgets" description="Retrieve paginated budgets with optional filters" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/budgets"
+    description="Retrieve paginated budgets with optional filters."
+    params={[
+        { name: "userId", type: "string", required: false, description: "Filter by user ID" },
+        { name: "category", type: "string", required: false, description: "Budget category filter" },
+        { name: "isActive", type: "boolean", required: false, description: "Filter by active status" },
+        { name: "period", type: "string", required: false, description: "Budget period filter" },
+        { name: "skip", type: "number", required: false, description: "Pagination offset" },
+        { name: "limit", type: "number", required: false, description: "Page size" },
+    ]}
+    response={`{
+    "budgets": [
+        {
+            "id": 1,
+            "userId": 42,
+            "name": "Monthly Groceries",
+            "category": "groceries",
+            "limit": 500.00,
+            "spent": 320.00,
+            "remaining": 180.00,
+            "period": "monthly",
+            "startDate": "2024-01-01T00:00:00Z",
+            "endDate": "2024-01-31T23:59:59Z",
+            "isActive": true
+        }
+    ],
+    "total": 5,
+    "skip": 0,
+    "limit": 30
+}`}
+/>
+
+<Callout type="tip" title="Budget Tracking">
+  Each budget includes `spent` and `remaining` fields that are automatically calculated based on matching expenses within the budget period.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Get Budget by ID" description="Retrieve a specific budget by its unique identifier" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/budgets/{id}"
+    description="Retrieve a specific budget."
+    params={[
+        { name: "id", type: "number", required: true, description: "Budget ID" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get User Budgets" description="Get all budgets for a specific user" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/budgets/user/{userId}"
+    description="Get all budgets for a user."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "isActive", type: "boolean", required: false, description: "Filter active only" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Budget Periods" description="Available budget period options and their reset cycles" />
+
+<FeatureGrid columns={2}>
+  <FeatureCard title="Daily" description="Budget resets every day at midnight" icon="📅" />
+  <FeatureCard title="Weekly" description="Budget resets every week on the start day" icon="📆" />
+  <FeatureCard title="Monthly" description="Budget resets on the first of each month" icon="🗓️" />
+  <FeatureCard title="Yearly" description="Budget resets on January 1st each year" icon="🎯" />
+</FeatureGrid>
+
+<Callout type="warning" title="Period Selection">
+  Choose the budget period that matches your spending tracking needs. Once a budget period is set, the `startDate` and `endDate` are automatically calculated for the current cycle.
+</Callout>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Expenses" description="View expenses tracked against budgets" href="/api-reference/finance/expenses" icon="🧾" />
+  <LinkCard title="Summary" description="Financial summaries including budget status" href="/api-reference/finance/summary" icon="📋" />
+  <LinkCard title="Analytics" description="Spending analytics and trends" href="/api-reference/finance/analytics" icon="📈" />
+</LinkCardGrid>

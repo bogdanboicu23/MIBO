@@ -1,0 +1,115 @@
+---
+title: Actions
+description: Action execution endpoint for generative UI interactions
+category: api-reference
+order: 24
+---
+
+# Actions API
+
+The Action endpoint processes user interactions with generative UI components, executing the appropriate backend operations.
+
+**Base path:** `/api/v1/action`
+
+<Callout type="info" title="Authentication Required">
+  This endpoint requires a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Execute Action" description="Process a user interaction with a generative UI component" />
+
+<ApiEndpoint
+    method="POST"
+    path="/api/v1/action"
+    description="Execute an action triggered by user interaction with a generative UI component. The action is routed to the appropriate handler and may trigger events via NATS."
+    body={`{
+    "schema": "action.v1",
+    "conversationId": "conv-123-uuid",
+    "userId": "user-456-uuid",
+    "action": {
+        "type": "ui.setFilter",
+        "payload": {
+            "category": "groceries",
+            "dateRange": "this_month"
+        }
+    },
+    "uiContext": {
+        "uiInstanceId": "ui-789",
+        "focusedComponentId": "expense-chart"
+    }
+}`}
+    params={[
+        { name: "schema", type: "string", required: true, description: 'Always "action.v1"' },
+        { name: "conversationId", type: "string", required: true, description: "UUID of the conversation" },
+        { name: "userId", type: "string", required: true, description: "UUID of the authenticated user" },
+        { name: "action.type", type: "string", required: true, description: "Action type identifier (e.g., shop.buy, ui.setFilter)" },
+        { name: "action.payload", type: "object", required: true, description: "Action-specific data" },
+        { name: "uiContext", type: "object", required: false, description: "UI state context for the action" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Action Types" description="Available action types following the domain.verb naming convention" />
+
+Actions follow a `domain.verb` naming convention:
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="ui.setFilter" description="Update a UI component's filter state" icon="🔍" />
+  <FeatureCard title="shop.buy" description="Execute a purchase action" icon="🛒" />
+  <FeatureCard title="finance.transfer" description="Initiate a fund transfer between accounts" icon="💸" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Event Publishing" description="How actions trigger downstream events via NATS JetStream" />
+
+When an action is processed, the Action Router may publish events to NATS JetStream:
+
+```json
+{
+    "schema": "event.v1",
+    "subject": "finance.expense_created",
+    "eventId": "generated-uuid",
+    "correlationId": "corr-123",
+    "conversationId": "conv-456",
+    "userId": "user-789",
+    "occurredAtUtc": "2024-01-15T10:30:00Z",
+    "payload": { ... }
+}
+```
+
+<Callout type="tip" title="Real-Time Updates">
+  These events can trigger UI updates delivered via the [SignalR hub](/chat-system/realtime), enabling real-time feedback to the user after an action is executed.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Action Lifecycle" description="How an action flows through the system" />
+
+<Steps>
+<Step title="User interacts with UI">
+  The user clicks a button, applies a filter, or performs another interaction on a generative UI component.
+</Step>
+<Step title="Client sends action request">
+  The client constructs an action payload with the schema, action type, payload data, and UI context, then sends it to `POST /api/v1/action`.
+</Step>
+<Step title="Action Router processes">
+  The Action Router identifies the correct handler based on the action type and executes the backend operation.
+</Step>
+<Step title="Events published">
+  If the action produces side effects, events are published to NATS JetStream for downstream consumers.
+</Step>
+<Step title="UI updated in real-time">
+  SignalR delivers update events to the client, which re-renders the affected UI components.
+</Step>
+</Steps>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Chat API" description="Send messages to the AI assistant" href="/api-reference/conversation/chat" icon="💬" />
+  <LinkCard title="Streaming API" description="Stream responses via SSE" href="/api-reference/conversation/streaming" icon="📡" />
+  <LinkCard title="Real-Time Hub" description="SignalR real-time communication" href="/chat-system/realtime" icon="🔄" />
+</LinkCardGrid>

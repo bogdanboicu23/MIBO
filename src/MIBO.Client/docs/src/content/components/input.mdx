@@ -1,0 +1,63 @@
+---
+title: Input
+description: Form input component with label, hint, and error states
+category: components
+order: 43
+---
+
+# Input
+
+A form input component with built-in label, hint text, and error state support. The Input component handles common form patterns like validation feedback and helper text, so you can build forms quickly without extra wrapper components.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="Input with label, hint, and error states" />
+
+<ComponentPreview
+    code={`<div className="w-64 space-y-4">
+  <Input label="Email" placeholder="you@example.com" />
+  <Input label="Password" type="password" hint="Must be 8+ characters" />
+  <Input label="Username" error="Username is already taken" />
+</div>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "label", type: "string", description: "Label text displayed above the input" },
+            { name: "hint", type: "string", description: "Hint text shown below the input" },
+            { name: "error", type: "string", description: "Error message (replaces hint, changes border to red)" },
+            { name: "id", type: "string", description: "Input ID (auto-generated if omitted)" },
+            { name: "ref", type: "Ref<HTMLInputElement>", description: "Forwarded ref" },
+            { name: "...props", type: "InputHTMLAttributes", description: "All native input attributes" },
+        ]} />
+    }
+>
+    <div className="w-64 space-y-4">
+        <Input label="Email" placeholder="you@example.com" />
+        <Input label="Password" type="password" hint="Must be 8+ characters" />
+        <Input label="Username" error="Username is already taken" />
+    </div>
+</ComponentPreview>
+
+<Callout type="info" title="Auto-Generated IDs">
+  When no `id` prop is provided, the Input component automatically generates a unique ID to link the label and input elements for proper accessibility.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Usage" description="How to import and use the Input component in forms" />
+
+```tsx
+import { Input } from "@/components/ui";
+
+function LoginForm() {
+    return (
+        <form>
+            <Input label="Email" type="email" placeholder="you@example.com" />
+            <Input label="Password" type="password" error={errors.password} />
+        </form>
+    );
+}
+```
+
+<Callout type="warning" title="Error State">
+  When the `error` prop is provided, it replaces the `hint` text and changes the input border to red. Make sure your error messages are clear and actionable.
+</Callout>
