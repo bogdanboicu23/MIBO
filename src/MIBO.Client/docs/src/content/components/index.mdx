@@ -1,0 +1,77 @@
+---
+title: Component Library
+description: Overview of MIBO's reusable UI component library
+category: components
+order: 40
+---
+
+# Component Library
+
+MIBO includes a purpose-built component library using **React 19**, **TypeScript**, and **Tailwind CSS v4**. All components follow a consistent design language with the zinc color palette and support both light and dark modes.
+
+<SectionDivider />
+
+<SectionHeader title="Design Principles" description="The foundation behind every component in the library" />
+
+<FeatureGrid columns={3}>
+    <FeatureCard title="Zinc Palette" description="Neutral, professional appearance using a consistent zinc color system" icon="🎨" />
+    <FeatureCard title="Dark Mode First" description="Full dark/light mode support via Tailwind's custom dark variant" icon="🌙" />
+    <FeatureCard title="Composable" description="Components can be combined and extended to build complex UIs" icon="🧩" />
+    <FeatureCard title="Accessible" description="Proper ARIA attributes and keyboard support out of the box" icon="♿" />
+    <FeatureCard title="Lightweight" description="No heavy dependencies — just Tailwind utility classes" icon="🪶" />
+    <FeatureCard title="Type-Safe" description="Full TypeScript support with strict prop types" icon="🛡️" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Available Components" description="Browse all components in the MIBO UI library" />
+
+<FeatureGrid columns={3}>
+    <FeatureCard title="Button" description="Multi-variant button with solid, outline, secondary, and ghost styles" icon="🔘" />
+    <FeatureCard title="Card" description="Compound card component with header, content, and footer sections" icon="🃏" />
+    <FeatureCard title="Input" description="Form input with label, hint, and error states" icon="📝" />
+    <FeatureCard title="Select" description="Styled select dropdown with label and error support" icon="📋" />
+    <FeatureCard title="Textarea" description="Minimal textarea component for multi-line text input" icon="📄" />
+    <FeatureCard title="Badge" description="Inline badge with default, subtle, and outline variants" icon="🏷️" />
+    <FeatureCard title="Table" description="Complete table with styled head, body, rows, and cells" icon="📊" />
+    <FeatureCard title="Spinner" description="Animated loading spinner for async operations" icon="⏳" />
+    <FeatureCard title="IconButton" description="Square button optimized for icon content" icon="🔲" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Usage Pattern" description="How to import and use components in your project" />
+
+All components use the `cn()` utility for conditional class merging:
+
+```tsx
+import { Button } from "@/components/ui";
+
+function MyComponent() {
+    return (
+        <Button variant="solid" size="lg" onClick={handleClick}>
+            Get Started
+        </Button>
+    );
+}
+```
+
+<Callout type="tip" title="Import Path">
+  All components are exported from the barrel file at `@/components/ui`. You can import any component from this single path.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Browse Components" description="Jump to any component page for full documentation and examples" />
+
+<LinkCardGrid>
+    <LinkCard title="Button" description="Variants, sizes, and interactive playground" href="/components/button" icon="🔘" />
+    <LinkCard title="Card" description="Compound card with header, content, footer" href="/components/card" icon="🃏" />
+    <LinkCard title="Input" description="Labels, hints, and error states" href="/components/input" icon="📝" />
+    <LinkCard title="Select" description="Styled dropdown with validation" href="/components/select" icon="📋" />
+    <LinkCard title="Textarea" description="Multi-line text input" href="/components/textarea" icon="📄" />
+    <LinkCard title="Badge" description="Labels, statuses, and tags" href="/components/badge" icon="🏷️" />
+    <LinkCard title="Table" description="Data display with styled rows and cells" href="/components/table" icon="📊" />
+    <LinkCard title="Spinner" description="Animated loading indicator" href="/components/spinner" icon="⏳" />
+    <LinkCard title="IconButton" description="Icon-only action button" href="/components/icon-button" icon="🔲" />
+</LinkCardGrid>

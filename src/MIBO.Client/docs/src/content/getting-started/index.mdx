@@ -1,0 +1,140 @@
+---
+title: Platform Overview
+description: Introduction to the MIBO intelligent financial assistant platform
+category: getting-started
+order: 1
+---
+
+# Welcome to MIBO
+
+<MiboIntroPreview />
+
+MIBO is an intelligent financial assistant platform built with a **microservices architecture**. It combines a conversational AI chatbot with comprehensive financial management tools, providing users with a natural language interface to manage their finances.
+
+<SectionDivider />
+
+<SectionHeader title="What is MIBO?" description="My Intelligent Business Operator — a full-stack platform for smart financial management" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="AI-Powered Chat"
+    description="Chat with an AI assistant that understands financial context and responds intelligently"
+    icon="💬"
+  />
+  <FeatureCard
+    title="Financial Management"
+    description="Manage bank accounts, transactions, and budgets through natural conversation"
+    icon="💰"
+  />
+  <FeatureCard
+    title="Expense Tracking"
+    description="Track expenses and get detailed spending analytics at a glance"
+    icon="📊"
+  />
+  <FeatureCard
+    title="Real-Time Updates"
+    description="Receive instant updates via SignalR streaming as data changes"
+    icon="⚡"
+  />
+  <FeatureCard
+    title="Generative UI"
+    description="Interact with a modern interface featuring dynamically generated UI components"
+    icon="🎨"
+  />
+  <FeatureCard
+    title="Microservices Architecture"
+    description="Scalable, independently deployable services communicating via NATS"
+    icon="🏗️"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Architecture at a Glance" description="The platform consists of several microservices communicating via NATS message broker" />
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    title="Identity Service"
+    description="Handles authentication, user registration, and JWT token management"
+    icon="🔐"
+  />
+  <FeatureCard
+    title="Conversation Service"
+    description="Orchestrates chat sessions and integrates with AI models for intelligent responses"
+    icon="🤖"
+  />
+  <FeatureCard
+    title="Finance Service"
+    description="Manages accounts, transactions, budgets, and provides spending analytics"
+    icon="💳"
+  />
+  <FeatureCard
+    title="API Gateway"
+    description="YARP-based reverse proxy that handles request routing to backend services"
+    icon="🌐"
+  />
+  <FeatureCard
+    title="Client Application"
+    description="React 19 single-page application with a real-time chat interface"
+    icon="🖥️"
+  />
+  <FeatureCard
+    title="Shared Libraries"
+    description="Common contracts, models, and extensions shared across all services"
+    icon="📦"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Tech Stack" description="Built with modern, production-ready technologies across the full stack" />
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    title="Backend"
+    description=".NET 9 with ASP.NET Core, NATS messaging, PostgreSQL databases, Entity Framework Core, JWT authentication, and YARP reverse proxy"
+    icon="⚙️"
+  />
+  <FeatureCard
+    title="Frontend"
+    description="React 19 with TypeScript, Vite 7 build tool, Tailwind CSS v4, SignalR real-time communication, and React Router v7"
+    icon="💻"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Quick Links" description="Jump to the section you need" />
+
+<LinkCardGrid>
+  <LinkCard
+    title="Installation Guide"
+    description="Get the platform running locally with step-by-step instructions"
+    href="/getting-started/installation"
+    icon="📥"
+  />
+  <LinkCard
+    title="Project Structure"
+    description="Understand the codebase layout and file organization"
+    href="/getting-started/project-structure"
+    icon="📁"
+  />
+  <LinkCard
+    title="Architecture Deep Dive"
+    description="Detailed service architecture and communication patterns"
+    href="/architecture"
+    icon="🏛️"
+  />
+  <LinkCard
+    title="API Reference"
+    description="Complete REST API documentation for all services"
+    href="/api-reference"
+    icon="📖"
+  />
+  <LinkCard
+    title="UI Components"
+    description="Component library with live previews and usage examples"
+    href="/components"
+    icon="🧩"
+  />
+</LinkCardGrid>

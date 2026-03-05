@@ -1,0 +1,87 @@
+---
+title: Table
+description: Compound table component with styled head, body, rows, and cells
+category: components
+order: 47
+---
+
+# Table
+
+A compound table component providing consistent styling for data display. The Table and its sub-components handle header styling, row hover states, and cell alignment so your data tables look polished with minimal effort.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="A complete table with header, body, and badge status cells" />
+
+<ComponentPreview
+    code={`<Table>
+  <THead>
+    <TR>
+      <TH>Name</TH>
+      <TH>Amount</TH>
+      <TH>Status</TH>
+    </TR>
+  </THead>
+  <TBody>
+    <TR>
+      <TD>Groceries</TD>
+      <TD>$45.00</TD>
+      <TD><Badge variant="subtle">Completed</Badge></TD>
+    </TR>
+    <TR>
+      <TD>Subscription</TD>
+      <TD>$12.99</TD>
+      <TD><Badge variant="outline">Pending</Badge></TD>
+    </TR>
+  </TBody>
+</Table>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "Table", type: "Component", description: "Root table element" },
+            { name: "THead", type: "Component", description: "Table header section" },
+            { name: "TBody", type: "Component", description: "Table body section" },
+            { name: "TR", type: "Component", description: "Table row with hover state" },
+            { name: "TH", type: "Component", description: "Header cell (left-aligned, semibold)" },
+            { name: "TD", type: "Component", description: "Data cell" },
+        ]} />
+    }
+>
+    <Table>
+        <THead>
+            <TR>
+                <TH>Name</TH>
+                <TH>Amount</TH>
+                <TH>Status</TH>
+            </TR>
+        </THead>
+        <TBody>
+            <TR>
+                <TD>Groceries</TD>
+                <TD>$45.00</TD>
+                <TD><Badge variant="subtle">Completed</Badge></TD>
+            </TR>
+            <TR>
+                <TD>Subscription</TD>
+                <TD>$12.99</TD>
+                <TD><Badge variant="outline">Pending</Badge></TD>
+            </TR>
+        </TBody>
+    </Table>
+</ComponentPreview>
+
+<SectionDivider />
+
+<SectionHeader title="Sub-Components" description="The building blocks of the Table" />
+
+<FeatureGrid columns={3}>
+    <FeatureCard title="Table" description="Root table element with full-width styling" icon="📊" />
+    <FeatureCard title="THead" description="Table header section with bottom border" icon="🔝" />
+    <FeatureCard title="TBody" description="Table body container for data rows" icon="📋" />
+    <FeatureCard title="TR" description="Table row with hover highlight state" icon="➡️" />
+    <FeatureCard title="TH" description="Header cell with semibold, left-aligned text" icon="🏷️" />
+    <FeatureCard title="TD" description="Standard data cell with consistent padding" icon="📝" />
+</FeatureGrid>
+
+<Callout type="tip" title="Combine with Badge">
+  Table cells work great with Badge components for status columns. Use `Badge variant="subtle"` for completed states and `variant="outline"` for pending states.
+</Callout>

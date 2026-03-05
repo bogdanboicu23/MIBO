@@ -1,0 +1,46 @@
+---
+title: Spinner
+description: Animated loading spinner component
+category: components
+order: 48
+---
+
+# Spinner
+
+A simple animated loading spinner using CSS border animation. The Spinner component provides visual feedback during async operations like data fetching, form submission, or content loading. It is lightweight and customizable through standard Tailwind utility classes.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="Default spinner and custom sizes with color" />
+
+<ComponentPreview
+    code={`<div className="flex items-center gap-4">
+  <Spinner />
+  <Spinner className="h-6 w-6" />
+  <Spinner className="h-8 w-8 text-blue-500" />
+</div>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "className", type: "string", description: "Additional CSS classes (use to change size/color)" },
+            { name: "ref", type: "Ref<HTMLSpanElement>", description: "Forwarded ref" },
+        ]} />
+    }
+>
+    <div className="flex items-center gap-4">
+        <Spinner />
+        <Spinner className="h-6 w-6" />
+        <Spinner className="h-8 w-8 text-blue-500" />
+    </div>
+</ComponentPreview>
+
+<SectionDivider />
+
+<SectionHeader title="Customization" description="How to adjust size and color" />
+
+<Callout type="tip" title="Size and Color">
+  Customize the spinner size with `h-*` and `w-*` classes, and color with `text-*` classes. The default size is `h-4 w-4` with the current text color.
+</Callout>
+
+<Callout type="info" title="Accessibility">
+  The Spinner renders as a `span` element with a CSS border animation. For screen readers, pair it with visually-hidden loading text or an `aria-busy` attribute on the parent container.
+</Callout>

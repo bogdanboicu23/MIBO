@@ -1,0 +1,124 @@
+---
+title: Accounts
+description: Bank account management endpoints
+category: api-reference
+order: 25
+---
+
+# Accounts API
+
+Manage user bank accounts in the Finance Data Service.
+
+**Base path:** `/api/accounts`
+
+<Callout type="info" title="Authentication Required">
+  All account endpoints require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="List Accounts" description="Retrieve a paginated list of accounts with optional filtering and sorting" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/accounts"
+    description="Retrieve a paginated list of accounts with optional filtering and sorting."
+    params={[
+        { name: "userId", type: "string", required: false, description: "Filter by user ID" },
+        { name: "skip", type: "number", required: false, description: "Number of records to skip (default: 0)" },
+        { name: "limit", type: "number", required: false, description: "Maximum records to return (default: 30)" },
+        { name: "select", type: "string", required: false, description: "Comma-separated fields to include" },
+        { name: "sortBy", type: "string", required: false, description: "Field to sort by" },
+        { name: "order", type: "string", required: false, description: "Sort order: asc or desc" },
+    ]}
+    response={`{
+    "accounts": [
+        {
+            "id": 1,
+            "userId": 42,
+            "accountNumber": "ACC-001234",
+            "accountName": "Main Checking",
+            "type": "checking",
+            "balance": 12450.00,
+            "availableBalance": 12200.00,
+            "currency": "USD",
+            "bank": "Example Bank",
+            "iban": "US12345678901234",
+            "swift": "EXMPUS33",
+            "isActive": true,
+            "createdAt": "2024-01-01T00:00:00Z",
+            "updatedAt": "2024-01-15T10:30:00Z"
+        }
+    ],
+    "total": 3,
+    "skip": 0,
+    "limit": 30
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Account by ID" description="Retrieve a single account by its unique identifier" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/accounts/{id}"
+    description="Retrieve a single account by its ID."
+    params={[
+        { name: "id", type: "number", required: true, description: "Account ID" },
+    ]}
+    response={`{
+    "id": 1,
+    "accountNumber": "ACC-001234",
+    "accountName": "Main Checking",
+    "type": "checking",
+    "balance": 12450.00,
+    "currency": "USD"
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Accounts by User" description="Retrieve all accounts belonging to a specific user" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/accounts/user/{userId}"
+    description="Retrieve all accounts belonging to a specific user."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "skip", type: "number", required: false, description: "Pagination offset (default: 0)" },
+        { name: "limit", type: "number", required: false, description: "Page size (default: 30)" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Account by Number" description="Look up an account by its account number" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/accounts/number/{accountNumber}"
+    description="Look up an account by its account number."
+    params={[
+        { name: "accountNumber", type: "string", required: true, description: "The account number" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Account Types" description="Supported account types in the system" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Checking" description="Standard checking account for everyday transactions" icon="💰" />
+  <FeatureCard title="Savings" description="Savings account for accumulating funds over time" icon="🏦" />
+  <FeatureCard title="Credit" description="Credit account with a borrowing limit" icon="💳" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Transactions" description="Query transactions for these accounts" href="/api-reference/finance/transactions" icon="💳" />
+  <LinkCard title="Summary" description="Get balance summaries across accounts" href="/api-reference/finance/summary" icon="📋" />
+  <LinkCard title="API Overview" description="Back to API reference" href="/api-reference" icon="📖" />
+</LinkCardGrid>
