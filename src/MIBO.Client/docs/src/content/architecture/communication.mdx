@@ -1,0 +1,131 @@
+---
+title: Inter-Service Communication
+description: How MIBO services communicate via NATS and SignalR
+category: architecture
+order: 12
+---
+
+# Inter-Service Communication
+
+MIBO uses two primary communication patterns: **NATS** for backend service-to-service messaging and **SSE (Server-Sent Events)** for real-time client communication.
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    title="NATS Message Broker"
+    description="Lightweight, high-performance messaging between backend microservices"
+    icon="📨"
+  />
+  <FeatureCard
+    title="SSE Streaming"
+    description="Unidirectional real-time streaming of AI responses to the client"
+    icon="🌊"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="NATS Message Broker" description="Lightweight, high-performance inter-service messaging" />
+
+NATS provides the backbone for all backend service-to-service communication. It supports two primary patterns used throughout MIBO.
+
+### Request-Reply Pattern
+
+Services use NATS request-reply for synchronous-style operations where a response is expected:
+
+```csharp
+// Publishing a request
+var response = await natsConnection.RequestAsync<GetAccountRequest, AccountResponse>(
+    "finance.accounts.get",
+    new GetAccountRequest { AccountId = id }
+);
+```
+
+<Callout type="tip" title="When to Use Request-Reply">
+  Use request-reply when a service needs data from another service to continue processing -- for example, when the Conversation Service needs account details from the Finance Service to answer a user's question.
+</Callout>
+
+### Publish-Subscribe Pattern
+
+Events are broadcast to all interested subscribers. Publishers do not need to know who is listening:
+
+```csharp
+// Publishing an event
+await natsConnection.PublishAsync("finance.transaction.created", new TransactionCreatedEvent
+{
+    TransactionId = transaction.Id,
+    Amount = transaction.Amount,
+    UserId = transaction.UserId
+});
+```
+
+<Callout type="tip" title="When to Use Pub-Sub">
+  Use pub-sub for fire-and-forget notifications -- for example, broadcasting that a new transaction was created so other services can react independently.
+</Callout>
+
+### Message Subjects
+
+NATS subjects follow a hierarchical naming convention using dots as delimiters. Wildcards (`*`) allow subscribing to groups of related subjects.
+
+| Subject | Publisher | Subscriber | Description |
+|---------|-----------|------------|-------------|
+| `finance.accounts.*` | Finance | Conversation | Account operations |
+| `finance.transactions.*` | Finance | Conversation | Transaction events |
+| `identity.user.*` | Identity | All services | User lifecycle events |
+
+<SectionDivider />
+
+<SectionHeader title="Real-Time Streaming (SSE)" description="How AI responses are streamed to the client in real time" />
+
+The Conversation Service uses Server-Sent Events to stream AI responses to the client as tokens are generated, creating a typewriter effect.
+
+<Steps>
+  <Step title="Client sends a chat message">
+    The React client sends the user's message to the Conversation Service via an HTTP POST request through the API Gateway.
+  </Step>
+  <Step title="Server begins AI processing">
+    The Conversation Service forwards the message to the LLM provider and begins receiving response tokens.
+  </Step>
+  <Step title="Tokens stream back via SSE">
+    As each token is generated, it is pushed to the client over the open SSE connection -- no polling required.
+  </Step>
+  <Step title="Client renders in real time">
+    The React client reads the stream and renders tokens as they arrive, producing a smooth typewriter effect.
+  </Step>
+</Steps>
+
+### Client-Side SSE Consumption
+
+```typescript
+// Client-side SSE consumption
+const response = await fetch("/api/v1/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: userInput }),
+});
+
+const reader = response.body?.getReader();
+// Read streamed chunks...
+```
+
+<Callout type="info" title="Why SSE over WebSockets?">
+  SSE (Server-Sent Events) provides a simpler alternative to WebSockets for unidirectional streaming, which is ideal for AI response delivery. It works over standard HTTP, requires no special protocol upgrade, and is natively supported by all modern browsers.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Continue Reading" description="Explore related architecture topics" />
+
+<LinkCardGrid>
+  <LinkCard
+    title="Architecture Overview"
+    description="High-level system diagram and design principles"
+    href="/architecture"
+    icon="🏗️"
+  />
+  <LinkCard
+    title="Service Descriptions"
+    description="Detailed overview of each microservice and its responsibilities"
+    href="/architecture/services"
+    icon="🔧"
+  />
+</LinkCardGrid>

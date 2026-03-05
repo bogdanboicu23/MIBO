@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mibo-docs
+  namespace: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mibo-docs
+  template:
+    metadata:
+      labels:
+        app: mibo-docs
+    spec:
+      containers:
+        - name: mibo-docs
+          image: registry.digitalocean.com/mibo/docs:test-latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mibo-docs
+  namespace: test
+spec:
+  type: ClusterIP
+  selector:
+    app: mibo-docs
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

@@ -1,0 +1,126 @@
+---
+title: Deployment
+description: Deployment architecture and infrastructure overview for the MIBO platform
+category: deployment
+order: 60
+---
+
+# Deployment
+
+MIBO runs on **Kubernetes** (DigitalOcean) with Helm charts, Traefik ingress, automatic TLS, and a full observability stack. The platform supports both local development with Docker Compose and production-grade Kubernetes deployments.
+
+<SectionDivider />
+
+<SectionHeader title="Production Architecture" description="End-to-end traffic flow from the internet through Traefik ingress to backend microservices and data stores." />
+
+```
+                         Internet
+                            │
+                    ┌───────▼────────┐
+                    │  DigitalOcean  │
+                    │  Load Balancer │
+                    └───────┬────────┘
+                            │  :80 / :443
+                    ┌───────▼────────┐
+                    │    Traefik     │  Ingress Controller
+                    │   (v3.1)      │  Let's Encrypt TLS
+                    └───────┬────────┘
+                            │
+           ┌────────────────┼────────────────┐
+           │                │                │
+   mibo.monster    api.mibo.monster   grafana.mibo.monster
+           │                │                │
+  ┌────────▼──────┐ ┌──────▼───────┐ ┌──────▼──────┐
+  │  MIBO Client  │ │ API Gateway  │ │   Grafana   │
+  │  (2 replicas) │ │ (2 replicas) │ │             │
+  └───────────────┘ └──────┬───────┘ └─────────────┘
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+     ┌─────────────┐ ┌──────────┐ ┌──────────┐
+     │  Identity   │ │  Convo   │ │ Langchain│
+     │  Service    │ │ Service  │ │ Service  │
+     └──────┬──────┘ └────┬─────┘ └──────────┘
+            │             │
+     ┌──────▼──────┐ ┌────▼─────┐ ┌──────────┐
+     │ PostgreSQL  │ │  MongoDB │ │   NATS   │
+     │             │ │          │ │JetStream │
+     └─────────────┘ └──────────┘ └──────────┘
+                                  ┌──────────┐
+                                  │  Redis   │
+                                  └──────────┘
+```
+
+<SectionDivider />
+
+<SectionHeader title="Namespaces" description="Kubernetes namespaces used to isolate workloads by function." />
+
+<FeatureGrid columns={2}>
+  <FeatureCard title="mibo" description="Main application services (production)" icon="📦" />
+  <FeatureCard title="test" description="Staging and test environment" icon="🧪" />
+  <FeatureCard title="traefik" description="Ingress controller and TLS management" icon="🌐" />
+  <FeatureCard title="observability" description="Grafana, Prometheus, Loki, OpenTelemetry" icon="📊" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Production URLs" description="Public endpoints exposed through Traefik ingress with automatic TLS." />
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| Frontend | `https://mibo.monster` | React SPA client |
+| API Gateway | `https://api.mibo.monster` | Backend API entry point |
+| Grafana | `https://grafana.mibo.monster` | Monitoring dashboards |
+| Loki | `https://loki.mibo.monster` | Log aggregation |
+| Traefik | `https://traefik.mibo.monster` | Ingress dashboard (auth required) |
+
+<SectionDivider />
+
+<SectionHeader title="Container Registry" description="All service images are stored in the DigitalOcean Container Registry." />
+
+```
+registry.digitalocean.com/mibo/
+├── client:test-latest
+├── api-gateway:latest
+├── identity-service:test-latest
+├── conversation-service:test-latest
+├── langchain-service:test-latest
+└── ...
+```
+
+Images are pulled using the `do-registry-secret` Kubernetes secret.
+
+<SectionDivider />
+
+<SectionHeader title="Deployment Methods" description="Choose the right deployment method for your use case." />
+
+<LinkCardGrid>
+  <LinkCard title="Docker Compose" description="Quickest way to run everything locally" href="/deployment/docker" icon="🐳" />
+  <LinkCard title="Kubernetes" description="Full Helm-based deployment on DigitalOcean" href="/deployment/kubernetes" icon="☸️" />
+  <LinkCard title="Helm Charts" description="Parameterized charts for each microservice" href="/deployment/helm" icon="⎈" />
+  <LinkCard title="Infrastructure" description="NATS, Redis, PostgreSQL on Kubernetes" href="/deployment/infrastructure" icon="🗄️" />
+  <LinkCard title="Ingress & TLS" description="Traefik with Let's Encrypt auto-TLS" href="/deployment/ingress" icon="🔒" />
+  <LinkCard title="Observability" description="OpenTelemetry, Prometheus, Grafana, Loki" href="/deployment/observability" icon="📈" />
+</LinkCardGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Secrets Management" description="Sensitive configuration is stored in Kubernetes Secrets, never in code." />
+
+<FeatureGrid columns={2}>
+  <FeatureCard title="database-secret" description="PostgreSQL connection strings" icon="🗃️" />
+  <FeatureCard title="identity-secrets" description="JWT signing keys, Turnstile secret" icon="🔑" />
+  <FeatureCard title="conversation-service-secrets" description="LLM API keys, NATS config" icon="🤖" />
+  <FeatureCard title="langchain-service-secrets" description="AI provider credentials" icon="🧠" />
+  <FeatureCard title="do-registry-secret" description="DigitalOcean container registry auth" icon="🐋" />
+  <FeatureCard title="mibo-secrets" description="Shared platform secrets (SMTP, storage)" icon="📧" />
+</FeatureGrid>
+
+<Callout type="warning" title="Never Commit Secrets">
+  Never commit secrets to the repository. All sensitive values are injected via Kubernetes Secrets and referenced by name in deployment manifests.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="CI/CD" description="Automated deployment pipeline with scoped Kubernetes permissions." />
+
+A dedicated `ci-deployer` service account with scoped RBAC permissions handles automated deployments. It has access to manage deployments, services, ingresses, and Traefik resources in both the `mibo` and `traefik` namespaces.

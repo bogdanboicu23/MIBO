@@ -1,0 +1,54 @@
+---
+title: Badge
+description: Inline badge component with multiple visual variants
+category: components
+order: 46
+---
+
+# Badge
+
+An inline badge component for labels, statuses, and tags. Badges are small, non-interactive elements that convey quick visual information such as status indicators, category labels, or count tags throughout the MIBO interface.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="All three badge variants" />
+
+<ComponentPreview
+    code={`<div className="flex gap-2">
+  <Badge variant="default">Default</Badge>
+  <Badge variant="subtle">Subtle</Badge>
+  <Badge variant="outline">Outline</Badge>
+</div>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "variant", type: '"default" | "subtle" | "outline"', default: '"outline"', description: "Visual style of the badge" },
+            { name: "className", type: "string", description: "Additional CSS classes" },
+            { name: "ref", type: "Ref<HTMLSpanElement>", description: "Forwarded ref" },
+        ]} />
+    }
+>
+    <div className="flex gap-2">
+        <Badge variant="default">Default</Badge>
+        <Badge variant="subtle">Subtle</Badge>
+        <Badge variant="outline">Outline</Badge>
+    </div>
+</ComponentPreview>
+
+<Callout type="tip" title="Variant Selection">
+  Use `default` for high-emphasis labels, `subtle` for softer status indicators, and `outline` for minimal, bordered tags that blend with surrounding content.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Usage" description="How to import and use the Badge component" />
+
+```tsx
+import { Badge } from "@/components/ui";
+
+<Badge variant="subtle">Active</Badge>
+<Badge variant="outline">Pending</Badge>
+```
+
+<Callout type="info" title="Composability">
+  Badges work well inside Table cells, Card headers, and alongside text. They render as inline `span` elements, so they flow naturally within text content.
+</Callout>

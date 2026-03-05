@@ -1,0 +1,68 @@
+---
+title: Select
+description: Styled select dropdown with label, hint, and error support
+category: components
+order: 44
+---
+
+# Select
+
+A styled select dropdown component following the same pattern as Input. The Select component provides a consistent form experience with label, hint text, and error state support, making it easy to build validated forms with dropdowns.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="Select with options and error state" />
+
+<ComponentPreview
+    code={`<div className="w-64 space-y-4">
+  <Select label="Currency">
+    <option>USD</option>
+    <option>EUR</option>
+    <option>RON</option>
+  </Select>
+  <Select label="Account" error="Please select an account">
+    <option value="">Choose...</option>
+  </Select>
+</div>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "label", type: "string", description: "Label text above the select" },
+            { name: "hint", type: "string", description: "Hint text below the select" },
+            { name: "error", type: "string", description: "Error message text" },
+            { name: "children", type: "ReactNode", description: "Option elements" },
+            { name: "ref", type: "Ref<HTMLSelectElement>", description: "Forwarded ref" },
+        ]} />
+    }
+>
+    <div className="w-64 space-y-4">
+        <Select label="Currency">
+            <option>USD</option>
+            <option>EUR</option>
+            <option>RON</option>
+        </Select>
+        <Select label="Account" error="Please select an account">
+            <option value="">Choose...</option>
+        </Select>
+    </div>
+</ComponentPreview>
+
+<Callout type="tip" title="Consistent Form API">
+  The Select component shares the same `label`, `hint`, and `error` API as the Input component. This makes it easy to build forms with a mix of inputs and dropdowns that look and behave consistently.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Usage" description="How to import and use the Select component" />
+
+```tsx
+import { Select } from "@/components/ui";
+
+<Select label="Account Type" onChange={handleChange}>
+    <option value="checking">Checking</option>
+    <option value="savings">Savings</option>
+</Select>
+```
+
+<Callout type="info" title="Native Options">
+  The Select component uses native `<option>` elements as children. This ensures full browser compatibility and accessibility support without requiring a custom dropdown implementation.
+</Callout>

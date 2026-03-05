@@ -1,0 +1,126 @@
+---
+title: Docker
+description: Running MIBO with Docker Compose
+category: deployment
+order: 61
+---
+
+# Docker Deployment
+
+MIBO uses Docker Compose to orchestrate all services and infrastructure for local development.
+
+<SectionDivider />
+
+<SectionHeader title="Services in Docker Compose" description="The compose.yaml at the project root defines the following application services." />
+
+| Service | Image | Port | Description |
+|---------|-------|------|-------------|
+| `mibo.apigateway` | Custom build | 8080 | Ocelot API Gateway |
+| `mibo.identityservice` | Custom build | 8080 | Authentication service |
+| `mibo.conversationservice` | Custom build | 8080 | Chat orchestration |
+| `mibo.visualisationservice` | Custom build | 8080 | Data visualization |
+| `mibo.calendaragent` | Custom build | 8080 | Calendar functionality |
+
+<SectionDivider />
+
+<SectionHeader title="Running with Docker" description="Build, run, and manage all MIBO services with Docker Compose." />
+
+<Steps>
+  <Step title="Build and start all services">
+    ```bash
+    docker-compose up --build -d
+    ```
+  </Step>
+  <Step title="View logs">
+    ```bash
+    docker-compose logs -f
+    ```
+  </Step>
+  <Step title="Stop all services">
+    ```bash
+    docker-compose down
+    ```
+  </Step>
+  <Step title="Rebuild a specific service">
+    ```bash
+    docker-compose up --build -d mibo.conversationservice
+    ```
+  </Step>
+</Steps>
+
+<Callout type="tip" title="Rebuild After Changes">
+  Use `docker-compose up --build` after making changes to service code to ensure Docker rebuilds the images with your latest changes.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Infrastructure Services" description="Supporting containers required by the application services." />
+
+<FeatureGrid columns={2}>
+  <FeatureCard title="PostgreSQL" description="Relational database for Identity Service user data" icon="🐘" />
+  <FeatureCard title="NATS + JetStream" description="Async message broker between microservices" icon="📨" />
+  <FeatureCard title="Redis" description="Caching and session storage" icon="⚡" />
+  <FeatureCard title="MongoDB" description="Document store for Conversation Service" icon="🍃" />
+</FeatureGrid>
+
+```yaml
+# PostgreSQL
+postgres:
+  image: postgres:16
+  environment:
+    POSTGRES_PASSWORD: your_password
+  ports:
+    - "5432:5432"
+
+# NATS with JetStream
+nats:
+  image: nats:latest
+  command: ["--js"]
+  ports:
+    - "4222:4222"
+
+# Redis
+redis:
+  image: redis:7
+  ports:
+    - "6379:6379"
+
+# MongoDB
+mongodb:
+  image: mongo:7
+  ports:
+    - "27017:27017"
+```
+
+<SectionDivider />
+
+<SectionHeader title="Service Communication" description="In Docker, services reference each other by container name." />
+
+| From | To | URL Pattern |
+|------|-----|-------------|
+| Gateway | Identity | `identity-service:8080` |
+| Gateway | Conversation | `conversation-service:8080` |
+| Gateway | Visualisation | `visualisation-service:8080` |
+| Any Service | NATS | `nats:4222` |
+| Any Service | Redis | `redis:6379` |
+| Any Service | PostgreSQL | `postgres:5432` |
+
+<SectionDivider />
+
+<SectionHeader title="Health Checks" description="Verify service availability using the built-in health endpoints." />
+
+```bash
+# Conversation Service
+curl http://localhost:7251/api/conversations/health
+
+# Identity Service
+curl http://localhost:5001/api/auth/test
+```
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Kubernetes Deployment" description="Deploy to production with Kubernetes" href="/deployment/kubernetes" icon="☸️" />
+  <LinkCard title="Infrastructure" description="Stateful services on Kubernetes" href="/deployment/infrastructure" icon="🗄️" />
+  <LinkCard title="Deployment Overview" description="Back to deployment overview" href="/deployment" icon="🏠" />
+</LinkCardGrid>

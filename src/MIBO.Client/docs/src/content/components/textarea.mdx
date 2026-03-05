@@ -1,0 +1,42 @@
+---
+title: Textarea
+description: Minimal textarea component with transparent background
+category: components
+order: 45
+---
+
+# Textarea
+
+A minimal textarea component designed to be embedded within card or form containers. The Textarea features a transparent background and no resize handle by default, making it ideal for chat interfaces and form layouts where the parent container provides the visual boundary.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="Textarea inside a bordered container" />
+
+<ComponentPreview
+    code={`<div className="w-72 rounded-xl border border-zinc-200 dark:border-zinc-800">
+  <Textarea placeholder="Type your message..." rows={3} />
+</div>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "className", type: "string", description: "Additional CSS classes" },
+            { name: "...props", type: "TextareaHTMLAttributes", description: "All native textarea attributes" },
+        ]} />
+    }
+>
+    <div className="w-72 rounded-xl border border-zinc-200 dark:border-zinc-800">
+        <Textarea placeholder="Type your message..." rows={3} />
+    </div>
+</ComponentPreview>
+
+<SectionDivider />
+
+<SectionHeader title="Design Notes" description="Important behavior and styling details" />
+
+<Callout type="info" title="Transparent Background">
+  The Textarea has a transparent background and no resize by default. It's designed to be placed inside a styled container like a Card.
+</Callout>
+
+<Callout type="tip" title="Chat Interface Pattern">
+  For chat-style UIs, wrap the Textarea in a Card with a send button in the CardFooter. This creates a clean message input area that matches the MIBO design language.
+</Callout>

@@ -1,0 +1,172 @@
+---
+title: Analytics
+description: Spending analytics and insights endpoints
+category: api-reference
+order: 30
+---
+
+# Analytics API
+
+Advanced analytics for expense tracking, category breakdowns, and time-series data.
+
+**Base path:** `/api/analytics`
+
+<Callout type="info" title="Authentication Required">
+  All analytics endpoints require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Expense Analytics" description="Get expense analytics with optional date range and period grouping" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/analytics/expenses/user/{userId}"
+    description="Get expense analytics with optional date range and period grouping."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "startDate", type: "string", required: false, description: "Start date (ISO 8601)" },
+        { name: "endDate", type: "string", required: false, description: "End date (ISO 8601)" },
+        { name: "period", type: "string", required: false, description: "Grouping period (see period values below)" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Category Breakdown" description="Get expense breakdown by category with chart-ready data" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/analytics/expenses/user/{userId}/categories"
+    description="Get expense breakdown by category with chart-ready data."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "startDate", type: "string", required: false, description: "Start date" },
+        { name: "endDate", type: "string", required: false, description: "End date" },
+        { name: "period", type: "string", required: false, description: "Period filter" },
+    ]}
+    response={`{
+    "userId": 42,
+    "startDate": "2024-01-01",
+    "endDate": "2024-01-31",
+    "totalAmount": 3200.00,
+    "currency": "USD",
+    "categories": [
+        { "name": "Groceries", "amount": 850.00, "percentage": 26.5 },
+        { "name": "Dining", "amount": 450.00, "percentage": 14.1 },
+        { "name": "Transport", "amount": 200.00, "percentage": 6.25 }
+    ],
+    "chartData": {
+        "labels": ["Groceries", "Dining", "Transport"],
+        "values": [850, 450, 200]
+    }
+}`}
+/>
+
+<Callout type="tip" title="Chart-Ready Data">
+  The `chartData` field in category and time-series responses provides pre-formatted labels and values that can be directly fed into charting libraries.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Transaction Analytics" description="Get transaction analytics including volume and value trends" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/analytics/transactions/user/{userId}"
+    description="Get transaction analytics including volume and value trends."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "startDate", type: "string", required: false, description: "Start date" },
+        { name: "endDate", type: "string", required: false, description: "End date" },
+        { name: "period", type: "string", required: false, description: "Grouping period" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Statistics" description="Get statistical summaries of expenses including averages and comparisons" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/analytics/expenses/user/{userId}/statistics"
+    description="Get statistical summaries of expenses (averages, totals, comparisons)."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "period", type: "string", required: false, description: "Time period for statistics" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Time Series" description="Get expense data as a time series for line and bar charts" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/analytics/expenses/user/{userId}/timeseries"
+    description="Get expense data as a time series, suitable for line/bar charts."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "startDate", type: "string", required: false, description: "Start date" },
+        { name: "endDate", type: "string", required: false, description: "End date" },
+        { name: "period", type: "string", required: false, description: "Data point grouping period" },
+    ]}
+    response={`{
+    "userId": 42,
+    "startDate": "2024-01-01",
+    "endDate": "2024-01-31",
+    "timeSeries": [
+        { "date": "2024-01-01", "amount": 120.00 },
+        { "date": "2024-01-02", "amount": 45.00 },
+        { "date": "2024-01-03", "amount": 200.00 }
+    ],
+    "chartData": {
+        "labels": ["Jan 1", "Jan 2", "Jan 3"],
+        "values": [120, 45, 200]
+    }
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Available Periods" description="List all period options for analytics queries" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/analytics/periods"
+    description="List all available period options for analytics queries."
+    response={`[
+    "today",
+    "yesterday",
+    "thisweek",
+    "lastweek",
+    "thismonth",
+    "lastmonth",
+    "last30days",
+    "last90days",
+    "thisyear",
+    "lastyear"
+]`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Analytics Endpoints Overview" description="Quick reference for all analytics capabilities" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Expense Analytics" description="Aggregated expense data with flexible date range and period grouping" icon="📊" />
+  <FeatureCard title="Category Breakdown" description="Expense distribution across categories with percentages and chart data" icon="🥧" />
+  <FeatureCard title="Transaction Analytics" description="Volume and value trends for all transaction types" icon="📈" />
+  <FeatureCard title="Statistics" description="Statistical summaries including averages, totals, and period comparisons" icon="🔢" />
+  <FeatureCard title="Time Series" description="Daily, weekly, or monthly expense data points for charting" icon="📉" />
+  <FeatureCard title="Period Options" description="10 predefined time periods from today to last year" icon="🕐" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Expenses" description="Individual expense records" href="/api-reference/finance/expenses" icon="🧾" />
+  <LinkCard title="Transactions" description="Transaction queries and search" href="/api-reference/finance/transactions" icon="💳" />
+  <LinkCard title="Summary" description="High-level financial summaries" href="/api-reference/finance/summary" icon="📋" />
+  <LinkCard title="Budgets" description="Budget management" href="/api-reference/finance/budgets" icon="📊" />
+</LinkCardGrid>

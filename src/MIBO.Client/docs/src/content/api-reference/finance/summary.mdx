@@ -1,0 +1,115 @@
+---
+title: Summary
+description: Financial summary endpoints for user overviews
+category: api-reference
+order: 29
+---
+
+# Summary API
+
+Get high-level financial summaries for users.
+
+**Base path:** `/api/summary`
+
+<Callout type="info" title="Authentication Required">
+  All summary endpoints require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Full Summary" description="Get a comprehensive financial overview for a user" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/summary/user/{userId}"
+    description="Get a comprehensive financial summary for a user including balance, expenses, and account info."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+    ]}
+    response={`{
+    "userId": 42,
+    "totalBalance": 24500.00,
+    "totalExpenses": 3200.00,
+    "currency": "USD",
+    "accounts": [
+        { "id": 1, "name": "Main Checking", "balance": 12450.00 },
+        { "id": 2, "name": "Savings", "balance": 12050.00 }
+    ],
+    "recentTransactions": 45,
+    "activeBudgets": 3
+}`}
+/>
+
+<Callout type="tip" title="Dashboard Data">
+  The full summary endpoint is ideal for populating dashboard views, as it aggregates data from accounts, transactions, expenses, and budgets in a single request.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Balance Summary" description="Get balance information across all user accounts" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/summary/user/{userId}/balance"
+    description="Get balance information across all user accounts."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+    ]}
+    response={`{
+    "userId": 42,
+    "totalBalance": 24500.00,
+    "currency": "USD",
+    "accounts": [
+        { "id": 1, "name": "Main Checking", "balance": 12450.00 },
+        { "id": 2, "name": "Savings", "balance": 12050.00 }
+    ]
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Expense Summary" description="Get expense summary with monthly comparisons and category breakdown" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/summary/user/{userId}/expenses"
+    description="Get expense summary including monthly comparisons and category breakdown."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+    ]}
+    response={`{
+    "userId": 42,
+    "totalExpenses": 15200.00,
+    "thisMonth": 3200.00,
+    "lastMonth": 2800.00,
+    "average": 3000.00,
+    "byCategory": {
+        "groceries": 850.00,
+        "dining": 450.00,
+        "transport": 200.00,
+        "entertainment": 150.00,
+        "utilities": 300.00,
+        "subscriptions": 100.00,
+        "other": 1150.00
+    }
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Summary Endpoints at a Glance" description="Quick overview of what each summary endpoint provides" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Full Summary" description="Complete financial overview with accounts, expenses, transactions, and budgets" icon="📋" />
+  <FeatureCard title="Balance Summary" description="Total balance and per-account balance breakdown" icon="💰" />
+  <FeatureCard title="Expense Summary" description="Monthly comparisons, averages, and category breakdown" icon="🧾" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Accounts" description="Detailed account management" href="/api-reference/finance/accounts" icon="🏦" />
+  <LinkCard title="Expenses" description="Individual expense records" href="/api-reference/finance/expenses" icon="🧾" />
+  <LinkCard title="Analytics" description="Advanced spending analytics" href="/api-reference/finance/analytics" icon="📈" />
+  <LinkCard title="Budgets" description="Budget tracking and management" href="/api-reference/finance/budgets" icon="📊" />
+</LinkCardGrid>

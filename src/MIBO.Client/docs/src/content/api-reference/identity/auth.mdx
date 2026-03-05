@@ -1,0 +1,148 @@
+---
+title: Authentication
+description: Identity Service authentication endpoints - login, register, tokens
+category: api-reference
+order: 21
+---
+
+# Authentication API
+
+The Identity Service handles user authentication, registration, and JWT token management.
+
+**Base path:** `/api/auth`
+
+<Callout type="info" title="Authentication Required">
+  Endpoints marked with a lock icon require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Login" description="Authenticate a user and receive a JWT access token" />
+
+<ApiEndpoint
+    method="POST"
+    path="/api/auth/login"
+    description="Authenticate a user and receive a JWT access token. A refresh token is set as an HttpOnly cookie."
+    body={`{
+    "email": "user@example.com",
+    "password": "password123",
+    "turnstileToken": "0.abc..."
+}`}
+    response={`{
+    "jwtToken": "eyJhbGciOiJIUzI1NiIs..."
+}`}
+/>
+
+<Callout type="info" title="Cloudflare Turnstile">
+  The `turnstileToken` field is for Cloudflare Turnstile CAPTCHA verification. It's optional in development but required in production.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Register" description="Create a new user account" />
+
+<ApiEndpoint
+    method="POST"
+    path="/api/auth/register"
+    description="Create a new user account."
+    body={`{
+    "email": "user@example.com",
+    "password": "password123",
+    "username": "johndoe",
+    "firstName": "John",
+    "lastName": "Doe"
+}`}
+    response={`{
+    "message": "User registered successfully"
+}`}
+/>
+
+<Callout type="tip" title="Password Requirements">
+  Passwords must meet the configured complexity requirements. Use a strong password with a mix of uppercase, lowercase, numbers, and special characters.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Refresh Token" description="Exchange an expired JWT for a new one" />
+
+<ApiEndpoint
+    method="POST"
+    path="/api/auth/refresh-token"
+    description="Exchange an expired JWT for a new one using the refresh token cookie."
+    body={`{
+    "jwtToken": "eyJhbGciOiJIUzI1NiIs..."
+}`}
+    response={`{
+    "jwtToken": "eyJhbGciOiJIUzI1NiIs..."
+}`}
+/>
+
+<Callout type="warning" title="Refresh Token Cookie">
+  The refresh token is automatically sent as an HttpOnly cookie. Make sure your HTTP client includes cookies in cross-origin requests.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Get Current User" description="Retrieve the authenticated user's profile" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/auth/me"
+    description="Get the authenticated user's profile information."
+    auth={true}
+    response={`{
+    "user": {
+        "id": "uuid-here",
+        "email": "user@example.com",
+        "username": "johndoe",
+        "firstName": "John",
+        "lastName": "Doe"
+    },
+    "roles": ["User"]
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Health Check" description="Verify the Identity Service is running" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/auth/test"
+    description="Simple health check endpoint (no authentication required)."
+    response={`{
+    "message": "Identity Service is running",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "version": "1.0.0"
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Authentication Flow" description="How the complete login and token lifecycle works" />
+
+<Steps>
+<Step title="User logs in">
+  Client sends email, password, and CAPTCHA token to `POST /api/auth/login`.
+</Step>
+<Step title="Server validates credentials">
+  Identity Service verifies the password hash and Turnstile token.
+</Step>
+<Step title="Tokens issued">
+  JWT access token returned in response body. Refresh token set as HttpOnly cookie.
+</Step>
+<Step title="Client stores token">
+  The JWT is stored in memory and sent with every API request via the `Authorization: Bearer` header.
+</Step>
+<Step title="Token refresh">
+  When the JWT expires, the client calls `/api/auth/refresh-token` with the expired JWT. The refresh token cookie is automatically included.
+</Step>
+</Steps>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Chat API" description="Send messages to the AI assistant" href="/api-reference/conversation/chat" icon="💬" />
+  <LinkCard title="Streaming API" description="Real-time SSE responses" href="/api-reference/conversation/streaming" icon="📡" />
+  <LinkCard title="API Overview" description="Back to API reference" href="/api-reference" icon="📖" />
+</LinkCardGrid>

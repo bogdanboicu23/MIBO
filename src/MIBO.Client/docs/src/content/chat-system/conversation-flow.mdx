@@ -1,0 +1,140 @@
+---
+title: Conversation Flow
+description: Detailed flow of a conversation from user input to AI response
+category: chat-system
+order: 51
+---
+
+# Conversation Flow
+
+This page describes the complete lifecycle of a chat message in the MIBO system.
+
+<SectionDivider />
+
+<SectionHeader title="Flow Diagram" description="Visual overview of the message processing pipeline" />
+
+```
+User Input
+    │
+    ▼
+┌──────────────────┐
+│  ChatController   │  POST /api/v1/chat
+│  (HTTP endpoint)  │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Chat Orchestrator │  Coordinates the full pipeline
+└────────┬─────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+┌────────┐ ┌──────────┐
+│Planner │ │Tool      │
+│(LLM)   │→│Registry  │
+└────┬───┘ └──────────┘
+     │
+     ▼
+┌──────────────┐
+│Tool Executor │  Calls Finance/Identity APIs
+└────────┬─────┘
+         │
+    ┌────┴─────┐
+    ▼          ▼
+┌────────┐ ┌───────────┐
+│  Text  │ │    UI     │
+│Composer│ │ Composer  │
+└────┬───┘ └─────┬─────┘
+     │           │
+     └─────┬─────┘
+           ▼
+    Response (text + UI)
+           │
+           ▼
+    React Client (renders)
+```
+
+<SectionDivider />
+
+<SectionHeader title="Step-by-Step" description="Each phase of the conversation pipeline explained in detail" />
+
+<Steps>
+  <Step title="Message Receipt">
+    The client sends a `ChatRequest` with the conversation ID, user ID, and prompt:
+
+    ```json
+    {
+        "conversationId": "conv-123",
+        "userId": "user-456",
+        "prompt": "Show me my expenses this month"
+    }
+    ```
+  </Step>
+  <Step title="Planning Phase">
+    The Chat Orchestrator delegates to the Planner, which uses an LLM to:
+    - Analyze the user's intent
+    - Select appropriate tools from the Tool Registry
+    - Determine the execution order
+  </Step>
+  <Step title="Tool Execution">
+    Selected tools are executed against backend services. Each tool is defined with:
+
+    ```csharp
+    ToolDefinition {
+        name: "get_expenses",
+        description: "Get user expenses with filters",
+        method: "GET",
+        urlTemplate: "/api/expenses/user/{userId}",
+        requiredArgs: ["userId"]
+    }
+    ```
+  </Step>
+  <Step title="Response Composition">
+    Two composers work in parallel:
+
+    <FeatureGrid columns={2}>
+      <FeatureCard title="Text Composer" description="Generates a natural language summary of the results" icon="✍️" />
+      <FeatureCard title="UI Composer" description="Creates dynamic UI component specifications for rich rendering" icon="🎨" />
+    </FeatureGrid>
+  </Step>
+  <Step title="Delivery">
+    The response is delivered back through the ChatController with both text and UI data:
+
+    ```json
+    {
+        "text": "Here are your expenses for this month...",
+        "uiV1": { /* generative UI specification */ },
+        "correlationId": "corr-789"
+    }
+    ```
+  </Step>
+</Steps>
+
+<SectionDivider />
+
+<SectionHeader title="Action Handling" description="How user interactions with generative UI components are processed" />
+
+When users interact with generative UI components (clicking buttons, applying filters), actions are sent via the ActionController:
+
+```json
+{
+    "schema": "action.v1",
+    "conversationId": "conv-123",
+    "userId": "user-456",
+    "action": {
+        "type": "ui.setFilter",
+        "payload": { "category": "groceries" }
+    }
+}
+```
+
+<Callout type="info" title="Event-Driven Processing">
+  The Action Router processes these actions and publishes events via NATS JetStream, enabling decoupled handling across services.
+</Callout>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Chat System Overview" description="High-level overview of the chat architecture" href="/chat-system" icon="💬" />
+  <LinkCard title="Real-Time Features" description="SSE streaming and SignalR for live updates" href="/chat-system/realtime" icon="⚡" />
+</LinkCardGrid>
