@@ -13,7 +13,7 @@ import { Outlet } from "react-router-dom";
 
 export const Signup = lazy(() => import('@/pages/Signup.tsx'));
 export const Login = lazy(() => import('@/pages/Login.tsx'));
-
+export const LandingPage = lazy(() => import('@/pages/LandingPage.tsx'));
 const renderFallback = () => (
     <LoadingOverlay show fullscreen />
 );
@@ -28,7 +28,8 @@ export const routesSection: RouteObject[] = [
             </AuthGuard>
         ),
         children: [
-            { index: true, element: <ChatPage /> },
+            { index: true, element: <LandingPage/> },
+            { path: "/chat", element: <ChatPage/> }
         ],
     },
     {
