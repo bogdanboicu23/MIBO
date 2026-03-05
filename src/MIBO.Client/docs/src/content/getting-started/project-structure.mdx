@@ -1,0 +1,164 @@
+---
+title: Project Structure
+description: Overview of the MIBO repository layout and file organization
+category: getting-started
+order: 3
+---
+
+# Project Structure
+
+The MIBO repository is organized as a monorepo with all microservices and the frontend client in a single repository.
+
+<SectionDivider />
+
+<SectionHeader title="Root Layout" description="Top-level directory structure of the MIBO monorepo" />
+
+```
+MIBO/
+├── src/
+│   ├── MIBO.Gateway/              # YARP API Gateway
+│   ├── MIBO.IdentityService/      # Authentication & user management
+│   ├── MIBO.ConversationService/  # Chat orchestration & AI
+│   ├── MIBO.FinanceService/       # Financial data management
+│   ├── MIBO.Shared/               # Shared libraries & contracts
+│   └── MIBO.Client/
+│       ├── client/                # React SPA (main app)
+│       └── docs/                  # Documentation site (you are here)
+├── docker-compose.yml
+└── MIBO.sln
+```
+
+<SectionDivider />
+
+<SectionHeader title="Microservices" description="Each service is independently deployable and follows a consistent internal structure" />
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    title="MIBO.Gateway"
+    description="YARP-based reverse proxy that routes incoming requests to the appropriate backend microservice"
+    icon="🌐"
+  />
+  <FeatureCard
+    title="MIBO.IdentityService"
+    description="Manages user authentication, registration, and JWT token issuance with refresh token support"
+    icon="🔐"
+  />
+  <FeatureCard
+    title="MIBO.ConversationService"
+    description="Orchestrates chat sessions, manages conversation history, and integrates with AI models"
+    icon="🤖"
+  />
+  <FeatureCard
+    title="MIBO.FinanceService"
+    description="Handles bank accounts, transactions, budgets, and spending analytics"
+    icon="💳"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Service Internal Structure" description="Every .NET microservice follows this consistent folder layout" />
+
+```
+MIBO.{ServiceName}/
+├── Controllers/       # API endpoints
+├── Services/          # Business logic
+├── Models/            # Domain models & DTOs
+├── Data/              # EF Core DbContext & migrations
+├── Messaging/         # NATS publishers/subscribers
+├── Program.cs         # Service bootstrap
+└── appsettings.json   # Configuration
+```
+
+<Callout type="info" title="Consistent Conventions">
+  All services follow the same folder structure. This makes it easy to navigate between services and understand where to find specific functionality regardless of which service you are working in.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Client Application Structure" description="The React SPA that powers the MIBO user interface" />
+
+```
+client/
+├── src/
+│   ├── components/
+│   │   ├── ui/        # Reusable UI components (Button, Card, Input, etc.)
+│   │   ├── chat/      # Chat-specific components
+│   │   └── finance/   # Finance-specific components
+│   ├── hooks/         # Custom React hooks
+│   ├── utils/         # Utility functions
+│   ├── theme/         # Theme tokens & configuration
+│   ├── services/      # API client services
+│   └── pages/         # Route pages
+├── public/
+└── package.json
+```
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Components"
+    description="Organized into ui, chat, and finance directories for clear separation of concerns"
+    icon="🧩"
+  />
+  <FeatureCard
+    title="Hooks & Utils"
+    description="Custom React hooks and shared utility functions used across the application"
+    icon="🔧"
+  />
+  <FeatureCard
+    title="Services"
+    description="API client modules that handle communication with backend microservices"
+    icon="🔗"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Shared Libraries" description="Common code shared across all backend microservices" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Contracts"
+    description="Message contracts for NATS communication between services"
+    icon="📄"
+  />
+  <FeatureCard
+    title="Models"
+    description="Shared DTOs and data models used consistently across services"
+    icon="🗄️"
+  />
+  <FeatureCard
+    title="Extensions"
+    description="Common service configuration extensions for streamlined bootstrapping"
+    icon="⚙️"
+  />
+</FeatureGrid>
+
+<Callout type="info" title="Shared References">
+  All services reference `MIBO.Shared` to ensure consistent message contracts and data models across the platform. Changes to shared contracts are reflected everywhere automatically.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Continue Exploring" description="Dive deeper into specific areas of the platform" />
+
+<LinkCardGrid>
+  <LinkCard
+    title="Architecture Deep Dive"
+    description="Understand how services communicate and the overall system design"
+    href="/architecture"
+    icon="🏛️"
+  />
+  <LinkCard
+    title="API Reference"
+    description="Complete REST API documentation for all endpoints"
+    href="/api-reference"
+    icon="📖"
+  />
+  <LinkCard
+    title="UI Components"
+    description="Browse the component library with live previews"
+    href="/components"
+    icon="🧩"
+  />
+</LinkCardGrid>

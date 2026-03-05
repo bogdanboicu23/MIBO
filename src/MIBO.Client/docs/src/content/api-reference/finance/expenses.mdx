@@ -1,0 +1,139 @@
+---
+title: Expenses
+description: Expense tracking and categorization endpoints
+category: api-reference
+order: 27
+---
+
+# Expenses API
+
+Track and categorize user expenses.
+
+**Base path:** `/api/expenses`
+
+<Callout type="info" title="Authentication Required">
+  All expense endpoints require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="List Expenses" description="Retrieve paginated expenses with optional category and date filters" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/expenses"
+    description="Retrieve paginated expenses with optional category and date filters."
+    params={[
+        { name: "userId", type: "string", required: false, description: "Filter by user ID" },
+        { name: "category", type: "string", required: false, description: "Category filter" },
+        { name: "startDate", type: "string", required: false, description: "Start date (ISO 8601)" },
+        { name: "endDate", type: "string", required: false, description: "End date (ISO 8601)" },
+        { name: "skip", type: "number", required: false, description: "Pagination offset (default: 0)" },
+        { name: "limit", type: "number", required: false, description: "Page size (default: 30)" },
+        { name: "sortBy", type: "string", required: false, description: "Sort field" },
+        { name: "order", type: "string", required: false, description: "Sort direction" },
+    ]}
+    response={`{
+    "expenses": [
+        {
+            "id": 1,
+            "userId": 42,
+            "transactionId": 101,
+            "category": "groceries",
+            "amount": 45.00,
+            "currency": "USD",
+            "description": "Weekly groceries",
+            "date": "2024-01-15T10:30:00Z",
+            "vendor": "Fresh Market",
+            "isRecurring": false,
+            "tags": ["food", "weekly"],
+            "notes": ""
+        }
+    ],
+    "total": 85,
+    "skip": 0,
+    "limit": 30
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Expense by ID" description="Retrieve a single expense by its unique identifier" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/expenses/{id}"
+    description="Retrieve a single expense by ID."
+    params={[
+        { name: "id", type: "number", required: true, description: "Expense ID" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get User Expenses" description="Get all expenses for a specific user with optional filters" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/expenses/user/{userId}"
+    description="Get all expenses for a specific user."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "category", type: "string", required: false, description: "Category filter" },
+        { name: "startDate", type: "string", required: false, description: "Start date" },
+        { name: "endDate", type: "string", required: false, description: "End date" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Categories" description="List all available expense categories" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/expenses/categories"
+    description="List all available expense categories."
+    response={`[
+    "groceries",
+    "dining",
+    "transport",
+    "shopping",
+    "entertainment",
+    "utilities",
+    "rent",
+    "healthcare",
+    "education",
+    "subscriptions",
+    "other"
+]`}
+/>
+
+<Callout type="tip" title="Category Filtering">
+  Use the categories returned by this endpoint as valid values for the `category` filter parameter on other expense endpoints.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Expense Categories" description="Overview of all supported expense categories" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Groceries" description="Food and household supplies" icon="🛒" />
+  <FeatureCard title="Dining" description="Restaurants, cafes, and takeout" icon="🍽️" />
+  <FeatureCard title="Transport" description="Fuel, public transit, and rideshares" icon="🚗" />
+  <FeatureCard title="Shopping" description="Clothing, electronics, and retail" icon="🛍️" />
+  <FeatureCard title="Entertainment" description="Movies, games, and events" icon="🎬" />
+  <FeatureCard title="Utilities" description="Electricity, water, internet, and phone" icon="⚡" />
+  <FeatureCard title="Rent" description="Housing and rent payments" icon="🏠" />
+  <FeatureCard title="Healthcare" description="Medical expenses and pharmacy" icon="🏥" />
+  <FeatureCard title="Education" description="Courses, books, and tuition" icon="📚" />
+  <FeatureCard title="Subscriptions" description="Recurring digital and service subscriptions" icon="🔁" />
+  <FeatureCard title="Other" description="Uncategorized expenses" icon="📦" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Budgets" description="Set spending limits per category" href="/api-reference/finance/budgets" icon="📊" />
+  <LinkCard title="Analytics" description="Expense analytics and breakdowns" href="/api-reference/finance/analytics" icon="📈" />
+  <LinkCard title="Transactions" description="Underlying transaction data" href="/api-reference/finance/transactions" icon="💳" />
+</LinkCardGrid>
