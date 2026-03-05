@@ -275,6 +275,7 @@ function ChatDemo({ start }: { start: boolean }) {
 export default function LandingPage() {
     const { theme, setTheme } = useThemeContext();
     const router = useRouter();
+    const goToDocs = () => router.push("docs.mibo.monster")
     const onEnterApp = () => router.push("/chat");
     const typed = useTyping(["ui interactiv", "formulare dinamice", "grafice live"]);
 
@@ -728,7 +729,9 @@ export default function LandingPage() {
                             >
                                 Deschide MIBO →
                             </button>
-                            <button className="rounded-xl border border-zinc-200 px-7 py-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900 transition-colors">
+                            <button 
+                                onClick={goToDocs}
+                                className="rounded-xl border border-zinc-200 px-7 py-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900 transition-colors" >
                                 Documentație
                             </button>
                         </div>
