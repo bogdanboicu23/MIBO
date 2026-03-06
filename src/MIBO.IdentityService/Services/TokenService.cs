@@ -3,6 +3,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using MIBO.IdentityService.Data;
+using MIBO.IdentityService.Models;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace MIBO.IdentityService.Services;
@@ -16,19 +18,19 @@ public interface ITokenService
 
 public class TokenService : ITokenService
 {
-    private readonly IConfiguration _configuration;
+    private readonly JwtSettingsOptions _jwtSettings;
     private readonly ILogger<TokenService> _logger;
 
-    public TokenService(IConfiguration configuration, ILogger<TokenService> logger)
+    public TokenService(IOptions<JwtSettingsOptions> jwtSettings, ILogger<TokenService> logger)
     {
-        _configuration = configuration;
+        _jwtSettings = jwtSettings.Value;
         _logger = logger;
     }
 
     public string GenerateAccessToken(ApplicationUser user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured")));
+            _jwtSettings.AccessTokenSecret));
 
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -50,10 +52,10 @@ public class TokenService : ITokenService
             claims.Add(new Claim("last_name", user.LastName));
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
             signingCredentials: credentials
         );
 
@@ -74,16 +76,16 @@ public class TokenService : ITokenService
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(
-                _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"));
+                _jwtSettings.AccessTokenSecret);
 
             var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
                 ValidateIssuer = true,
-                ValidIssuer = _configuration["Jwt:Issuer"],
+                ValidIssuer = _jwtSettings.Issuer,
                 ValidateAudience = true,
-                ValidAudience = _configuration["Jwt:Audience"],
+                ValidAudience = _jwtSettings.Audience,
                 ValidateLifetime = false, // We check expiry separately for refresh
                 ClockSkew = TimeSpan.Zero
             };

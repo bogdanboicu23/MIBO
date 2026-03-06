@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MIBO.IdentityService.Data;
+using MIBO.IdentityService.Models;
 using MIBO.IdentityService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -69,9 +70,19 @@ if (builder.Environment.IsDevelopment())
 }
 
 // Add JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MIBO.ApiGateway";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MIBO.Services";
+builder.Services
+    .AddOptions<JwtSettingsOptions>()
+    .Bind(builder.Configuration.GetSection(JwtSettingsOptions.SectionName))
+    .Validate(o => !string.IsNullOrWhiteSpace(o.AccessTokenSecret), "JwtSettings:AccessTokenSecret is required.")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.RefreshTokenSecret), "JwtSettings:RefreshTokenSecret is required.")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.Issuer), "JwtSettings:Issuer is required.")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.Audience), "JwtSettings:Audience is required.")
+    .Validate(o => o.AccessTokenExpirationMinutes > 0, "JwtSettings:AccessTokenExpirationMinutes must be > 0.")
+    .Validate(o => o.RefreshTokenExpirationDays > 0, "JwtSettings:RefreshTokenExpirationDays must be > 0.")
+    .ValidateOnStart();
+
+var jwtSettings = builder.Configuration.GetSection(JwtSettingsOptions.SectionName).Get<JwtSettingsOptions>()
+                  ?? throw new InvalidOperationException("JwtSettings section is missing.");
 
 builder.Services.AddAuthentication(options =>
     {
@@ -86,9 +97,9 @@ builder.Services.AddAuthentication(options =>
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.AccessTokenSecret)),
             ClockSkew = TimeSpan.Zero
         };
 

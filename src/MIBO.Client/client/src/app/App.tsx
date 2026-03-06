@@ -232,14 +232,14 @@ export default function App({ children }: AppProps) {
         audio.play().catch(() => {});
     };
 
-    if (!introDone) {
-        return (
-            <IntroFlow
-                startMusic={startMusic}
-                onComplete={() => setIntroDone(true)}
-            />
-        );
-    }
+    // if (!introDone) {
+    //     return (
+    //         <IntroFlow
+    //             startMusic={startMusic}
+    //             onComplete={() => setIntroDone(true)}
+    //         />
+    //     );
+    // }
 
     return (
         <AxiosProvider>
