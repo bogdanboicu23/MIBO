@@ -1,37 +1,22 @@
 import { useMemo } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { resolveFromDataKey, toNumber } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
-function getDot(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    for (const p of parts) {
-        if (cur == null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-}
-
-function getNumber(data: any, key: string): number | null {
-    if (!key) return null;
-    const v1 = data?.[key];
-    if (Number.isFinite(Number(v1))) return Number(v1);
-    const v2 = getDot(data, key);
-    if (Number.isFinite(Number(v2))) return Number(v2);
-    const last = key.split(".").filter(Boolean).at(-1);
-    if (last && Number.isFinite(Number(data?.[last]))) return Number(data?.[last]);
-    return null;
+function getNumber(data: Record<string, any>, key: string): number | null {
+    return toNumber(resolveFromDataKey(data, key));
 }
 
 export function Pagination({ props, data, onAction }: UiComponentProps) {
-    const actionType = String((props as any)?.actionType ?? "shop.change_page").trim() || "shop.change_page";
+    const actionType = resolveActionType((props as any) ?? {}, "shop.change_page");
     const totalKey = String((props as any)?.totalKey ?? "");
     const limitKey = String((props as any)?.limitKey ?? "");
     const skipKey = String((props as any)?.skipKey ?? "");
 
-    const total = getNumber(data as any, totalKey) ?? 0;
-    const limit = Math.max(1, getNumber(data as any, limitKey) ?? 12);
-    const skip = Math.max(0, getNumber(data as any, skipKey) ?? 0);
+    const source = (data ?? {}) as Record<string, any>;
+    const total = getNumber(source, totalKey) ?? Number((props as any)?.total ?? 0);
+    const limit = Math.max(1, getNumber(source, limitKey) ?? Number((props as any)?.limit ?? 12));
+    const skip = Math.max(0, getNumber(source, skipKey) ?? Number((props as any)?.skip ?? 0));
 
     const pageInfo = useMemo(() => {
         const currentPage = Math.floor(skip / limit) + 1;
@@ -43,7 +28,14 @@ export function Pagination({ props, data, onAction }: UiComponentProps) {
     const canNext = total > 0 ? skip + limit < total : false;
 
     const go = (nextSkip: number) => {
-        onAction?.(actionType, { skip: Math.max(0, nextSkip), limit });
+        const safeSkip = Math.max(0, nextSkip);
+        const page = Math.floor(safeSkip / limit) + 1;
+        const payload = resolveActionPayload(
+            (props as any) ?? {},
+            { skip: safeSkip, limit, page },
+            { data: source, value: page, extra: { skip: safeSkip, limit, page, total } }
+        );
+        onAction?.(actionType, payload);
     };
 
     return (

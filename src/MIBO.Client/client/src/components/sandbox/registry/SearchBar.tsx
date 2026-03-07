@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
-export function SearchBar({ props, onAction }: UiComponentProps) {
+export function SearchBar({ props, data, onAction }: UiComponentProps) {
     const placeholder = String((props as any)?.placeholder ?? "Search products...");
-    const actionType = String((props as any)?.actionType ?? "shop.search").trim() || "shop.search";
-    const initialValue = String((props as any)?.initialValue ?? "");
+    const actionType = resolveActionType((props as any) ?? {}, "shop.search");
+    const initialValueKey = String((props as any)?.initialValueKey ?? "").trim();
+    const valueFromData = initialValueKey
+        ? resolveFromDataKey((data ?? {}) as Record<string, any>, initialValueKey)
+        : undefined;
+    const initialValue = String((props as any)?.initialValue ?? valueFromData ?? "");
+    const submitOnEmpty = (props as any)?.submitOnEmpty === true;
 
     const [q, setQ] = useState(initialValue);
 
@@ -12,8 +19,13 @@ export function SearchBar({ props, onAction }: UiComponentProps) {
 
     const submit = () => {
         const query = q.trim();
-        if (!query) return;
-        onAction?.(actionType, { query });
+        if (!query && !submitOnEmpty) return;
+        const payload = resolveActionPayload(
+            (props as any) ?? {},
+            { query },
+            { data: (data ?? {}) as Record<string, any>, value: query, extra: { query } }
+        );
+        onAction?.(actionType, payload);
     };
 
     return (

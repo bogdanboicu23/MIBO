@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    CONTEXT_CONFIG_DIR=/app/config \
     PORT=8088
 
 WORKDIR /app
@@ -20,7 +21,7 @@ COPY requirements.txt /app/requirements.txt
 RUN python -m pip install --upgrade pip \
  && python -m pip install -r /app/requirements.txt
 
-# app code
+# app code (+ bundled base context config for planner)
 COPY . /app
 
 # non-root
@@ -35,4 +36,4 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=10 \
   CMD wget -qO- http://127.0.0.1:${PORT}/langchain/healthz || exit 1
 
 # IMPORTANT: main.py is at /app/main.py => "main:app"
-CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT} --proxy-headers"]

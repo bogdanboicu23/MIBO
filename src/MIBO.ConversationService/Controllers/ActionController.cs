@@ -6,6 +6,7 @@ namespace MIBO.ConversationService.Controllers;
 
 [ApiController]
 [Route("api/v1/action")]
+[Route("v1/action")]
 public sealed class ActionController : ControllerBase
 {
     private readonly IActionHandler _handler;

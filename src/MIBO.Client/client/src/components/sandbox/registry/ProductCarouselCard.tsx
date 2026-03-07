@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
 type Product = {
     id: number | string;
@@ -14,41 +16,8 @@ type Product = {
     stock?: number;
 };
 
-function getDot(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    for (const p of parts) {
-        if (cur == null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-}
-
-function resolveToolResult(data: any, dataKey?: string): any {
-    const key = (dataKey ?? "").trim();
-    if (!key) return undefined;
-
-    // direct key
-    if (data?.[key] !== undefined) return data[key];
-
-    // dot-path
-    const dotted = getDot(data, key);
-    if (dotted !== undefined) return dotted;
-
-    // fallback last segment
-    const last = key.split(".").filter(Boolean).at(-1);
-    if (last && data?.[last] !== undefined) return data[last];
-
-    return undefined;
-}
-
 function resolveProducts(toolResult: any): Product[] {
-    if (!toolResult) return [];
-    if (Array.isArray(toolResult)) return toolResult as Product[];
-    if (Array.isArray(toolResult.products)) return toolResult.products as Product[];
-    if (Array.isArray(toolResult.items)) return toolResult.items as Product[];
-    return [];
+    return extractArray(toolResult, ["products", "items", "results"]) as Product[];
 }
 
 function formatMoney(value: unknown): string {
@@ -66,7 +35,7 @@ export function ProductCarouselCard({ props, data, onAction }: UiComponentProps)
     const dataKey = String((props as any)?.dataKey ?? "").trim();
 
     // click on card
-    const actionType = String((props as any)?.actionType ?? "shop.open_product").trim() || "shop.open_product";
+    const actionType = resolveActionType((props as any) ?? {}, "shop.open_product");
 
     // optional button action inside card
     const secondaryActionType = String((props as any)?.secondaryActionType ?? "").trim();
@@ -78,7 +47,23 @@ export function ProductCarouselCard({ props, data, onAction }: UiComponentProps)
     // how many cards to scroll per "Next/Prev"
     const scrollCards = clamp(Number((props as any)?.scrollCards ?? 3), 1, 10);
 
-    const toolResult = useMemo(() => resolveToolResult(data as any, dataKey), [data, dataKey]);
+    const toolResult = useMemo(() => {
+        const candidate = (props as any)?.products ?? (props as any)?.items ?? (props as any)?.data;
+
+        // Planner can emit unresolved templates like "${step_1.products}".
+        // Ignore scalar/template values and resolve from dataKey instead.
+        const isTemplateString =
+            typeof candidate === "string" &&
+            candidate.includes("${") &&
+            candidate.includes("}");
+        const isUsableDirect =
+            candidate != null &&
+            !isTemplateString &&
+            (Array.isArray(candidate) || typeof candidate === "object");
+
+        if (isUsableDirect) return candidate;
+        return resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey);
+    }, [props, data, dataKey]);
     const products = useMemo(() => resolveProducts(toolResult), [toolResult]);
 
     const railRef = useRef<HTMLDivElement | null>(null);
@@ -119,21 +104,43 @@ export function ProductCarouselCard({ props, data, onAction }: UiComponentProps)
     };
 
     const firePrimary = (p: Product) => {
-        onAction?.(actionType, { productId: p.id });
+        const payload = resolveActionPayload(
+            (props as any) ?? {},
+            { productId: p.id },
+            { data: (data ?? {}) as Record<string, any>, item: p as any, extra: { productId: p.id } }
+        );
+        onAction?.(actionType, payload);
     };
 
     const fireSecondary = (p: Product) => {
         if (!secondaryActionType) return;
+        const secondaryType = resolveActionType({ actionType: secondaryActionType }, secondaryActionType);
 
         if (secondaryActionType === "shop.add_to_cart") {
-            onAction?.(secondaryActionType, {
+            const fallbackPayload = {
                 userId,
                 products: [{ id: p.id, quantity: 1 }],
-            });
+            };
+            onAction?.(
+                secondaryType,
+                resolveActionPayload(
+                    { payloadTemplate: (props as any)?.secondaryPayloadTemplate },
+                    fallbackPayload,
+                    { data: (data ?? {}) as Record<string, any>, item: p as any, extra: fallbackPayload }
+                )
+            );
             return;
         }
 
-        onAction?.(secondaryActionType, { productId: p.id, quantity: 1 });
+        const genericPayload = { productId: p.id, quantity: 1 };
+        onAction?.(
+            secondaryType,
+            resolveActionPayload(
+                { payloadTemplate: (props as any)?.secondaryPayloadTemplate },
+                genericPayload,
+                { data: (data ?? {}) as Record<string, any>, item: p as any, extra: genericPayload }
+            )
+        );
     };
 
     return (

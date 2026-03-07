@@ -30,6 +30,9 @@ export type Conversation = {
     title: string;
     messages: Message[];
     updatedAt: number;
+    loaded?: boolean;
+    correlationId?: string | null;
+    lastMessagePreview?: string | null;
 };
 
 export type ChatState = {

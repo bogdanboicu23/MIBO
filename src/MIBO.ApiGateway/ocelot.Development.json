@@ -45,7 +45,7 @@
         { "Host": "localhost", "Port": 7251 }
       ],
       "UpstreamPathTemplate": "/api/conversations/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
       "RouteIsCaseSensitive": false
     },
@@ -75,7 +75,7 @@
         { "Host": "localhost", "Port": 7251 }
       ],
       "UpstreamPathTemplate": "/api/v1/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
       "RouteIsCaseSensitive": false
     },

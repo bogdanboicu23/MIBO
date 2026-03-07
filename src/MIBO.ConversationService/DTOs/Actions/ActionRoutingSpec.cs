@@ -10,8 +10,15 @@ public sealed class ActionRoute
     // action type (ex: "shop.buy")
     public string ActionType { get; set; } = default!;
 
+    // "tool" | "prompt"
+    public string Mode { get; set; } = "tool";
+
     // tool call (ex: "shop.buyProduct") — vine din tools.json (registry)
-    public string Tool { get; set; } = default!;
+    public string Tool { get; set; } = "";
+
+    // prompt route support (when Mode="prompt")
+    public string PromptTemplate { get; set; } = "";
+
 
     // map payload keys -> tool args keys (decuplat)
     public Dictionary<string, string> ArgMap { get; set; } = new();

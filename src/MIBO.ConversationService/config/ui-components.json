@@ -1,12 +1,60 @@
 {
   "components": [
-    { "name": "pageTitle", "propsSchema": { "text": "string", "subtitle": "string" } },
+    {
+      "name": "pageTitle",
+      "propsSchema": {
+        "text": "string",
+        "subtitle": "string",
+        "dataKey": "string",
+        "textKey": "string",
+        "subtitleKey": "string"
+      }
+    },
 
-    { "name": "searchBar", "propsSchema": { "placeholder": "string", "initialValue": "string", "actionType": "string" } },
-    { "name": "categoryChips", "propsSchema": { "dataKey": "string", "selectedKey": "string", "actionType": "string" } },
-    { "name": "sortDropdown", "propsSchema": { "options": "array", "selected": "string", "actionType": "string" } },
+    {
+      "name": "searchBar",
+      "propsSchema": {
+        "placeholder": "string",
+        "initialValue": "string",
+        "initialValueKey": "string",
+        "submitOnEmpty": "boolean",
+        "actionType": "string",
+        "payloadTemplate": "object",
+        "payloadDataKey": "string"
+      }
+    },
+    {
+      "name": "categoryChips",
+      "propsSchema": {
+        "dataKey": "string",
+        "selectedKey": "string",
+        "actionType": "string",
+        "payloadTemplate": "object",
+        "payloadDataKey": "string"
+      }
+    },
+    {
+      "name": "sortDropdown",
+      "propsSchema": {
+        "options": "array",
+        "selected": "string",
+        "selectedKey": "string",
+        "dataKey": "string",
+        "actionType": "string",
+        "payloadTemplate": "object",
+        "payloadDataKey": "string"
+      }
+    },
 
-    { "name": "kpiCard", "propsSchema": { "label": "string", "valueKey": "string" } },
+    {
+      "name": "kpiCard",
+      "propsSchema": {
+        "label": "string",
+        "value": "string|number",
+        "dataKey": "string",
+        "valueKey": "string"
+      }
+    },
 
     {
       "name": "summaryPanel",
@@ -62,6 +110,7 @@
       "propsSchema": {
         "title": "string",
         "content": "string",
+        "markdown": "string",
         "dataKey": "string",
         "showCodeHeader": "boolean"
       }
@@ -72,6 +121,9 @@
       "propsSchema": {
         "title": "string",
         "subtitle": "string",
+        "dataKey": "string",
+        "rowsKey": "string",
+        "columnsKey": "string",
         "columns": "array",
         "rows": "array",
         "rowKey": "string",
@@ -93,6 +145,7 @@
         "dataKey": "string",
         "products": "array",
         "actionType": "string",
+        "payloadTemplate": "object",
         "cardWidthPx": "number"
       }
     },
@@ -102,6 +155,8 @@
       "propsSchema": {
         "dataKey": "string",
         "product": "object",
+        "actionType": "string",
+        "payloadTemplate": "object",
         "addToCartActionType": "string",
         "userId": "number",
         "compact": "boolean"
@@ -117,12 +172,80 @@
         "itemComponent": "string",
         "itemProps": "object",
         "itemPropMap": "object",
+        "items": "array",
+        "data": "object",
         "cardWidthPx": "number",
         "scrollCards": "number"
       }
     },
 
-    { "name": "pagination", "propsSchema": { "totalKey": "string", "limitKey": "string", "skipKey": "string", "actionType": "string" } },
-    { "name": "cartSummary", "propsSchema": { "dataKey": "string", "checkoutActionType": "string" } }
+    {
+      "name": "pagination",
+      "propsSchema": {
+        "totalKey": "string",
+        "limitKey": "string",
+        "skipKey": "string",
+        "total": "number",
+        "limit": "number",
+        "skip": "number",
+        "actionType": "string",
+        "payloadTemplate": "object",
+        "payloadDataKey": "string"
+      }
+    },
+    {
+      "name": "cartSummary",
+      "propsSchema": {
+        "dataKey": "string",
+        "cart": "object",
+        "actionType": "string",
+        "checkoutActionType": "string",
+        "payloadTemplate": "object",
+        "payloadDataKey": "string"
+      }
+    },
+
+    {
+      "name": "actionPanel",
+      "propsSchema": {
+        "title": "string",
+        "subtitle": "string",
+        "actionType": "string",
+        "payloadTemplate": "object",
+        "actions": "array"
+      }
+    },
+    {
+      "name": "formCard",
+      "propsSchema": {
+        "title": "string",
+        "subtitle": "string",
+        "fields": "array",
+        "actionType": "string",
+        "payloadTemplate": "object",
+        "payloadDataKey": "string",
+        "initialDataKey": "string",
+        "initialValues": "object"
+      }
+    },
+    {
+      "name": "timelineCard",
+      "propsSchema": {
+        "title": "string",
+        "dataKey": "string",
+        "items": "array",
+        "actionType": "string",
+        "payloadTemplate": "object"
+      }
+    },
+    {
+      "name": "jsonViewer",
+      "propsSchema": {
+        "title": "string",
+        "dataKey": "string",
+        "value": "object",
+        "collapsed": "boolean"
+      }
+    }
   ]
 }

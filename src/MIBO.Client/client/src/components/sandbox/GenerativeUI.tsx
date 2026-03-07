@@ -6,11 +6,13 @@ type Props = {
 };
 export const GenerativeUI = ({ activeUi, handleAction }: Props) => {
     return (
-        <div className="lg:col-span-7 space-y-3 mt-4">
-            <UiRenderer
-                ui={activeUi}
-                onAction={handleAction}
-            />
+        <div className="mt-4 w-full">
+            <div className="w-fit max-w-5xl min-w-0" style={{ contain: 'layout' }}>
+                <UiRenderer
+                    ui={activeUi}
+                    onAction={handleAction}
+                />
+            </div>
         </div>
     );
 }

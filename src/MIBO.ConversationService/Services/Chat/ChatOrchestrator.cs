@@ -10,6 +10,7 @@ using MIBO.ConversationService.Services.Planner.Fallback;
 using MIBO.ConversationService.Services.Planner.Validator;
 using MIBO.ConversationService.Services.Tools.PlanExecutor;
 using MIBO.Storage.Mongo.Store.Conversation;
+using MIBO.Storage.Mongo.Store.Ui;
 using Microsoft.Extensions.Options;
 
 namespace MIBO.ConversationService.Services.Chat;
@@ -34,6 +35,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
     private readonly ITextComposer _textComposer;
     private readonly IFallbackPlanner _fallbackPlanner;
     private readonly IAnswerService _answerService;
+    private readonly IUiInstanceStore _uiInstanceStore;
     private readonly ChatOrchestratorOptions _opt;
 
     public ChatOrchestrator(
@@ -46,6 +48,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         ITextComposer textComposer,
         IFallbackPlanner fallbackPlanner,
         IAnswerService answerService,
+        IUiInstanceStore uiInstanceStore,
         IOptions<ChatOrchestratorOptions> opt
     )
     {
@@ -58,6 +61,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         _textComposer = textComposer;
         _fallbackPlanner = fallbackPlanner;
         _answerService = answerService;
+        _uiInstanceStore = uiInstanceStore;
         _opt = opt.Value;
     }
 
@@ -75,11 +79,12 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         );
 
         // 2) Load conversation context (store decides what context contains)
-        var conversationContext = await _store.GetPlannerConversationContextAsync(
+        var persistedConversationContext = await _store.GetPlannerConversationContextAsync(
             req.ConversationId,
             req.UserId,
             ct
         );
+        var conversationContext = MergeConversationContext(persistedConversationContext, req);
 
         // 3) Build planner input (includes toolCatalog + uiCatalog + constraints)
         var plannerInput = await _plannerInputFactory.BuildAsync(
@@ -104,7 +109,17 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         }
 
         // 5) Execute tool plan (NO LLM). If steps=0 => toolResults empty.
-        var toolResults = await _planExecutor.ExecuteAsync(plan, ct);
+        IReadOnlyDictionary<string, System.Text.Json.JsonElement> toolResults;
+        try
+        {
+            toolResults = await _planExecutor.ExecuteAsync(plan, ct);
+        }
+        catch when (_opt.EnableFallback)
+        {
+            // Keep chat stable even if plan execution fails unexpectedly.
+            plan = _fallbackPlanner.CreateFallbackPlan(req.Prompt);
+            toolResults = new Dictionary<string, System.Text.Json.JsonElement>(StringComparer.OrdinalIgnoreCase);
+        }
 
         // 6) Compose response
         object? uiV1 = null;
@@ -143,6 +158,16 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             ct
         );
 
+        if (uiV1 is not null)
+        {
+            await _uiInstanceStore.UpsertFromAssistantMessageAsync(
+                req.ConversationId,
+                req.UserId,
+                uiV1,
+                ct
+            );
+        }
+
         return new ChatResponse(text, uiV1, correlationId);
     }
 
@@ -160,9 +185,14 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         var hasSteps = plan.Steps is { Count: > 0 };
         var hasUi = uiV1 is not null;
 
-        // Case A: general question (no tools, no UI) -> LLM answer
-        if (!hasSteps && !hasUi)
+        // Case A: no tools requested -> LLM answer (UI may still be present for presentation)
+        if (!hasSteps)
         {
+            if (hasUi)
+            {
+                return "Am generat un UI interactiv pentru cererea ta. Poți continua direct din componente pentru acțiuni și rafinare.";
+            }
+
             return await _answerService.AnswerAsync(
                 conversationId,
                 userId,
@@ -260,5 +290,20 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             idx += needle.Length;
         }
         return count;
+    }
+
+    private static Dictionary<string, object?> MergeConversationContext(
+        Dictionary<string, object?> persistedContext,
+        ChatRequest req)
+    {
+        var merged = new Dictionary<string, object?>(persistedContext, StringComparer.OrdinalIgnoreCase);
+
+        if (req.ClientContext is { Count: > 0 })
+            merged["clientContext"] = req.ClientContext;
+
+        if (req.ExternalContextUrls is { Count: > 0 })
+            merged["externalContextUrls"] = req.ExternalContextUrls;
+
+        return merged;
     }
 }

@@ -84,6 +84,10 @@ function pathJoin(base: string, next: string) {
     return base + "/" + next;
 }
 
+function normalizeComponentKey(name: string): string {
+    return name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+}
+
 /** Extract bindings for a node path */
 function bindingsFor(path: string, bindings: UiBinding[]) {
     return bindings.filter((b) => b.componentPath === path);
@@ -112,6 +116,14 @@ type PropsAdapter = (props: Record<string, unknown>, data: Record<string, unknow
 
 function normalizeDataTableProps(props: Record<string, unknown>, data: Record<string, unknown>) {
     const p: any = { ...props };
+    const resolveTemplateValue = (raw: unknown): unknown => {
+        if (typeof raw !== "string") return undefined;
+        const s = raw.trim();
+        const m = /^\$\{(?:tool|step):(.+)\}$/.exec(s);
+        const path = (m?.[1] ?? s).trim();
+        if (!path) return undefined;
+        return getByPath(data, path) ?? (data as any)[path];
+    };
 
     // density mapping (legacy -> new)
     if (p.density === "medium") p.density = "normal";
@@ -135,7 +147,17 @@ function normalizeDataTableProps(props: Record<string, unknown>, data: Record<st
     // resolve rows from dataKey if rows empty
     const rowsIsEmpty = !Array.isArray(p.rows) || p.rows.length === 0;
     if (rowsIsEmpty && typeof p.dataKey === "string" && p.dataKey.length) {
-        const v = getByPath(data, p.dataKey) ?? (data as any)[p.dataKey];
+        const templateRows = resolveTemplateValue(p.rows);
+        if (Array.isArray(templateRows)) {
+            p.rows = templateRows;
+        }
+
+        let v = getByPath(data, p.dataKey) ?? (data as any)[p.dataKey];
+        if (v === undefined && !p.dataKey.includes(".")) {
+            // tolerate short dataKey like "products" when data is {"shop.listProducts": {products:[...]}}
+            const byNestedKey = Object.values(data as any).find((obj: any) => obj && typeof obj === "object" && p.dataKey in obj);
+            if (byNestedKey && typeof byNestedKey === "object") v = (byNestedKey as any)[p.dataKey];
+        }
         if (Array.isArray(v)) {
             p.rows = v;
         } else if (v && typeof v === "object") {
@@ -269,7 +291,12 @@ function renderNode(
         return <div style={{ display: "flex", flexDirection: "column", gap }}>{children}</div>;
     }
 
-    const Cmp = reg[node.name] ?? reg["__unknown__"];
+    const component =
+        reg[node.name] ??
+        reg[
+            Object.keys(reg).find((k) => normalizeComponentKey(k) === normalizeComponentKey(node.name)) ?? "__missing__"
+        ];
+    const Cmp = component ?? reg["__unknown__"];
 
     // 1) apply bindings for this component path
     const nodeBindings = bindingsFor(path, bindings);
@@ -277,7 +304,27 @@ function renderNode(
 
     // 2) normalize/resolve props for known components
     mergedProps = adaptProps(node.name, mergedProps, data);
+    if (!component) {
+        mergedProps = {
+            ...mergedProps,
+            __unknownComponent: node.name,
+        };
+    }
 
-    // 3) render component
-    return <Cmp props={mergedProps} data={data} onAction={onAction} registry={reg} />;
+    // 3) render component with standardized UI metadata attached to payload
+    const onActionFromComponent = (type: string, payload: Record<string, unknown>) => {
+        const safePayload = payload && typeof payload === "object" ? payload : {};
+        const nextPayload = {
+            ...safePayload,
+            __ui: {
+                ...(safePayload as any).__ui,
+                component: node.name,
+                path,
+                ts: new Date().toISOString(),
+            },
+        };
+        onAction(type, nextPayload);
+    };
+
+    return <Cmp props={mergedProps} data={data} onAction={onActionFromComponent} registry={reg} />;
 }

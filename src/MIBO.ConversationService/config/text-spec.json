@@ -1,5 +1,6 @@
 {
   "template": "",
+  "fallbackTemplate": "Am generat un răspuns UI-first pentru cererea ta. Dacă vrei, pot rafina datele și componentele afișate.",
   "missingValue": "N/A",
   "bindings": []
 }

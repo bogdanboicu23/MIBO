@@ -108,6 +108,7 @@ export default function ChatPage() {
                             messages={activeMessages}
                             isTyping={chat.isTyping}
                             listRef={chat.listRef}
+                            onUiAction={(type, payload) => void chat.sendAction(type, payload)}
                             empty={<EmptyState onPick={(t) => void chat.send(t)} />}
                         />
                     </div>

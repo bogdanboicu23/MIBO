@@ -20,6 +20,51 @@
       "mode": "prompt",
       "promptTemplate": "Arată pagina (skip={{skip}}, limit={{limit}}) pentru contextul curent"
     },
+    {
+      "actionType": "shop.sort",
+      "mode": "prompt",
+      "promptTemplate": "Sortează lista curentă după {{sort}} și actualizează UI-ul."
+    },
+    {
+      "actionType": "shop.checkout",
+      "mode": "prompt",
+      "promptTemplate": "Finalizează checkout pentru cartId={{cartId}} și actualizează rezumatul de cumpărături."
+    },
+    {
+      "actionType": "ui.refine",
+      "mode": "prompt",
+      "promptTemplate": "Rafinează răspunsul UI pentru contextul curent și păstrează componentele interactive."
+    },
+    {
+      "actionType": "ui.expand",
+      "mode": "prompt",
+      "promptTemplate": "Extinde analiza și compune UI cu componente suplimentare interconectate."
+    },
+    {
+      "actionType": "ui.action",
+      "mode": "prompt",
+      "promptTemplate": "Execută acțiunea UI generică cu contextul curent și payload: {{payload}}"
+    },
+    {
+      "actionType": "ui.form.submit",
+      "mode": "prompt",
+      "promptTemplate": "Procesează formularul trimis ({{values}}) și actualizează UI-ul cu pașii următori."
+    },
+    {
+      "actionType": "ui.timeline.select",
+      "mode": "prompt",
+      "promptTemplate": "Detaliază evenimentul selectat din timeline și actualizează UI-ul contextual."
+    },
+    {
+      "actionType": "finance.change_period",
+      "mode": "prompt",
+      "promptTemplate": "Schimbă perioada de analiză la {{period}} și reafișează KPI + grafice."
+    },
+    {
+      "actionType": "finance.filter_transactions",
+      "mode": "prompt",
+      "promptTemplate": "Filtrează tranzacțiile după criteriile: {{filters}} și actualizează tabelul."
+    },
 
     {
       "actionType": "shop.add_to_cart",

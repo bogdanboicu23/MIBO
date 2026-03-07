@@ -1,72 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractArray, getByPath, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
 
 type AnyObj = Record<string, any>;
 
-function getDot(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    let i = 0;
-    while (i < parts.length) {
-        if (cur == null) return undefined;
-        if (typeof cur === "object") {
-            let found = false;
-            for (let j = parts.length; j > i; j--) {
-                const composite = parts.slice(i, j).join(".");
-                if (Object.prototype.hasOwnProperty.call(cur, composite)) {
-                    cur = cur[composite];
-                    i = j;
-                    found = true;
-                    break;
-                }
-            }
-            if (found) continue;
-        }
-        cur = cur[parts[i]];
-        i++;
-    }
-    return cur;
-}
-
-function resolveToolResult(data: AnyObj | undefined, dataKey?: string): any {
-    const key = (dataKey ?? "").trim();
-    if (!key) return undefined;
-    if (!data) return undefined;
-
-    // direct key
-    if (data[key] !== undefined) return data[key];
-
-    // dot-path
-    const dotted = getDot(data, key);
-    if (dotted !== undefined) return dotted;
-
-    // last-segment fallback
-    const last = key.split(".").filter(Boolean).at(-1);
-    if (last && data[last] !== undefined) return data[last];
-
-    return undefined;
-}
-
 function resolveItems(toolResult: any, itemsPath?: string): any[] {
-    if (!toolResult) return [];
-    if (Array.isArray(toolResult)) return toolResult;
-
     const p = (itemsPath ?? "").trim();
-    if (p) {
-        const direct = (toolResult as AnyObj)?.[p];
-        if (Array.isArray(direct)) return direct;
-        const dotted = getDot(toolResult, p);
-        if (Array.isArray(dotted)) return dotted as any[];
-    }
-
-    // Find the first array property (products, items, transactions, expenses, etc.)
-    if (toolResult && typeof toolResult === "object") {
-        const arrProp = Object.values(toolResult as AnyObj).find(Array.isArray);
-        if (arrProp) return arrProp as any[];
-    }
-
-    return [];
+    return extractArray(toolResult, p ? [p, "items", "products"] : ["items", "products"]);
 }
 
 function clamp(n: number, min: number, max: number): number {
@@ -105,8 +45,11 @@ export function Carousel({ props, data, onAction, registry }: UiComponentProps) 
     const scrollCards = clamp(Number((props as any)?.scrollCards ?? 2), 1, 10);
 
     const toolResult = useMemo(
-        () => resolveToolResult((data ?? {}) as AnyObj, dataKey),
-        [data, dataKey]
+        () =>
+            (props as any)?.items ??
+            (props as any)?.data ??
+            resolveFromDataKey((data ?? {}) as AnyObj, dataKey),
+        [props, data, dataKey]
     );
 
     const items = useMemo(() => resolveItems(toolResult, itemsPath), [toolResult, itemsPath]);
@@ -167,7 +110,7 @@ export function Carousel({ props, data, onAction, registry }: UiComponentProps) 
             if (typeof v === "string" && v.startsWith("$item")) {
                 const rest = v.slice("$item".length); // "" or ".x.y"
                 if (!rest) out[k] = item;
-                else if (rest.startsWith(".")) out[k] = getDot(item, rest.slice(1));
+                else if (rest.startsWith(".")) out[k] = getByPath(item, rest.slice(1));
                 else out[k] = item;
             } else {
                 out[k] = v;

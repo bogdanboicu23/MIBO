@@ -101,7 +101,7 @@ builder.Services.AddHostedService<ToolRegistryRefresher>();
 
 builder.Services.AddSingleton<IToolPolicyProvider, DefaultToolPolicyProvider>();
 builder.Services.AddSingleton<IToolCacheKeyStrategy, DefaultToolCacheKeyStrategy>();
-builder.Services.AddSingleton<IArgBindingResolver, NoOpArgBindingResolver>();
+builder.Services.AddSingleton<IArgBindingResolver, SmartArgBindingResolver>();
 
 builder.Services.AddSingleton<IToolExecutor, ToolExecutor>();
 

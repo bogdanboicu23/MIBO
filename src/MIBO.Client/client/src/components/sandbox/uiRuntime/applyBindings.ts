@@ -1,5 +1,6 @@
 // src/uiRuntime/applyBindings.ts
 import type { UiV1, UiNode } from "./UiRenderer";
+import { getByPath } from "./UiRenderer";
 
 function getNodeByPath(root: any, path: string): any {
     const parts = path.split("/").filter(Boolean);
@@ -21,10 +22,8 @@ export function applyBindings(ui: UiV1): UiV1 {
         const node = getNodeByPath(next.root, b.componentPath) as UiNode | undefined;
         if (!node || node.type !== "component") continue;
 
-        // ✅ IMPORTANT: don't overwrite if "from" is missing
-        if (!Object.prototype.hasOwnProperty.call(next.data ?? {}, b.from)) continue;
-
-        const fromVal = (next.data ?? {})[b.from];
+        const fromVal = getByPath(next.data ?? {}, b.from) ?? (next.data ?? {})[b.from];
+        if (fromVal === undefined) continue;
         node.props = { ...(node.props ?? {}), [b.prop]: fromVal };
     }
 

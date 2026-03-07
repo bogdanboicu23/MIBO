@@ -10,6 +10,8 @@ export const endpoints = {
         // NEW (backend .NET)
         chat: "/v1/chat",
         action: "/v1/action",
+        list: "/v1/conversations",
+        detail: (conversationId: string) => `/v1/conversations/${conversationId}`,
     },
     hubs: {
         ui: "/hubs/ui",

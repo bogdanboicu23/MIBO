@@ -6,6 +6,7 @@ namespace MIBO.ConversationService.Controllers;
 
 [ApiController]
 [Route("api/v1/chat")]
+[Route("v1/chat")]
 public sealed class ChatController : ControllerBase
 {
     private readonly IChatOrchestrator _chat;
