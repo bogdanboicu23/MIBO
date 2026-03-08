@@ -17,7 +17,7 @@ export function applyUiPatch(ui: any, patch: any): any {
 
         const key = parts[parts.length - 1];
 
-        if (op.op === "set") cur[key] = op.value;
+        if (op.op === "set" || op.op === "replace") cur[key] = op.value;
         else if (op.op === "merge") cur[key] = { ...(cur[key] ?? {}), ...(op.value ?? {}) };
         else if (op.op === "remove") delete cur[key];
     }

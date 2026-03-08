@@ -144,6 +144,10 @@ class ConfigContextLoader:
                     "mode": route.get("mode", "prompt"),
                     "tool": route.get("tool"),
                     "argMap": route.get("argMap", {}) or {},
+                    "argTemplate": route.get("argTemplate", {}) or {},
+                    "toolCandidates": route.get("toolCandidates", []) or [],
+                    "patchPath": route.get("patchPath"),
+                    "patchAliases": route.get("patchAliases", []) or [],
                     "promptTemplate": route.get("promptTemplate"),
                 }
             )

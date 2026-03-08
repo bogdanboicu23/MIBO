@@ -70,6 +70,8 @@ export function BarChartCard({ props, data }: UiComponentProps) {
     const showLegend: boolean = props?.showLegend !== false;
     const showValues: boolean = props?.showValues === true;
     const barRadius: number = Number(props?.barRadius ?? 6);
+    const requestedHeight = Number(props?.height ?? 320);
+    const minHeight = Number(props?.minHeight ?? 260);
     const formatCfg = props?.formatValue;
     const formatValue = (v: number): string => {
         if (typeof formatCfg === "function") {
@@ -102,9 +104,9 @@ export function BarChartCard({ props, data }: UiComponentProps) {
     const dataLen = allLabels.length;
 
     // ── chart geometry ──────────────────────────────────────────────────────────
-    const W = 480;
-    const H = 220;
-    const PAD = { top: 16, right: 16, bottom: 36, left: 48 };
+    const W = 680;
+    const H = Math.max(240, requestedHeight);
+    const PAD = { top: 18, right: 20, bottom: 44, left: 56 };
     const chartW = W - PAD.left - PAD.right;
     const chartH = H - PAD.top - PAD.bottom;
 
@@ -288,7 +290,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                             x={bx + bw / 2}
                             y={by - 4}
                             textAnchor="middle"
-                            fontSize="8"
+                            fontSize="10"
                             fill={color}
                             fontWeight="600"
                             style={{ pointerEvents: "none" }}
@@ -326,7 +328,10 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                     {/* SVG */}
                     <div
                         className="relative w-full"
-                        style={{ paddingBottom: `${(H / W) * 100}%` }}
+                        style={{
+                            paddingBottom: `${(H / W) * 100}%`,
+                            minHeight: `${Math.max(220, minHeight)}px`,
+                        }}
                     >
                         <svg
                             ref={svgRef}
@@ -352,7 +357,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                                                     x={x}
                                                     y={PAD.top + chartH + 14}
                                                     textAnchor="middle"
-                                                    fontSize="9"
+                                                    fontSize="10"
                                                     className="fill-zinc-400 dark:fill-zinc-600"
                                                     fill="currentColor"
                                                 >
@@ -376,7 +381,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                                                     x={PAD.left - 6}
                                                     y={y + 4}
                                                     textAnchor="end"
-                                                    fontSize="9"
+                                                    fontSize="10"
                                                     className="fill-zinc-400 dark:fill-zinc-600"
                                                     fill="currentColor"
                                                 >
@@ -421,7 +426,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                                             x={PAD.left - 6}
                                             y={y + 4}
                                             textAnchor="end"
-                                            fontSize="9"
+                                            fontSize="10"
                                             className="fill-zinc-500 dark:fill-zinc-400"
                                             fill="currentColor"
                                         >
@@ -440,7 +445,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                                             x={cx}
                                             y={PAD.top + chartH + 16}
                                             textAnchor="middle"
-                                            fontSize="9"
+                                            fontSize="10"
                                             className="fill-zinc-500 dark:fill-zinc-400"
                                             fill="currentColor"
                                         >

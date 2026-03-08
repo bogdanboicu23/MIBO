@@ -229,11 +229,18 @@ def _normalize_bindings(bindings: Any, tree: Dict[str, Any]) -> List[Dict[str, A
             continue
 
         if all(k in b for k in ("componentPath", "prop", "from")):
+            component_path = str(b["componentPath"]).strip()
+            if not component_path.startswith("/"):
+                component_path = "/root"
+            prop = str(b["prop"]).strip()
+            source = str(b["from"]).strip()
+            if not prop or not source:
+                continue
             normalized.append(
                 {
-                    "componentPath": str(b["componentPath"]),
-                    "prop": str(b["prop"]),
-                    "from": str(b["from"]),
+                    "componentPath": component_path,
+                    "prop": prop,
+                    "from": source,
                 }
             )
             continue

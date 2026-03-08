@@ -54,6 +54,8 @@ export type ChatResponseV1 = {
     text: string;
     uiV1: UiV1 | null;
     correlationId: string;
+    schema?: string;
+    warnings?: string[] | null;
 };
 
 export async function postChat(axios: AxiosInstance, req: ChatRequestV1) {

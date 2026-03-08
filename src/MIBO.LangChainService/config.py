@@ -6,8 +6,8 @@ class Settings(BaseSettings):
 
     app_name: str = "mibo-langchain-planner"
     # Groq
-    GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_API_KEY: str
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
     GROQ_TEMPERATURE: float = 0.2
     GROQ_TIMEOUT_SECONDS: int = 20
     GROQ_MAX_TOKENS: int = 1200
@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     PLANNER_MAX_STEPS: int = 8
     PLANNER_REPAIR_ATTEMPTS: int = 2  # how many times we ask model to repair invalid JSON
     PLANNER_STRICT_JSON: bool = True  # enforce JSON-only
+    PLANNER_PROMPT_MAX_CHARS: int = 12000
+    ENABLE_PLUGIN_INTENT: bool = True
+    ENABLE_PLUGIN_POST_PROCESSING: bool = True
 
     # LangGraph + context
     CONTEXT_CONFIG_DIR: str = "../MIBO.ConversationService/config"

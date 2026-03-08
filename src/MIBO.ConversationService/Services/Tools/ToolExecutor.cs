@@ -22,6 +22,7 @@ public sealed class ToolExecutor : IToolExecutor
     private readonly IToolPolicyProvider _policyProvider;
     private readonly IToolCacheKeyStrategy _cacheKeys;
     private readonly ToolExecutorOptions _opt;
+    private readonly ILogger<ToolExecutor> _logger;
 
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
@@ -33,6 +34,7 @@ public sealed class ToolExecutor : IToolExecutor
         IHeaderContextAccessor headers,
         IToolPolicyProvider policyProvider,
         IToolCacheKeyStrategy cacheKeys,
+        ILogger<ToolExecutor> logger,
         IOptions<ToolExecutorOptions> opt
     )
     {
@@ -43,6 +45,7 @@ public sealed class ToolExecutor : IToolExecutor
         _headers = headers;
         _policyProvider = policyProvider;
         _cacheKeys = cacheKeys;
+        _logger = logger;
         _opt = opt.Value;
     }
 
@@ -50,9 +53,11 @@ public sealed class ToolExecutor : IToolExecutor
     public async Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken ct)
     {
         var def = _registry.Get(call.Tool);
-        ValidateArgs(def, call.Args);
+        var args = MergeWithDefaults(def.DefaultArgs, call.Args);
+        ValidateArgs(def, args);
 
-        var url = RenderUrl(def.UrlTemplate, call.Args);
+        var url = RenderUrl(def.UrlTemplate, args);
+        EnforceHostAllowList(url);
 
         var cacheTtl = def.CacheTtlSeconds > 0 ? def.CacheTtlSeconds : _opt.DefaultCacheTtlSeconds;
         var cacheable = def.Method.Equals("GET", StringComparison.OrdinalIgnoreCase) && cacheTtl > 0;
@@ -71,14 +76,14 @@ public sealed class ToolExecutor : IToolExecutor
         {
             return await _singleFlight.DoAsync(cacheKey, async () =>
             {
-                var res = await DoHttpAsync(def, url, call.Args, hdr, ct);
+                var res = await DoHttpAsync(def, url, args, hdr, ct);
                 if (IsSuccess(res.StatusCode))
                     await _cache.SetAsync(cacheKey, JsonSerializer.Serialize(res.Body, JsonOpts), TimeSpan.FromSeconds(cacheTtl), ct);
                 return res;
             });
         }
 
-        return await DoHttpAsync(def, url, call.Args, hdr, ct);
+        return await DoHttpAsync(def, url, args, hdr, ct);
     }
 
     private async Task<ToolResult> DoHttpAsync(ToolDefinition def, string url, Dictionary<string, object?> args, HeaderContext hdr, CancellationToken ct)
@@ -130,6 +135,22 @@ public sealed class ToolExecutor : IToolExecutor
                 throw new ArgumentException($"Missing required arg '{req}' for tool '{def.Name}'");
     }
 
+    private static Dictionary<string, object?> MergeWithDefaults(
+        IReadOnlyDictionary<string, object?> defaults,
+        IReadOnlyDictionary<string, object?> input
+    )
+    {
+        var merged = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (k, v) in defaults)
+            merged[k] = v;
+
+        foreach (var (k, v) in input)
+            merged[k] = v;
+
+        return merged;
+    }
+
     private static string RenderUrl(string template, Dictionary<string, object?> args)
     {
         var url = template;
@@ -151,7 +172,19 @@ public sealed class ToolExecutor : IToolExecutor
         if (_opt.AllowedHosts is null || _opt.AllowedHosts.Count == 0) return;
 
         var host = new Uri(url).Host;
-        if (!_opt.AllowedHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Tool host not allowed: {host}");
+        if (IsFromAllowedDomain(host, _opt.AllowedHosts)) return;
+
+        _logger.LogWarning("Blocked tool call to host not present in allow-list: {Host}", host);
+        throw new InvalidOperationException($"Tool host not allowed: {host}");
+    }
+
+    private static bool IsFromAllowedDomain(string host, IReadOnlyCollection<string> allowedHosts)
+    {
+        foreach (var allowed in allowedHosts)
+        {
+            if (host.Equals(allowed, StringComparison.OrdinalIgnoreCase)) return true;
+            if (host.EndsWith("." + allowed, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
     }
 }

@@ -18,7 +18,7 @@ public class GroqChatService : IGroqChatService
         _http = http;
         _config = config;
         _apiKey = _config["Groq:ApiKey"];
-        _model = _config["Groq:Model"] ?? "llama-3.3-70b-versatile";
+        _model = _config["Groq:Model"] ?? "openai/gpt-oss-120b";
     }
 
     public async IAsyncEnumerable<string> StreamMessageAsync(

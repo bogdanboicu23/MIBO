@@ -33,6 +33,124 @@ type ServerConversationDetails = {
     messages: ServerConversationMessage[];
 };
 
+const COMPONENT_NAME_ALIASES: Record<string, string> = {
+    piechart: "pieChart",
+    pie: "pieChart",
+    barchart: "barChart",
+    bar: "barChart",
+    linechart: "lineChart",
+    line: "lineChart",
+    datatable: "dataTable",
+    table: "dataTable",
+    productcarousel: "productCarousel",
+    productdetail: "productDetail",
+    kpi: "kpiCard",
+    kpicard: "kpiCard",
+    pagetitle: "pageTitle",
+    search: "searchBar",
+    searchinput: "searchBar",
+    sort: "sortDropdown",
+    categories: "categoryChips",
+    categorychips: "categoryChips",
+    summary: "summaryPanel",
+    actionpanel: "actionPanel",
+    actions: "actionPanel",
+    form: "formCard",
+    formcard: "formCard",
+    timeline: "timelineCard",
+    timelinecard: "timelineCard",
+    json: "jsonViewer",
+    jsonviewer: "jsonViewer",
+    markdown: "markdown",
+    pagination: "pagination",
+    cartsummary: "cartSummary",
+    carousel: "carousel",
+};
+
+const KNOWN_COMPONENT_NAMES = new Set<string>([
+    "pieChart",
+    "barChart",
+    "lineChart",
+    "dataTable",
+    "productCarousel",
+    "productDetail",
+    "kpiCard",
+    "pageTitle",
+    "searchBar",
+    "sortDropdown",
+    "categoryChips",
+    "pagination",
+    "cartSummary",
+    "carousel",
+    "summaryPanel",
+    "markdown",
+    "actionPanel",
+    "formCard",
+    "timelineCard",
+    "jsonViewer",
+]);
+
+const PLACEHOLDER_COMPONENT_NAMES = new Set<string>([
+    "type",
+    "props",
+    "component",
+    "components",
+    "children",
+    "items",
+    "root",
+]);
+
+function normalizeComponentName(raw: unknown): string {
+    const name = String(raw ?? "").trim();
+    if (!name) return "";
+    const compact = name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    return COMPONENT_NAME_ALIASES[compact] ?? name;
+}
+
+function inferComponentNameFromProps(props: Record<string, unknown>): string | null {
+    const p = props ?? {};
+    const explicit = normalizeComponentName((p as any).component ?? (p as any).name ?? (p as any).kind);
+    if (explicit && KNOWN_COMPONENT_NAMES.has(explicit)) return explicit;
+
+    if (Array.isArray((p as any).columns) || Array.isArray((p as any).rows) || (p as any).rowKey || (p as any).rowsKey) {
+        return "dataTable";
+    }
+
+    if ((p as any).total !== undefined && (p as any).limit !== undefined && (p as any).skip !== undefined) {
+        return "pagination";
+    }
+
+    if ((p as any).placeholder !== undefined && ((p as any).actionType || (p as any).payloadTemplate || (p as any).submitOnEmpty !== undefined)) {
+        return "searchBar";
+    }
+
+    if (Array.isArray((p as any).options) && ((p as any).actionType || (p as any).payloadTemplate || (p as any).selected !== undefined)) {
+        return "sortDropdown";
+    }
+
+    if (Array.isArray((p as any).data)) {
+        const first = ((p as any).data as any[]).find((x) => x && typeof x === "object") as Record<string, unknown> | undefined;
+        if (first) {
+            const hasPieShape = "value" in first && ("name" in first || "label" in first || "category" in first);
+            if (hasPieShape || (p as any).showLegend !== undefined || (p as any).formatValue !== undefined) return "pieChart";
+            const hasLineOrBarShape =
+                ("x" in first || "label" in first || "name" in first) &&
+                ("y" in first || "value" in first);
+            if (hasLineOrBarShape) return "barChart";
+        }
+    }
+
+    if ((p as any).product || (p as any).productId || (p as any).thumbnail || (p as any).images) return "productDetail";
+    if (Array.isArray((p as any).products) || (p as any).itemComponent) return "productCarousel";
+    if (Array.isArray((p as any).actions) && !Array.isArray((p as any).columns)) return "actionPanel";
+    if (Array.isArray((p as any).events) || Array.isArray((p as any).timeline)) return "timelineCard";
+    if ((p as any).value !== undefined && ((p as any).label || (p as any).title || (p as any).unit)) return "kpiCard";
+    if ((p as any).markdown || ((p as any).content && typeof (p as any).content === "string")) return "markdown";
+    if ((p as any).text !== undefined || (p as any).subtitle !== undefined) return "pageTitle";
+
+    return null;
+}
+
 function normalizeBackendUi(ui: any): any {
     if (!ui || typeof ui !== "object") return null;
     if (ui.schema !== "ui.v1") return ui;
@@ -51,6 +169,48 @@ function normalizeBackendUi(ui: any): any {
         bindings,
         subscriptions,
     };
+}
+
+function looksLikeMarkdownUiCandidate(text: string): boolean {
+    const t = (text ?? "").trim();
+    if (!t) return false;
+    if (t.includes("```")) return true;
+    if (/\n\s*[-*]\s+/.test(t)) return true;
+    if (/\n\s*\d+\.\s+/.test(t)) return true;
+    return false;
+}
+
+function buildMarkdownUiFromText(text: string): any {
+    return {
+        schema: "ui.v1",
+        root: {
+            type: "layout",
+            name: "column",
+            props: { gap: 12 },
+            children: [
+                {
+                    type: "component",
+                    name: "markdown",
+                    props: {
+                        title: "Code / Markdown",
+                        content: text,
+                        showCodeHeader: true,
+                    },
+                    children: [],
+                },
+            ],
+        },
+        data: {},
+        bindings: [],
+        subscriptions: [],
+    };
+}
+
+function resolveAssistantUi(rawUi: any, text: string): any {
+    const normalized = normalizeBackendUi(rawUi);
+    if (normalized) return normalized;
+    if (looksLikeMarkdownUiCandidate(text)) return buildMarkdownUiFromText(text);
+    return null;
 }
 
 function normalizeUiNode(node: any): any | null {
@@ -80,7 +240,27 @@ function normalizeUiNode(node: any): any | null {
     // Legacy component shorthand:
     // { type: "dataTable", props: {...} } or { component: "dataTable", ... }
     if (typeof node.type === "string" && !["layout", "component"].includes(node.type)) {
-        const props = node.props && typeof node.props === "object" ? node.props : {};
+        let props = node.props && typeof node.props === "object" ? node.props : {};
+        // tolerate malformed payloads like props: { props: { ... } }
+        if (
+            props &&
+            typeof props === "object" &&
+            "props" in (props as any) &&
+            typeof (props as any).props === "object" &&
+            Object.keys(props as any).length === 1
+        ) {
+            props = (props as any).props;
+        }
+        const normalizedName = normalizeComponentName(node.type);
+        const inferred = inferComponentNameFromProps(props);
+        const name =
+            KNOWN_COMPONENT_NAMES.has(normalizedName)
+                ? normalizedName
+                : (inferred ?? normalizedName);
+
+        if (!name || (PLACEHOLDER_COMPONENT_NAMES.has(String(name).toLowerCase()) && !inferred)) {
+            return null;
+        }
         const childrenRaw = Array.isArray(node.children)
             ? node.children
             : Array.isArray(node.components)
@@ -89,7 +269,7 @@ function normalizeUiNode(node: any): any | null {
         const children = childrenRaw.map((c: any) => normalizeUiNode(c)).filter(Boolean);
         return {
             type: "component",
-            name: node.type,
+            name,
             props,
             children,
         };
@@ -100,18 +280,52 @@ function normalizeUiNode(node: any): any | null {
             node.name ??
             (node.type === "component" ? node.component : undefined) ??
             (node.type === "layout" ? "column" : undefined);
-        const name = String(inferredName ?? "").trim();
-        if (!name) return null;
+        const rawName = String(inferredName ?? "").trim();
+        if (!rawName) return null;
         const childrenRaw = Array.isArray(node.children)
             ? node.children
             : Array.isArray(node.components)
                 ? node.components
                 : [];
         const children = childrenRaw.map((c: any) => normalizeUiNode(c)).filter(Boolean);
+        let props = node.props && typeof node.props === "object" ? node.props : {};
+        if (
+            props &&
+            typeof props === "object" &&
+            "props" in (props as any) &&
+            typeof (props as any).props === "object" &&
+            Object.keys(props as any).length === 1
+        ) {
+            props = (props as any).props;
+        }
+
+        if (node.type === "layout") {
+            const normalizedLayout = normalizeComponentName(rawName);
+            const name = ["column", "row", "grid"].includes(normalizedLayout) ? normalizedLayout : "column";
+            return {
+                type: "layout",
+                name,
+                props,
+                children,
+            };
+        }
+
+        const normalizedName = normalizeComponentName(rawName);
+        const inferred = inferComponentNameFromProps(props);
+        const finalName =
+            KNOWN_COMPONENT_NAMES.has(normalizedName)
+                ? normalizedName
+                : (inferred ?? normalizedName);
+        const isPlaceholder = PLACEHOLDER_COMPONENT_NAMES.has(normalizedName.toLowerCase());
+        if (isPlaceholder && !inferred) {
+            if (Object.keys(props).length === 0 && children.length === 0) return null;
+            return null;
+        }
+
         return {
             type: node.type,
-            name,
-            props: node.props && typeof node.props === "object" ? node.props : {},
+            name: finalName,
+            props,
             children,
         };
     }
@@ -121,9 +335,16 @@ function normalizeUiNode(node: any): any | null {
         delete props.component;
         delete props.children;
         delete props.root;
+        const normalizedName = normalizeComponentName(node.component);
+        const inferred = inferComponentNameFromProps(props);
+        const name =
+            KNOWN_COMPONENT_NAMES.has(normalizedName)
+                ? normalizedName
+                : (inferred ?? normalizedName);
+        if (!name) return null;
         return {
             type: "component",
-            name: node.component,
+            name,
             props,
             children: [],
         };
@@ -132,12 +353,25 @@ function normalizeUiNode(node: any): any | null {
     if (typeof node === "object") {
         const children = Object.entries(node)
             .filter(([k]) => !["root", "bindings", "subscriptions"].includes(k))
-            .map(([k, v]) => ({
-                type: "component",
-                name: k,
-                props: v && typeof v === "object" ? ((v as any).props ?? v) : {},
-                children: [],
-            }));
+            .map(([k, v]) => {
+                const props = v && typeof v === "object" ? ((v as any).props ?? v) : {};
+                const normalizedName = normalizeComponentName(k);
+                const inferred = inferComponentNameFromProps(props);
+                const name =
+                    KNOWN_COMPONENT_NAMES.has(normalizedName)
+                        ? normalizedName
+                        : (inferred ?? normalizedName);
+                if (!name || (PLACEHOLDER_COMPONENT_NAMES.has(normalizedName.toLowerCase()) && !inferred)) {
+                    return null;
+                }
+                return {
+                    type: "component",
+                    name,
+                    props,
+                    children: [],
+                };
+            })
+            .filter(Boolean);
 
         if (children.length > 0) {
             return {
@@ -266,7 +500,7 @@ export function useChat() {
                 id: m.messageId,
                 role: m.role,
                 content: m.text,
-                uiV1: normalizeBackendUi(m.uiV1),
+                uiV1: m.role === "assistant" ? resolveAssistantUi(m.uiV1, m.text ?? "") : null,
                 createdAt: Date.parse(m.createdAt) || Date.now(),
             }));
 
@@ -404,20 +638,29 @@ export function useChat() {
                 },
             };
 
-            const data = await api.post<{ text: string; uiV1: any | null; correlationId: string }>(
+            const data = await api.post<{ text: string; uiV1: any | null; correlationId: string; schema?: string; warnings?: string[] | null }>(
                 endpoints.conversations.chat,
                 payload
             );
+
+            const warningSuffix =
+                Array.isArray(data.warnings) && data.warnings.length > 0
+                    ? `\n\n[Warnings: ${data.warnings.join(", ")}]`
+                    : "";
 
             updateConversation(currentActive.id, (c) => ({
                 ...c,
                 messages: c.messages.map((m) =>
                     m.id === assistantId
-                        ? { ...m, content: data.text ?? "", uiV1: normalizeBackendUi(data.uiV1) }
+                        ? {
+                            ...m,
+                            content: `${data.text ?? ""}${warningSuffix}`,
+                            uiV1: resolveAssistantUi(data.uiV1, `${data.text ?? ""}${warningSuffix}`),
+                        }
                         : m
                 ),
                 updatedAt: Date.now(),
-                uiV1: normalizeBackendUi(data.uiV1) ?? c.uiV1 ?? null,
+                uiV1: resolveAssistantUi(data.uiV1, `${data.text ?? ""}${warningSuffix}`) ?? c.uiV1 ?? null,
                 correlationId: data.correlationId ?? null,
                 loaded: true,
             }));
@@ -455,32 +698,79 @@ export function useChat() {
             uiContext: uiContext ?? { focusedComponentId },
         };
 
-        const data = await api.post<{ schema: string; text?: string | null; uiPatch?: any | null; uiV1?: any | null; correlationId?: string }>(
+        const data = await api.post<{
+            schema: string;
+            text?: string | null;
+            uiPatch?: any | null;
+            uiV1?: any | null;
+            correlationId?: string;
+            toolStates?: Record<string, unknown> | null;
+            warnings?: string[] | null;
+        }>(
             endpoints.conversations.action,
             req
         );
 
         const hasPatch = Boolean(data.uiPatch);
-        // UI actions should update current card in-place via patch, not append a new assistant bubble.
+
+        if (hasPatch) {
+            applyPatchToConversation(active.id, data.uiPatch);
+        }
+
+        if (data.toolStates && hasPatch) {
+            applyPatchToConversation(active.id, {
+                schema: "ui.patch.v1",
+                ops: [{ op: "set", path: "/toolStates", value: data.toolStates }],
+            });
+        }
+
+        // UI actions should update current card in-place by default.
+        // If backend returns text/UI without patch, append assistant message for backward compatibility.
         if (!hasPatch && (data.text || data.uiV1)) {
             const now = Date.now();
             const msg: Message = {
                 id: uidStr(),
                 role: "assistant",
                 content: data.text ?? "",
-                uiV1: normalizeBackendUi(data.uiV1),
+                uiV1: resolveAssistantUi(data.uiV1, data.text ?? ""),
                 createdAt: now,
             };
             updateConversation(active.id, (c) => ({
                 ...c,
                 messages: [...c.messages, msg],
                 updatedAt: now,
-                uiV1: normalizeBackendUi(data.uiV1) ?? c.uiV1,
+                uiV1: resolveAssistantUi(data.uiV1, data.text ?? "") ?? c.uiV1,
             }));
         }
 
-        if (data.uiPatch) {
-            applyPatchToConversation(active.id, data.uiPatch);
+        if (hasPatch && (data.text || (data.warnings && data.warnings.length))) {
+            const statusParts = [
+                data.text ?? "",
+                ...(Array.isArray(data.warnings) ? data.warnings.map((w) => `[warn:${w}]`) : []),
+            ].filter(Boolean);
+            if (statusParts.length > 0) {
+                updateConversation(active.id, (c) => {
+                    const updatedMessages = [...c.messages];
+                    for (let i = updatedMessages.length - 1; i >= 0; i--) {
+                        const m = updatedMessages[i];
+                        if (m.role !== "assistant") continue;
+                        if (!m.uiV1) continue;
+                        updatedMessages[i] = {
+                            ...m,
+                            content: [m.content ?? "", statusParts.join(" ")].filter(Boolean).join("\n"),
+                        };
+                        return { ...c, messages: updatedMessages, updatedAt: Date.now() };
+                    }
+
+                    const fallbackMsg: Message = {
+                        id: uidStr(),
+                        role: "assistant",
+                        content: statusParts.join(" "),
+                        createdAt: Date.now(),
+                    };
+                    return { ...c, messages: [...c.messages, fallbackMsg], updatedAt: Date.now() };
+                });
+            }
         }
     }
 
@@ -491,8 +781,10 @@ export function useChat() {
 
     function applyPatchToConversation(conversationId: string, patch: any) {
         updateConversation(conversationId, (c) => {
-            if (!c.uiV1) return c;
-            const nextUi = applyUiPatch(c.uiV1, patch);
+            const baseUi = c.uiV1 ?? createUiFromPatchSeed(patch);
+            if (!baseUi) return c;
+
+            const nextUi = applyUiPatch(baseUi, patch);
             const updatedMessages = [...c.messages];
             for (let i = updatedMessages.length - 1; i >= 0; i--) {
                 if (updatedMessages[i].role === "assistant" && updatedMessages[i].uiV1) {
@@ -502,6 +794,25 @@ export function useChat() {
             }
             return { ...c, uiV1: nextUi, messages: updatedMessages, updatedAt: Date.now() };
         });
+    }
+
+    function createUiFromPatchSeed(patch: any) {
+        const seed: any = {
+            schema: "ui.v1",
+            root: null,
+            data: {},
+            bindings: [],
+            subscriptions: [],
+        };
+
+        for (const op of patch?.ops ?? []) {
+            if (op?.path === "/root" && (op.op === "set" || op.op === "replace")) seed.root = op.value;
+            if (op?.path === "/data" && (op.op === "set" || op.op === "replace")) seed.data = op.value ?? {};
+            if (op?.path === "/bindings" && (op.op === "set" || op.op === "replace")) seed.bindings = op.value ?? [];
+            if (op?.path === "/subscriptions" && (op.op === "set" || op.op === "replace")) seed.subscriptions = op.value ?? [];
+        }
+
+        return seed.root ? seed : null;
     }
 
     function applyUiPatch(ui: any, patch: any) {

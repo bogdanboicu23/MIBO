@@ -1,9 +1,9 @@
 export type UiV1 = {
     schema: "ui.v1";
     root: UiNode;
-    data: Record<string, unknown>;
-    bindings: UiBinding[];
-    subscriptions: UiSubscription[];
+    data?: Record<string, unknown>;
+    bindings?: UiBinding[];
+    subscriptions?: UiSubscription[];
 };
 
 export type UiNode =
@@ -40,10 +40,12 @@ export type UiSubscription = {
 export type UiPatchV1 = {
     schema: "ui.patch.v1";
     uiInstanceId?: string | null;
+    appliedAtUtc?: string;
     ops: PatchOp[];
 };
 
 export type PatchOp =
     | { op: "set"; path: string; value: unknown }
+    | { op: "replace"; path: string; value: unknown }
     | { op: "merge"; path: string; value: Record<string, unknown> }
     | { op: "remove"; path: string };

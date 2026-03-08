@@ -62,7 +62,10 @@ public sealed class EventRefreshHandler : IEventHandler
 
                 if (ops.Count == 0) continue;
 
-                var patch = UiPatchBuilder.Patch(ops.ToArray());
+                var patch = UiPatchBuilder.Patch(
+                    uiInstanceId: inst.UiInstanceId,
+                    ops: ops.ToArray()
+                );
                 await _hub.Clients.Group($"conversation:{inst.ConversationId}").UiPatch(patch);
             }
 

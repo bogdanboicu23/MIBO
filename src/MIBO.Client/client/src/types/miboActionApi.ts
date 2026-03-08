@@ -19,7 +19,10 @@ export type ActionResultV1 = {
     schema: "action.result.v1";
     text?: string | null;
     uiPatch?: any | null;
+    uiV1?: any | null;
     correlationId?: string;
+    toolStates?: Record<string, unknown> | null;
+    warnings?: string[] | null;
 };
 
 export async function postAction(axios: AxiosInstance, req: ActionRequestV1) {

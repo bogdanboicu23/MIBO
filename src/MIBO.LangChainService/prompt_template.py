@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
+from config import settings
 
-MAX_JSON_CHARS = 12000
+MAX_JSON_CHARS = settings.PLANNER_PROMPT_MAX_CHARS
 
 
 def _compact_json(value: Any, max_chars: int = MAX_JSON_CHARS) -> str:

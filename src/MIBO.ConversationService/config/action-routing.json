@@ -2,29 +2,150 @@
   "routes": [
     {
       "actionType": "shop.search",
-      "mode": "prompt",
-      "promptTemplate": "Caută produse: {{query}}"
+      "mode": "tool",
+      "tool": "shop.searchProducts",
+      "argTemplate": {
+        "limit": 12,
+        "skip": 0
+      },
+      "argMap": {
+        "query": "q",
+        "q": "q",
+        "limit": "limit",
+        "skip": "skip"
+      },
+      "patchPath": "/data/shop.searchProducts",
+      "patchAliases": [
+        "/data/shop.listProducts"
+      ]
     },
     {
       "actionType": "shop.select_category",
-      "mode": "prompt",
-      "promptTemplate": "Arată produse din categoria {{category}}"
+      "mode": "tool",
+      "tool": "shop.listProductsByCategory",
+      "argTemplate": {
+        "limit": 12,
+        "skip": 0
+      },
+      "argMap": {
+        "category": "category",
+        "slug": "category",
+        "limit": "limit",
+        "skip": "skip"
+      },
+      "patchPath": "/data/shop.listProductsByCategory",
+      "patchAliases": [
+        "/data/shop.searchProducts",
+        "/data/shop.listProducts"
+      ]
     },
     {
       "actionType": "shop.open_product",
-      "mode": "prompt",
-      "promptTemplate": "Arată detalii pentru produsul cu id={{productId}}"
+      "mode": "tool",
+      "tool": "shop.getProduct",
+      "argMap": {
+        "productId": "id",
+        "id": "id"
+      },
+      "patchPath": "/data/shop.getProduct"
     },
     {
       "actionType": "shop.change_page",
-      "mode": "prompt",
-      "promptTemplate": "Arată pagina (skip={{skip}}, limit={{limit}}) pentru contextul curent"
+      "mode": "tool",
+      "tool": "shop.listProducts",
+      "toolCandidates": [
+        {
+          "tool": "shop.searchProducts",
+          "whenPayloadHasAny": [
+            "query",
+            "q"
+          ]
+        },
+        {
+          "tool": "shop.listProductsByCategory",
+          "whenPayloadHasAny": [
+            "category",
+            "slug"
+          ]
+        }
+      ],
+      "argTemplate": {
+        "limit": 12,
+        "skip": 0
+      },
+      "argMap": {
+        "query": "q",
+        "q": "q",
+        "category": "category",
+        "slug": "category",
+        "limit": "limit",
+        "skip": "skip"
+      },
+      "patchPath": "/data/{tool}",
+      "patchAliases": [
+        "/data/shop.listProducts",
+        "/data/shop.searchProducts",
+        "/data/shop.listProductsByCategory"
+      ]
     },
     {
       "actionType": "shop.sort",
-      "mode": "prompt",
-      "promptTemplate": "Sortează lista curentă după {{sort}} și actualizează UI-ul."
+      "mode": "tool",
+      "tool": "shop.listProductsSorted",
+      "argTemplate": {
+        "sortBy": "rating",
+        "order": "desc",
+        "limit": 12,
+        "skip": 0
+      },
+      "argMap": {
+        "sortBy": "sortBy",
+        "order": "order",
+        "sort": "sort",
+        "limit": "limit",
+        "skip": "skip"
+      },
+      "patchPath": "/data/shop.listProductsSorted",
+      "patchAliases": [
+        "/data/shop.searchProducts",
+        "/data/shop.listProducts"
+      ]
     },
+    {
+      "actionType": "finance.change_period",
+      "mode": "tool",
+      "tool": "finance.getExpenseAnalytics",
+      "argTemplate": {
+        "period": "last30days"
+      },
+      "argMap": {
+        "period": "period",
+        "startDate": "startDate",
+        "endDate": "endDate"
+      },
+      "patchPath": "/data/finance.getExpenseAnalytics"
+    },
+    {
+      "actionType": "finance.filter_transactions",
+      "mode": "tool",
+      "tool": "finance.getTransactions",
+      "argTemplate": {
+        "skip": 0,
+        "limit": 30
+      },
+      "argMap": {
+        "type": "type",
+        "category": "category",
+        "startDate": "startDate",
+        "endDate": "endDate",
+        "sortBy": "sortBy",
+        "order": "order",
+        "skip": "skip",
+        "limit": "limit"
+      },
+      "patchPath": "/data/finance.getTransactions"
+    },
+
     {
       "actionType": "shop.checkout",
       "mode": "prompt",
@@ -55,16 +176,6 @@
       "mode": "prompt",
       "promptTemplate": "Detaliază evenimentul selectat din timeline și actualizează UI-ul contextual."
     },
-    {
-      "actionType": "finance.change_period",
-      "mode": "prompt",
-      "promptTemplate": "Schimbă perioada de analiză la {{period}} și reafișează KPI + grafice."
-    },
-    {
-      "actionType": "finance.filter_transactions",
-      "mode": "prompt",
-      "promptTemplate": "Filtrează tranzacțiile după criteriile: {{filters}} și actualizează tabelul."
-    },
 
     {
       "actionType": "shop.add_to_cart",
@@ -74,6 +185,7 @@
         "userId": "userId",
         "products": "products"
       },
+      "patchPath": "/data/shop.addToCart",
       "publish": {
         "subject": "shop.cart_updated",
         "fromToolResultJsonPath": {
@@ -83,14 +195,19 @@
           "totalProducts": "$.totalProducts",
           "totalQuantity": "$.totalQuantity"
         },
-        "fixed": { "sourceType": "shop.addToCart" }
+        "fixed": {
+          "sourceType": "shop.addToCart"
+        }
       }
     },
     {
       "actionType": "shop.view_cart",
       "mode": "tool",
       "tool": "shop.getCart",
-      "argMap": { "cartId": "cartId" }
+      "argMap": {
+        "cartId": "cartId"
+      },
+      "patchPath": "/data/shop.getCart"
     }
   ]
 }

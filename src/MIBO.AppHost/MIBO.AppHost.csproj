@@ -12,7 +12,6 @@
     <ItemGroup>
       <ProjectReference Include="..\MIBO.ApiGateway\MIBO.ApiGateway.csproj" />
       <ProjectReference Include="..\MIBO.ConversationService\MIBO.ConversationService.csproj" />
-      <ProjectReference Include="..\MIBO.FinanceDataService\MIBO.FinanceDataService.csproj" />
       <ProjectReference Include="..\MIBO.IdentityService\MIBO.IdentityService.csproj" />
     </ItemGroup>
 

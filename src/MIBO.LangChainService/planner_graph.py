@@ -1,25 +1,23 @@
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 from langgraph.graph import END, StateGraph
-from pydantic import ValidationError
 
 from agent_context import ConfigContextLoader, ConversationMemoryStore
 from config import settings
 from planner_core import (
+    CapabilityRegistry,
+    IntentDetectionStage,
+    PlanGenerationStage,
+    PlanValidationStage,
+    PlannerPluginRegistry,
     PlannerState,
-    ensure_ui_when_requested,
+    ReasoningStage,
+    ResponseCompositionStage,
     fetch_external_context,
-    filter_unknown_tools,
-    normalize_tool_plan,
-    rank_candidates,
-    safe_json_loads,
 )
-from prompt_template import build_planner_prompt
 from schemas import PlannerInputV1, ToolPlanV1
 
 
@@ -34,6 +32,20 @@ class LangGraphPlanner:
             timeout=settings.GROQ_TIMEOUT_SECONDS,
             max_tokens=settings.GROQ_MAX_TOKENS,
         )
+
+        self._plugin_registry = PlannerPluginRegistry()
+        self._plugin_registry.register_default_plugins()
+        if not settings.ENABLE_PLUGIN_INTENT:
+            self._plugin_registry.intent_detectors = []
+        if not settings.ENABLE_PLUGIN_POST_PROCESSING:
+            self._plugin_registry.post_processors = []
+        self._capability_registry = CapabilityRegistry()
+
+        self._intent_stage = IntentDetectionStage(self._plugin_registry)
+        self._reasoning_stage = ReasoningStage(self._llm)
+        self._planning_stage = PlanGenerationStage(self._llm)
+        self._validation_stage = PlanValidationStage(self._llm, self._plugin_registry)
+        self._composition_stage = ResponseCompositionStage()
         self._graph = self._build_graph()
 
     async def plan(self, input_data: PlannerInputV1) -> ToolPlanV1:
@@ -52,15 +64,19 @@ class LangGraphPlanner:
         graph = StateGraph(PlannerState)
         graph.add_node("bootstrap_context", self._node_bootstrap_context)
         graph.add_node("deep_search", self._node_deep_search)
+        graph.add_node("intent_detection", self._node_intent_detection)
         graph.add_node("reasoning", self._node_reasoning)
-        graph.add_node("generate", self._node_generate)
+        graph.add_node("planning", self._node_planning)
         graph.add_node("validate", self._node_validate)
+        graph.add_node("compose_response", self._node_compose_response)
 
         graph.add_edge("bootstrap_context", "deep_search")
-        graph.add_edge("deep_search", "reasoning")
-        graph.add_edge("reasoning", "generate")
-        graph.add_edge("generate", "validate")
-        graph.add_edge("validate", END)
+        graph.add_edge("deep_search", "intent_detection")
+        graph.add_edge("intent_detection", "reasoning")
+        graph.add_edge("reasoning", "planning")
+        graph.add_edge("planning", "validate")
+        graph.add_edge("validate", "compose_response")
+        graph.add_edge("compose_response", END)
 
         graph.set_entry_point("bootstrap_context")
         return graph.compile()
@@ -92,82 +108,63 @@ class LangGraphPlanner:
         inp = state["input_data"]
         base = state["base_context"]
 
-        tool_catalog = inp.toolCatalog.get("tools", [])
-        if not isinstance(tool_catalog, list) or not tool_catalog:
-            tool_catalog = base["configPack"].get("tools", [])
-
-        ui_catalog = inp.uiComponentCatalog.get("components", [])
-        if not isinstance(ui_catalog, list) or not ui_catalog:
-            ui_catalog = base["configPack"].get("components", [])
-
-        query = " ".join(
-            [
-                inp.userPrompt or "",
-                str(state.get("memory", {}).get("summary", "")),
-                json.dumps(inp.conversationContext, ensure_ascii=False),
-            ]
+        input_tools = inp.toolCatalog.get("tools", [])
+        input_components = inp.uiComponentCatalog.get("components", [])
+        capabilities = self._capability_registry.load(
+            input_tool_catalog=input_tools if isinstance(input_tools, list) else [],
+            input_ui_catalog=input_components if isinstance(input_components, list) else [],
+            fallback_tools=base["configPack"].get("tools", []),
+            fallback_components=base["configPack"].get("components", []),
+            action_routes=base["configPack"].get("actionRoutes", []),
         )
 
-        shortlisted_tools = rank_candidates(
-            items=tool_catalog,
-            query=query,
-            name_key="name",
-            desc_key="description",
-            limit=settings.DEEP_SEARCH_MAX_TOOLS,
+        query = self._capability_registry.build_query(
+            user_prompt=inp.userPrompt,
+            memory_summary=str(state.get("memory", {}).get("summary", "")),
+            conversation_context=inp.conversationContext,
         )
-        shortlisted_components = rank_candidates(
-            items=ui_catalog,
+
+        shortlisted = self._capability_registry.shortlist(
             query=query,
-            name_key="name",
-            desc_key="propsSchema",
-            limit=settings.DEEP_SEARCH_MAX_COMPONENTS,
-        )
-        shortlisted_actions = rank_candidates(
-            items=base["configPack"].get("actionRoutes", []),
-            query=query,
-            name_key="actionType",
-            desc_key="tool",
-            limit=settings.DEEP_SEARCH_MAX_ACTION_ROUTES,
+            max_tools=settings.DEEP_SEARCH_MAX_TOOLS,
+            max_components=settings.DEEP_SEARCH_MAX_COMPONENTS,
+            max_action_routes=settings.DEEP_SEARCH_MAX_ACTION_ROUTES,
         )
 
         return {
-            "shortlisted_tools": shortlisted_tools,
-            "shortlisted_components": shortlisted_components,
-            "shortlisted_actions": shortlisted_actions,
+            "capability_set": {
+                "tools": capabilities.tools,
+                "components": capabilities.components,
+                "actionRoutes": capabilities.action_routes,
+            },
+            "shortlisted_tools": shortlisted["tools"],
+            "shortlisted_components": shortlisted["components"],
+            "shortlisted_actions": shortlisted["actions"],
         }
 
-    def _node_reasoning(self, state: PlannerState) -> PlannerState:
-        if not settings.ENABLE_DEEP_REASONING:
-            return {"reasoning": {"mode": "disabled"}}
-
-        inp = state["input_data"]
-        prompt = (
-            "Return JSON only with keys: intent, needs_tools, requested_visuals, entities, filters. "
-            "No markdown.\n"
-            f"User prompt: {inp.userPrompt}\n"
-            f"Top tools: {json.dumps([t.get('name') for t in state.get('shortlisted_tools', [])], ensure_ascii=False)}\n"
-            f"Top UI: {json.dumps([c.get('name') for c in state.get('shortlisted_components', [])], ensure_ascii=False)}"
+    def _node_intent_detection(self, state: PlannerState) -> PlannerState:
+        intent = self._intent_stage.run(
+            user_prompt=state["input_data"].userPrompt,
+            context=state["base_context"],
+            shortlisted_tools=state.get("shortlisted_tools", []),
+            shortlisted_components=state.get("shortlisted_components", []),
         )
+        return {"intent": intent}
 
-        try:
-            resp = self._llm.invoke(
-                [
-                    SystemMessage(content="You are a strict planner reasoning assistant. Output JSON only."),
-                    HumanMessage(content=prompt),
-                ]
-            )
-            raw = safe_json_loads(resp.content)
-            if not isinstance(raw, dict):
-                raw = {}
-            return {"reasoning": raw}
-        except Exception:
-            return {"reasoning": {"mode": "fallback"}}
+    def _node_reasoning(self, state: PlannerState) -> PlannerState:
+        reasoning = self._reasoning_stage.run(
+            input_data=state["input_data"],
+            shortlisted_tools=state.get("shortlisted_tools", []),
+            shortlisted_components=state.get("shortlisted_components", []),
+            intent=state.get("intent", {}),
+        )
+        return {"reasoning": reasoning}
 
-    def _node_generate(self, state: PlannerState) -> PlannerState:
+    def _node_planning(self, state: PlannerState) -> PlannerState:
         inp = state["input_data"]
         max_steps = min(inp.constraints.maxSteps, settings.PLANNER_MAX_STEPS)
 
-        compact_payload = {
+        compact_payload: Dict[str, Any] = {
             "schema": inp.schema,
             "userPrompt": inp.userPrompt,
             "conversationContext": {
@@ -184,28 +181,19 @@ class LangGraphPlanner:
                 "actionRoutes": state.get("shortlisted_actions", []),
                 "textSpec": state["base_context"]["configPack"].get("textSpec", {}),
                 "externalContext": state["base_context"].get("externalContext", []),
+                "intent": state.get("intent", {}),
                 "reasoning": state.get("reasoning", {}),
             },
         }
 
-        prompt = build_planner_prompt(compact_payload)
-        resp = self._llm.invoke(
-            [
-                SystemMessage(
-                    content=(
-                        "You are a strict JSON planner for a production microservice system. "
-                        "Output only valid JSON for tool_plan.v1."
-                    )
-                ),
-                HumanMessage(content=prompt),
-            ]
+        raw_response = self._planning_stage.run(
+            input_data=inp,
+            compact_payload=compact_payload,
         )
 
-        return {"prompt": prompt, "raw_response": str(resp.content)}
+        return {"raw_response": raw_response}
 
     def _node_validate(self, state: PlannerState) -> PlannerState:
-        raw_text = state.get("raw_response", "")
-        user_prompt = state["input_data"].userPrompt
         input_tool_catalog = state["input_data"].toolCatalog.get("tools", [])
         allowed_tools = {
             str(t.get("name", "")).strip()
@@ -220,64 +208,37 @@ class LangGraphPlanner:
             }
         )
 
-        try:
-            raw = safe_json_loads(raw_text)
-        except Exception as ex:
-            raw = self._repair_with_model(raw_text=raw_text, error=f"JSON parse failed: {ex}")
-
-        normalized = normalize_tool_plan(raw)
-        normalized = filter_unknown_tools(normalized, allowed_tools)
-        normalized = ensure_ui_when_requested(
-            normalized,
-            user_prompt,
-            state.get("shortlisted_components", []),
-            state.get("shortlisted_tools", []),
+        result = self._validation_stage.run(
+            raw_response=state.get("raw_response", ""),
+            user_prompt=state["input_data"].userPrompt,
+            shortlisted_tools=state.get("shortlisted_tools", []),
+            shortlisted_components=state.get("shortlisted_components", []),
+            allowed_tools=allowed_tools,
         )
 
-        last_error: Optional[str] = None
-        for _ in range(settings.PLANNER_REPAIR_ATTEMPTS + 1):
-            try:
-                validated = ToolPlanV1.model_validate(normalized)
-                return {"normalized": normalized, "validated": validated}
-            except ValidationError as ve:
-                last_error = str(ve)
-                repaired = self._repair_with_model(raw_text=json.dumps(normalized), error=last_error)
-                normalized = normalize_tool_plan(repaired)
-                normalized = filter_unknown_tools(normalized, allowed_tools)
-                normalized = ensure_ui_when_requested(
-                    normalized,
-                    user_prompt,
-                    state.get("shortlisted_components", []),
-                    state.get("shortlisted_tools", []),
-                )
+        return {
+            "normalized": result["normalized"],
+            "validated": result["validated"],
+        }
 
-        fallback = ToolPlanV1(
-            schema="tool_plan.v1",
-            rationale="Fallback plan: model output invalid, switching to assistant answer mode.",
-            steps=[],
-            uiIntent=None,
-            safety={"needAssistantAnswer": True, "reason": last_error or "Planner validation failed."},
-        )
-        return {"normalized": normalized, "validated": fallback}
-
-    def _repair_with_model(self, raw_text: str, error: str) -> Dict[str, Any]:
-        sys = SystemMessage(
-            content=(
-                "You repair invalid planner JSON. Output ONLY valid JSON. "
-                "No markdown, no extra text."
+    def _node_compose_response(self, state: PlannerState) -> PlannerState:
+        validated = state.get("validated")
+        if not isinstance(validated, ToolPlanV1):
+            fallback = ToolPlanV1(
+                schema="tool_plan.v1",
+                rationale="Fallback plan: missing validated plan.",
+                steps=[],
+                uiIntent=None,
+                safety={"needAssistantAnswer": True, "reason": "validated_plan_missing"},
             )
+            return {"validated": fallback}
+
+        composed = self._composition_stage.run(
+            validated,
+            intent=state.get("intent", {}),
+            reasoning=state.get("reasoning", {}),
         )
-        user = HumanMessage(
-            content=(
-                "Validation/parsing failed for planner JSON.\n"
-                f"Error: {error}\n\n"
-                "Return corrected JSON for schema tool_plan.v1 with keys: "
-                "schema, rationale, steps, uiIntent, safety.\n"
-                f"Invalid content:\n{raw_text}"
-            )
-        )
-        resp = self._llm.invoke([sys, user])
-        return safe_json_loads(str(resp.content))
+        return {"validated": composed}
 
     @staticmethod
     def _plan_summary(plan: ToolPlanV1) -> str:

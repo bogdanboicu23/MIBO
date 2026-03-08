@@ -78,6 +78,7 @@ def ensure_ui_when_requested(
             "all charts",
         ]
     )
+    wants_input = any(k in prompt for k in ["input", "custom", "customiz", "form", "formular"])
 
     first_tool = steps[0]["tool"] if steps and isinstance(steps[0], dict) and "tool" in steps[0] else ""
 
@@ -86,6 +87,27 @@ def ensure_ui_when_requested(
 
     def comp(name: str, props: Dict[str, Any]) -> Dict[str, Any]:
         return {"type": "component", "name": name, "props": props, "children": []}
+
+    # If shortlist is too narrow, keep shop flows usable via deterministic fallbacks.
+    if domain_shop:
+        if "shop.searchProducts" not in available_tools and "shop.listProducts" not in available_tools:
+            available_tools.add("shop.listProducts")
+        available_tools.add("shop.searchProducts")
+        available_tools.add("shop.listCategories")
+
+        # Ensure core shop UI blocks are available even when component ranking misses them.
+        available_components.update(
+            {
+                "pageTitle",
+                "searchBar",
+                "categoryChips",
+                "sortDropdown",
+                "productCarousel",
+                "pagination",
+                "dataTable",
+                "actionPanel",
+            }
+        )
 
     if not steps and domain_shop:
         if "shop.searchProducts" in available_tools:
@@ -125,6 +147,27 @@ def ensure_ui_when_requested(
     if domain_shop and has_component("productCarousel"):
         source = first_tool or "shop.searchProducts"
         root_children.append(comp("productCarousel", {"title": "Products", "dataKey": source, "actionType": "shop.open_product", "secondaryActionType": "shop.add_to_cart"}))
+
+    if domain_shop and has_component("dataTable"):
+        source = first_tool or "shop.searchProducts"
+        root_children.append(
+            comp(
+                "dataTable",
+                {
+                    "title": "Products Table",
+                    "dataKey": source,
+                    "rowsKey": "products",
+                    "columns": [
+                        {"key": "title", "header": "Title"},
+                        {"key": "brand", "header": "Brand"},
+                        {"key": "price", "header": "Price", "type": "number"},
+                        {"key": "rating", "header": "Rating", "type": "number"},
+                        {"key": "stock", "header": "Stock", "type": "number"},
+                    ],
+                    "pageSize": 10,
+                },
+            )
+        )
 
     if domain_shop and has_component("pagination"):
         source = first_tool or "shop.searchProducts"
@@ -188,6 +231,24 @@ def ensure_ui_when_requested(
             {"name": "Femei", "label": "Femei", "value": 80, "color": "#ec4899"},
             {"name": "Barbati", "label": "Barbati", "value": 20, "color": "#3b82f6"},
         ]
+
+        if wants_input and has_component("formCard"):
+            root_children.append(
+                comp(
+                    "formCard",
+                    {
+                        "title": "Configureaza datele graficului",
+                        "subtitle": "Introdu categorii si valori",
+                        "actionType": "ui.form.submit",
+                        "fields": [
+                            {"name": "label1", "label": "Categorie 1", "type": "text", "required": True, "defaultValue": "Categoria A"},
+                            {"name": "value1", "label": "Valoare 1", "type": "number", "required": True, "defaultValue": 50},
+                            {"name": "label2", "label": "Categorie 2", "type": "text", "required": True, "defaultValue": "Categoria B"},
+                            {"name": "value2", "label": "Valoare 2", "type": "number", "required": True, "defaultValue": 20},
+                        ],
+                    },
+                )
+            )
 
         if has_component("summaryPanel"):
             root_children.append(
