@@ -1,0 +1,86 @@
+---
+title: Button
+description: Multi-variant button component with size and style options
+category: components
+order: 41
+---
+
+# Button
+
+A flexible button component with four visual variants and three sizes. The Button component is the primary interactive element in the MIBO UI library, supporting solid, outline, secondary, and ghost styles to cover every use case from primary actions to subtle triggers.
+
+<SectionDivider />
+
+<SectionHeader title="Preview" description="All four button variants side by side" />
+
+<ComponentPreview
+    code={`<div className="flex gap-2">
+  <Button variant="solid">Solid</Button>
+  <Button variant="outline">Outline</Button>
+  <Button variant="secondary">Secondary</Button>
+  <Button variant="ghost">Ghost</Button>
+</div>`}
+    propsSlot={
+        <PropsTable props={[
+            { name: "variant", type: '"solid" | "outline" | "secondary" | "ghost"', default: '"outline"', description: "Visual style of the button" },
+            { name: "size", type: '"sm" | "md" | "lg"', default: '"md"', description: "Size of the button" },
+            { name: "className", type: "string", description: "Additional CSS classes" },
+            { name: "...props", type: "ButtonHTMLAttributes", description: "All native button attributes" },
+        ]} />
+    }
+>
+    <div className="flex gap-2">
+        <Button variant="solid">Solid</Button>
+        <Button variant="outline">Outline</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Button variant="ghost">Ghost</Button>
+    </div>
+</ComponentPreview>
+
+<SectionDivider />
+
+<SectionHeader title="Sizes" description="Three size options for different contexts" />
+
+<ComponentPreview code={`<div className="flex items-center gap-2">
+  <Button size="sm">Small</Button>
+  <Button size="md">Medium</Button>
+  <Button size="lg">Large</Button>
+</div>`}>
+    <div className="flex items-center gap-2">
+        <Button size="sm">Small</Button>
+        <Button size="md">Medium</Button>
+        <Button size="lg">Large</Button>
+    </div>
+</ComponentPreview>
+
+<Callout type="tip" title="Size Guidelines">
+  Use `sm` for inline or compact layouts, `md` for standard forms and actions, and `lg` for hero sections or primary call-to-action areas.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Interactive Playground" description="Experiment with button props in real time" />
+
+<Playground code={`<Button variant="solid" size="md">
+  Click me
+</Button>`} />
+
+<SectionDivider />
+
+<SectionHeader title="Usage" description="How to import and use the Button component" />
+
+```tsx
+import { Button } from "@/components/ui";
+
+function Example() {
+    return (
+        <Button variant="solid" size="lg" onClick={() => alert("Clicked!")}>
+            Submit
+        </Button>
+    );
+}
+```
+
+<Callout type="info" title="Accessibility">
+  The Button component forwards all native button HTML attributes, including `disabled`, `type`, and `aria-*` props. Always provide meaningful text content or an `aria-label` for screen readers.
+</Callout>

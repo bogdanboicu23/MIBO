@@ -1,0 +1,170 @@
+---
+title: Observability
+description: Monitoring, logging, and tracing with OpenTelemetry, Prometheus, Grafana, and Loki
+category: deployment
+order: 66
+---
+
+# Observability
+
+MIBO uses a full observability stack for monitoring, logging, and metrics collection across all microservices.
+
+<SectionDivider />
+
+<SectionHeader title="Stack Overview" description="Telemetry flows from services through OpenTelemetry collectors to Prometheus and Loki, visualized in Grafana." />
+
+```
+   MIBO Services
+       │
+       │  OTLP (gRPC + HTTP)
+       ▼
+┌──────────────────┐
+│  OpenTelemetry   │  Collectors (DaemonSet + Deployment)
+│  Collector       │
+└────────┬─────────┘
+         │
+    ┌────┴─────┐
+    ▼          ▼
+┌────────┐ ┌──────┐
+│Promethe│ │ Loki │  Log aggregation
+│  us    │ │      │
+└────┬───┘ └──┬───┘
+     │        │
+     └────┬───┘
+          ▼
+    ┌──────────┐
+    │ Grafana  │  Dashboards & visualization
+    └──────────┘
+```
+
+<FeatureGrid columns={2}>
+  <FeatureCard title="OpenTelemetry" description="Collectors running as DaemonSet and Deployment for telemetry ingestion" icon="📡" />
+  <FeatureCard title="Prometheus" description="Metrics storage scraped from the OTel collector's exporter endpoint" icon="🔥" />
+  <FeatureCard title="Loki" description="Log aggregation from all services and Kubernetes events" icon="📋" />
+  <FeatureCard title="Grafana" description="Dashboards and visualization for metrics and logs" icon="📊" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="OpenTelemetry Collectors" description="Two collector modes handle different telemetry data." />
+
+### DaemonSet Collector
+
+Runs on every node to collect node-level telemetry:
+
+```yaml
+# deploy/opentelemetry/values.yaml
+mode: daemonset
+presets:
+  kubernetesAttributes: true   # Add k8s metadata to all signals
+  kubeletMetrics: true          # Collect kubelet metrics per node
+  logsCollection: true          # Collect container file logs
+```
+
+### Deployment Collector
+
+A single replica collecting cluster-wide metrics:
+
+```yaml
+# deploy/opentelemetry/receiver.yaml
+mode: deployment
+replicas: 1
+presets:
+  clusterMetrics: true          # k8s cluster-level metrics
+  kubernetesEvents: true        # k8s events as logs
+```
+
+<SectionDivider />
+
+<SectionHeader title="Collector Pipeline" description="The OpenTelemetry collector pipeline configuration for receiving, processing, and exporting telemetry." />
+
+```yaml
+# deploy/opentelemetry/collector.yaml
+image: otel/opentelemetry-collector:0.145.0
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc: {}    # gRPC receiver for traces/metrics
+        http: {}    # HTTP receiver for traces/metrics
+  processors:
+    batch: {}
+    memory_limiter:
+      limit_percentage: 75
+      spike_limit_percentage: 15
+  exporters:
+    prometheus:
+      endpoint: "0.0.0.0:8889"
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+```
+
+<Callout type="tip" title="OTLP Protocol">
+  Services send telemetry data to the OpenTelemetry collector via OTLP (gRPC or HTTP). The collector then processes, batches, and exports the data to the appropriate backend (Prometheus for metrics, Loki for logs).
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Grafana" description="Dashboards for visualizing metrics and logs." />
+
+| Property | Value |
+|----------|-------|
+| URL | `https://grafana.mibo.monster` |
+| Namespace | `observability` |
+| Port | 3000 |
+| Data Sources | Prometheus, Loki |
+
+<SectionDivider />
+
+<SectionHeader title="Loki" description="Centralized log aggregation from all services." />
+
+| Property | Value |
+|----------|-------|
+| URL | `https://loki.mibo.monster` |
+| Namespace | `observability` |
+| Port | 3100 |
+
+<SectionDivider />
+
+<SectionHeader title="Prometheus" description="Metrics collection from the OpenTelemetry exporter." />
+
+Prometheus scrapes metrics from the OpenTelemetry collector's Prometheus exporter endpoint on port 8889.
+
+<SectionDivider />
+
+<SectionHeader title="What's Monitored" description="Signals collected across both DaemonSet and Deployment collectors." />
+
+| Signal | Source | Collector |
+|--------|--------|-----------|
+| Container logs | Node filesystem | DaemonSet |
+| Kubelet metrics | Each node's kubelet | DaemonSet |
+| k8s attributes | Pod/node metadata | DaemonSet |
+| Cluster metrics | k8s API server | Deployment |
+| k8s events | k8s API server | Deployment |
+| Application metrics | OTLP from services | Both |
+
+<SectionDivider />
+
+<SectionHeader title="Memory Protection" description="The collector includes a memory limiter processor to prevent OOM kills." />
+
+```yaml
+memory_limiter:
+  limit_percentage: 75       # Hard limit at 75% of available memory
+  spike_limit_percentage: 15  # Allow 15% spike above limit
+```
+
+<Callout type="warning" title="Pipeline Ordering">
+  The memory limiter is applied **before** the batch processor in the pipeline to drop data early if memory pressure is high. This prevents the collector from being OOM-killed under heavy load.
+</Callout>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Ingress & TLS" description="Traefik routing and Grafana ingress" href="/deployment/ingress" icon="🔒" />
+  <LinkCard title="Infrastructure" description="Stateful services powering the platform" href="/deployment/infrastructure" icon="🗄️" />
+  <LinkCard title="Kubernetes Deployment" description="Cluster architecture and manifests" href="/deployment/kubernetes" icon="☸️" />
+  <LinkCard title="Deployment Overview" description="Back to deployment overview" href="/deployment" icon="🏠" />
+</LinkCardGrid>

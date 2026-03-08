@@ -1,0 +1,209 @@
+---
+title: Service Descriptions
+description: Detailed overview of each MIBO microservice
+category: architecture
+order: 11
+---
+
+# Service Descriptions
+
+MIBO is composed of four backend services and a shared library. Each service is a standalone ASP.NET Core application with its own responsibilities, data store, and deployment lifecycle.
+
+<SectionDivider />
+
+<SectionHeader title="Identity Service" description="Authentication, authorization, and user management" />
+
+The Identity Service handles all authentication and user management concerns. It issues JWT tokens and manages the full user lifecycle.
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Registration & Login"
+    description="User sign-up and credential-based authentication"
+    icon="🔐"
+  />
+  <FeatureCard
+    title="JWT Tokens"
+    description="Access token generation and refresh token management"
+    icon="🎟️"
+  />
+  <FeatureCard
+    title="User Profiles"
+    description="Profile storage, updates, and password management"
+    icon="👤"
+  />
+</FeatureGrid>
+
+<Callout type="info" title="Tech Stack">
+  ASP.NET Core, Entity Framework Core, PostgreSQL, JWT Bearer Authentication
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Conversation Service" description="AI chat orchestration and real-time streaming" />
+
+The Conversation Service orchestrates chat interactions between users and the AI assistant. It integrates with LLM providers, manages conversation history, and streams responses in real time.
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Chat Processing"
+    description="Receives and processes user chat messages through the AI pipeline"
+    icon="💬"
+  />
+  <FeatureCard
+    title="AI Orchestration"
+    description="Integrates with LLM providers to generate intelligent responses"
+    icon="🤖"
+  />
+  <FeatureCard
+    title="SSE Streaming"
+    description="Streams AI response tokens to the client in real time"
+    icon="🌊"
+  />
+  <FeatureCard
+    title="Conversation History"
+    description="Persists and retrieves past conversations for context"
+    icon="📜"
+  />
+  <FeatureCard
+    title="Action Execution"
+    description="Triggers financial operations based on chat intent"
+    icon="⚙️"
+  />
+  <FeatureCard
+    title="Generative UI"
+    description="Resolves dynamic UI components to render in the chat interface"
+    icon="🎨"
+  />
+</FeatureGrid>
+
+<Callout type="info" title="Tech Stack">
+  ASP.NET Core, SignalR, AI/LLM Integration, NATS
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Finance Service" description="Financial data, accounts, transactions, and budgets" />
+
+The Finance Service manages all financial data and operations. It serves as the system of record for accounts, transactions, and budgets.
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Bank Accounts"
+    description="Create, read, update, and delete bank account records"
+    icon="🏦"
+  />
+  <FeatureCard
+    title="Transactions"
+    description="Record, query, and categorize financial transactions"
+    icon="💳"
+  />
+  <FeatureCard
+    title="Budgets"
+    description="Create budgets and track spending against them"
+    icon="📊"
+  />
+  <FeatureCard
+    title="Categorization"
+    description="Automatic and manual expense categorization"
+    icon="🏷️"
+  />
+  <FeatureCard
+    title="Analytics"
+    description="Financial summaries, reports, and spending insights"
+    icon="📈"
+  />
+  <FeatureCard
+    title="Spending Reports"
+    description="Detailed breakdowns of spending by category and period"
+    icon="📋"
+  />
+</FeatureGrid>
+
+<Callout type="info" title="Tech Stack">
+  ASP.NET Core, Entity Framework Core, PostgreSQL
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="API Gateway" description="Reverse proxy and single entry point for all client requests" />
+
+The Gateway routes client requests to the appropriate backend services using YARP (Yet Another Reverse Proxy).
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    title="Reverse Proxy"
+    description="Routes incoming requests to the correct backend service via YARP"
+    icon="🔀"
+  />
+  <FeatureCard
+    title="Route Forwarding"
+    description="Path-based routing rules map URLs to specific microservices"
+    icon="🗺️"
+  />
+  <FeatureCard
+    title="CORS Configuration"
+    description="Centralized cross-origin resource sharing policy management"
+    icon="🌐"
+  />
+  <FeatureCard
+    title="Request Transformation"
+    description="Modifies request and response headers as needed"
+    icon="🔄"
+  />
+</FeatureGrid>
+
+<Callout type="info" title="Tech Stack">
+  ASP.NET Core, YARP (Yet Another Reverse Proxy)
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Shared Library" description="Cross-cutting concerns used by all backend services" />
+
+The `MIBO.Shared` project provides common code that is referenced by multiple services, ensuring consistency and reducing duplication.
+
+<FeatureGrid columns={2}>
+  <FeatureCard
+    title="NATS Contracts"
+    description="Message contracts and subject definitions for inter-service communication"
+    icon="📝"
+  />
+  <FeatureCard
+    title="Shared DTOs"
+    description="Common data transfer objects and models used across services"
+    icon="📦"
+  />
+  <FeatureCard
+    title="Service Extensions"
+    description="Reusable service registration and configuration helpers"
+    icon="🧰"
+  />
+  <FeatureCard
+    title="Middleware"
+    description="Shared middleware components for logging, error handling, and more"
+    icon="🔧"
+  />
+</FeatureGrid>
+
+<Callout type="tip" title="Why a Shared Library?">
+  The shared library ensures that message contracts and DTOs stay in sync across services. Changes to a contract are caught at compile time rather than at runtime.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Continue Reading" description="Explore related architecture topics" />
+
+<LinkCardGrid>
+  <LinkCard
+    title="Architecture Overview"
+    description="High-level system diagram and design principles"
+    href="/architecture"
+    icon="🏗️"
+  />
+  <LinkCard
+    title="Inter-Service Communication"
+    description="NATS messaging patterns and real-time streaming with SSE"
+    href="/architecture/communication"
+    icon="🔗"
+  />
+</LinkCardGrid>

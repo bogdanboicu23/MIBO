@@ -1,0 +1,153 @@
+---
+title: Kubernetes
+description: Kubernetes deployment architecture and manifest structure
+category: deployment
+order: 62
+---
+
+# Kubernetes Deployment
+
+MIBO runs on a **DigitalOcean Kubernetes** cluster with a combination of Helm charts and raw manifests organized with Kustomize.
+
+<SectionDivider />
+
+<SectionHeader title="Manifest Structure" description="Organization of Kubernetes manifests across the deploy/ and k8s/ directories." />
+
+```
+deploy/
+├── base/                        # Base Kustomize resources
+│   ├── namespaces.yaml          # Namespace: mibo
+│   ├── configmap.yaml           # Shared app-config (LOG_LEVEL)
+│   ├── secrets.yaml             # Placeholder app-secrets
+│   ├── api-gateway-deployment.yaml
+│   ├── app-host-deployment.yaml
+│   └── other-services-deployment.yaml
+├── environments/
+│   └── test/
+│       └── kustomization.yaml   # Overlays: namespace=test, Helm value overrides
+├── helm/                        # Helm charts per service
+│   ├── api-gateway/
+│   ├── app-host/
+│   ├── conversation-service/
+│   ├── identity-service/
+│   └── langchain-service/
+├── migrations/                  # Database migration jobs
+│   ├── identity-db-migration.yaml
+│   └── run-migrations.yaml
+├── opentelemetry/               # OTel collector configs
+└── *.yaml                       # Standalone ingress/deployment files
+
+k8s/
+├── apps/                        # Application manifests
+│   ├── 00-mibo-namespace.yaml   # Namespace: test
+│   ├── 10-mibo-client.yaml      # Client deployment (2 replicas)
+│   ├── 11-mibo-client-ingress.yaml
+│   ├── 12-api-gateway-ingress.yaml
+│   ├── 20-nats.yaml             # NATS StatefulSet
+│   └── 21-redis.yaml            # Redis StatefulSet
+├── traefik/                     # Traefik ingress controller
+│   ├── 00-namespace.yaml
+│   ├── 01-rbac.yaml
+│   ├── 02-ingressclass.yaml
+│   ├── 03-deployment.yaml
+│   ├── 04-service-lb.yaml
+│   └── 05-09*.yaml              # Dashboard, auth, TLS
+├── ci/                          # CI/CD service account & RBAC
+│   ├── 01-ci-serviceaccount.yaml
+│   └── 02-ci-rbac.yaml
+└── digitalocean/
+    └── secrets.yaml             # Registry & app secrets
+```
+
+<SectionDivider />
+
+<SectionHeader title="Service Deployments" description="Each application service is deployed as a Kubernetes Deployment." />
+
+| Service | Replicas | Image | Port | Namespace |
+|---------|----------|-------|------|-----------|
+| MIBO Client | 2 | `mibo/client:test-latest` | 80 | test |
+| API Gateway | 2 | `mibo/api-gateway:latest` | 8080 | mibo |
+| Identity Service | 1 | `mibo/identity-service:test-latest` | 8080 | test |
+| Conversation Service | 1 | `mibo/conversation-service:test-latest` | 8080 | test |
+| Langchain Service | 1 | `mibo/langchain-service:test-latest` | 8088 | test |
+| Calendar Agent | 1 | `mibo-calendar-agent:latest` | 8080 | mibo |
+| Visualisation Service | 1 | `mibo-visualisation-service:latest` | 8080 | mibo |
+| App Host | 1 | `mibo-app-host:latest` | 8080 | mibo |
+
+<SectionDivider />
+
+<SectionHeader title="Resource Limits" description="All services define CPU and memory constraints to ensure cluster stability." />
+
+```yaml
+resources:
+  requests:
+    cpu: "50m"       # Minimum guaranteed CPU
+    memory: "128Mi"  # Minimum guaranteed memory
+  limits:
+    cpu: "500m"      # Maximum CPU
+    memory: "512Mi"  # Maximum memory
+```
+
+<Callout type="info" title="Lighter Limits for Identity Service">
+  The Identity Service uses lighter limits (50m-200m CPU, 64Mi-256Mi) since it handles less computational work compared to the Conversation Service.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Security Context" description="Strict security policies enforced on service pods." />
+
+The API Gateway enforces strict security policies:
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+```
+
+<Callout type="warning" title="Network Policy">
+  A `NetworkPolicy` restricts ingress traffic to only the `test` and `observability` namespaces, limiting the blast radius of any compromised pod.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Database Migrations" description="Schema updates run as Kubernetes Jobs before service deployment." />
+
+```yaml
+# identity-db-migration job
+initContainers:
+  - name: wait-for-db     # Waits for PostgreSQL availability
+containers:
+  - name: migrate
+    command: ["dotnet", "ef", "database", "update", "--no-build"]
+```
+
+The migration job uses the same service image and database credentials, with a 30-second timeout and fallback to application-triggered auto-migration.
+
+<SectionDivider />
+
+<SectionHeader title="Kustomize Overlays" description="Environment-specific configuration applied on top of base manifests." />
+
+```yaml
+# deploy/environments/test/kustomization.yaml
+namespace: test
+bases:
+  - ../../base
+helmCharts:
+  - name: api-gateway
+    valuesFile: values-api-gateway.yaml
+  - name: identity-service
+    valuesFile: values-identity-service.yaml
+  # ... more services
+```
+
+This allows the same base manifests to be customized per environment.
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Helm Charts" description="Service templating and configuration" href="/deployment/helm" icon="⎈" />
+  <LinkCard title="Ingress & TLS" description="Traefik routing and certificates" href="/deployment/ingress" icon="🔒" />
+  <LinkCard title="Infrastructure" description="Stateful services on Kubernetes" href="/deployment/infrastructure" icon="🗄️" />
+  <LinkCard title="Deployment Overview" description="Back to deployment overview" href="/deployment" icon="🏠" />
+</LinkCardGrid>

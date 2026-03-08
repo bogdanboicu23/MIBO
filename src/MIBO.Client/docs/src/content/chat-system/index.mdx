@@ -1,0 +1,90 @@
+---
+title: Chat System
+description: Overview of MIBO's AI-powered conversational interface
+category: chat-system
+order: 50
+---
+
+# Chat System
+
+MIBO's chat system provides a natural language interface for users to interact with their financial data. The system orchestrates AI responses, executes financial operations, and delivers generative UI components in real-time.
+
+<SectionDivider />
+
+<SectionHeader title="How It Works" description="The complete message lifecycle from user input to rendered response" />
+
+<Steps>
+  <Step title="User sends a message">
+    The user types a prompt via the React client interface.
+  </Step>
+  <Step title="Chat Orchestrator receives the request">
+    The orchestrator coordinates the full response pipeline.
+  </Step>
+  <Step title="Planner analyzes intent">
+    The LLM integration analyzes the intent and selects appropriate tools.
+  </Step>
+  <Step title="Tool Executor runs selected tools">
+    Financial queries, account operations, and other backend calls are executed.
+  </Step>
+  <Step title="UI Composer generates dynamic UI">
+    Dynamic UI specifications are created based on the returned data.
+  </Step>
+  <Step title="Text Composer produces a response">
+    A human-readable natural language response is generated.
+  </Step>
+  <Step title="Response streams back to the client">
+    The combined response is delivered via SSE to the React client.
+  </Step>
+</Steps>
+
+<SectionDivider />
+
+<SectionHeader title="Key Architecture Components" description="The core services that power the chat pipeline" />
+
+<FeatureGrid columns={2}>
+  <FeatureCard title="Chat Orchestrator" description="Main coordination logic for the entire chat flow" icon="🎯" />
+  <FeatureCard title="Planner" description="LLM-powered intent analysis and tool selection" icon="🧠" />
+  <FeatureCard title="Tool Registry" description="Catalog of available tools the AI can invoke" icon="📋" />
+  <FeatureCard title="Tool Executor" description="Executes tool calls against backend services" icon="⚙️" />
+  <FeatureCard title="UI Composer" description="Generates generative UI component specifications" icon="🎨" />
+  <FeatureCard title="Text Composer" description="Creates natural language responses for the user" icon="✍️" />
+  <FeatureCard title="Action Router" description="Routes user actions from UI components to handlers" icon="🔀" />
+  <FeatureCard title="Event Publisher" description="Publishes events via NATS JetStream" icon="📡" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Example Interactions" description="How the system handles common user queries" />
+
+<Callout type="tip" title="Spending Query">
+**User:** "Show me my spending this month"
+- Planner selects the expense analytics tool
+- Tool Executor queries the Finance Data Service
+- UI Composer generates a spending chart component
+- Text Composer writes a summary
+</Callout>
+
+<Callout type="tip" title="Balance Query">
+**User:** "What's my account balance?"
+- Planner selects the account summary tool
+- Tool Executor fetches account data
+- UI Composer renders an account card
+- Text Composer provides the balance information
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="API Endpoints" description="The three main controllers exposed by the chat system" />
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/chat` | Main chat endpoint |
+| `POST /api/conversations/stream` | SSE streaming endpoint |
+| `POST /api/v1/action` | Action execution endpoint |
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Conversation Flow" description="Detailed lifecycle of a chat message from input to response" href="/chat-system/conversation-flow" icon="🔄" />
+  <LinkCard title="Real-Time Features" description="SSE streaming and SignalR integration for live updates" href="/chat-system/realtime" icon="⚡" />
+</LinkCardGrid>

@@ -1,0 +1,150 @@
+---
+title: Transactions
+description: Transaction query and search endpoints
+category: api-reference
+order: 26
+---
+
+# Transactions API
+
+Query and search financial transactions.
+
+**Base path:** `/api/transactions`
+
+<Callout type="info" title="Authentication Required">
+  All transaction endpoints require a valid JWT Bearer token in the `Authorization` header.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="List Transactions" description="Retrieve a paginated list of transactions with comprehensive filtering" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/transactions"
+    description="Retrieve a paginated list of transactions with comprehensive filtering options."
+    params={[
+        { name: "userId", type: "string", required: false, description: "Filter by user ID" },
+        { name: "accountId", type: "string", required: false, description: "Filter by account ID" },
+        { name: "skip", type: "number", required: false, description: "Pagination offset (default: 0)" },
+        { name: "limit", type: "number", required: false, description: "Page size (default: 30)" },
+        { name: "type", type: "string", required: false, description: "Transaction type: debit, credit, transfer" },
+        { name: "category", type: "string", required: false, description: "Category filter" },
+        { name: "startDate", type: "string", required: false, description: "Start date (ISO 8601)" },
+        { name: "endDate", type: "string", required: false, description: "End date (ISO 8601)" },
+        { name: "sortBy", type: "string", required: false, description: "Sort field" },
+        { name: "order", type: "string", required: false, description: "Sort direction: asc or desc" },
+    ]}
+    response={`{
+    "transactions": [
+        {
+            "id": 1,
+            "accountId": 1,
+            "userId": 42,
+            "type": "debit",
+            "amount": 45.00,
+            "currency": "USD",
+            "description": "Grocery Store",
+            "category": "groceries",
+            "merchant": "Fresh Market",
+            "date": "2024-01-15T10:30:00Z",
+            "status": "completed",
+            "balanceAfter": 12405.00,
+            "reference": "TXN-001234"
+        }
+    ],
+    "total": 142,
+    "skip": 0,
+    "limit": 30
+}`}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Transaction by ID" description="Retrieve a single transaction by its unique identifier" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/transactions/{id}"
+    description="Retrieve a single transaction by ID."
+    params={[
+        { name: "id", type: "number", required: true, description: "Transaction ID" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get User Transactions" description="Get all transactions for a specific user with optional filters" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/transactions/user/{userId}"
+    description="Get all transactions for a specific user with optional filters."
+    params={[
+        { name: "userId", type: "number", required: true, description: "User ID" },
+        { name: "type", type: "string", required: false, description: "Transaction type filter" },
+        { name: "category", type: "string", required: false, description: "Category filter" },
+        { name: "startDate", type: "string", required: false, description: "Start date (ISO 8601)" },
+        { name: "endDate", type: "string", required: false, description: "End date (ISO 8601)" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Get Account Transactions" description="Get all transactions for a specific account" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/transactions/account/{accountId}"
+    description="Get all transactions for a specific account."
+    params={[
+        { name: "accountId", type: "number", required: true, description: "Account ID" },
+    ]}
+/>
+
+<SectionDivider />
+
+<SectionHeader title="Search Transactions" description="Full-text search across descriptions, categories, and merchants" />
+
+<ApiEndpoint
+    method="GET"
+    path="/api/transactions/search"
+    description="Full-text search across transaction descriptions, categories, and merchants."
+    params={[
+        { name: "q", type: "string", required: true, description: "Search query (returns 400 if empty)" },
+        { name: "skip", type: "number", required: false, description: "Pagination offset" },
+        { name: "limit", type: "number", required: false, description: "Page size" },
+    ]}
+/>
+
+<Callout type="warning" title="Search Query Required">
+  The `q` parameter is required and must not be empty. An empty search query will return a `400 Bad Request` response.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Transaction Types" description="Available transaction type values" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Debit" description="Money withdrawn from account" icon="📤" />
+  <FeatureCard title="Credit" description="Money deposited to account" icon="📥" />
+  <FeatureCard title="Transfer" description="Transfer between accounts" icon="🔄" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Transaction Statuses" description="Possible status values for transactions" />
+
+<FeatureGrid columns={3}>
+  <FeatureCard title="Pending" description="Transaction is being processed" icon="⏳" />
+  <FeatureCard title="Completed" description="Transaction completed successfully" icon="✅" />
+  <FeatureCard title="Failed" description="Transaction failed to process" icon="❌" />
+</FeatureGrid>
+
+<SectionDivider />
+
+<LinkCardGrid>
+  <LinkCard title="Accounts" description="Manage bank accounts" href="/api-reference/finance/accounts" icon="🏦" />
+  <LinkCard title="Expenses" description="Expense tracking and categorization" href="/api-reference/finance/expenses" icon="🧾" />
+  <LinkCard title="Analytics" description="Transaction analytics and trends" href="/api-reference/finance/analytics" icon="📈" />
+</LinkCardGrid>

@@ -1,0 +1,122 @@
+---
+title: Architecture Overview
+description: High-level architecture of the MIBO microservices platform
+category: architecture
+order: 10
+---
+
+# Architecture Overview
+
+MIBO follows a **microservices architecture** where each service owns its domain, data, and business logic. Services communicate asynchronously through NATS message broker and are fronted by a YARP-based API gateway.
+
+<SectionDivider />
+
+<SectionHeader title="System Diagram" description="Visual overview of how the client, gateway, services, and message broker connect" />
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    React Client (SPA)                    │
+│              Vite + React 19 + Tailwind CSS              │
+└──────────────────────┬──────────────────────────────────┘
+                       │ HTTP / SignalR
+                       ▼
+┌──────────────────────────────────────────────────────────┐
+│                   API Gateway (YARP)                      │
+│          Reverse Proxy · Route-based Forwarding           │
+└─────┬──────────────┬───────────────────┬────────────────┘
+      │              │                   │
+      ▼              ▼                   ▼
+┌───────────┐  ┌──────────────┐  ┌──────────────┐
+│  Identity  │  │ Conversation │  │   Finance    │
+│  Service   │  │   Service    │  │   Service    │
+├───────────┤  ├──────────────┤  ├──────────────┤
+│ Auth/JWT  │  │ Chat/AI      │  │ Accounts     │
+│ Users     │  │ Streaming    │  │ Transactions │
+│ Profiles  │  │ Actions      │  │ Budgets      │
+└─────┬─────┘  └──────┬───────┘  └──────┬───────┘
+      │               │                  │
+      └───────────────┼──────────────────┘
+                      │
+               ┌──────▼──────┐
+               │    NATS     │
+               │  Message    │
+               │   Broker    │
+               └─────────────┘
+```
+
+<SectionDivider />
+
+<SectionHeader title="Design Principles" description="Core architectural decisions that guide the platform" />
+
+<Callout type="tip" title="Why Microservices?">
+  MIBO is built as a microservices platform so that each domain (identity, conversation, finance) can evolve, scale, and deploy independently without impacting the rest of the system.
+</Callout>
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Service Autonomy"
+    description="Each service has its own database and can be deployed independently"
+    icon="🧩"
+  />
+  <FeatureCard
+    title="Async Communication"
+    description="Services communicate via NATS for loose coupling and resilience"
+    icon="📨"
+  />
+  <FeatureCard
+    title="API Gateway Pattern"
+    description="YARP gateway provides a single entry point for all client requests"
+    icon="🚪"
+  />
+  <FeatureCard
+    title="Domain-Driven Design"
+    description="Each service encapsulates a specific business domain with clear boundaries"
+    icon="📐"
+  />
+  <FeatureCard
+    title="Event-Driven"
+    description="Key operations publish events that other services can react to asynchronously"
+    icon="⚡"
+  />
+  <FeatureCard
+    title="Real-Time Streaming"
+    description="AI responses stream to the client via SSE for an interactive experience"
+    icon="🌊"
+  />
+</FeatureGrid>
+
+<SectionDivider />
+
+<SectionHeader title="Service Ports" description="Default ports for local development" />
+
+| Service | Default Port | Description |
+|---------|-------------|-------------|
+| API Gateway | 5000 | Entry point for all API calls |
+| Identity Service | 5001 | Authentication & users |
+| Conversation Service | 5002 | Chat & AI orchestration |
+| Finance Service | 5003 | Financial data management |
+| Client (SPA) | 5173 | React frontend |
+| Docs | 3030 | Documentation site |
+
+<Callout type="info" title="Port Configuration">
+  All ports are configurable via `launchSettings.json` or environment variables. The table above shows the defaults used during local development.
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Continue Reading" description="Dive deeper into the architecture" />
+
+<LinkCardGrid>
+  <LinkCard
+    title="Service Descriptions"
+    description="Detailed overview of each microservice, its responsibilities, and tech stack"
+    href="/architecture/services"
+    icon="🔧"
+  />
+  <LinkCard
+    title="Inter-Service Communication"
+    description="How services talk to each other via NATS and stream data to clients via SSE"
+    href="/architecture/communication"
+    icon="🔗"
+  />
+</LinkCardGrid>
