@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
 
 type PieDatum = { name: string; value: number; color?: string };
 
@@ -53,13 +54,27 @@ export function PieChartCard({ props, data }: UiComponentProps) {
     const title = String(props?.title ?? "Pie Chart");
     const dataKey = String(props?.dataKey ?? "");
     const showLegend = props?.showLegend !== false;
-    const formatValue = (v: number) =>
-        props?.formatValue ? (props.formatValue as (n: number) => string)(v) : String(v);
+    const formatCfg = props?.formatValue;
+    const formatValue = (v: number) => {
+        if (typeof formatCfg === "function") {
+            try {
+                return String((formatCfg as (n: number) => unknown)(v));
+            } catch {
+                return String(v);
+            }
+        }
+        if (typeof formatCfg === "string" && formatCfg.trim()) {
+            const tpl = formatCfg.trim();
+            return tpl.includes("{value}") ? tpl.replaceAll("{value}", String(v)) : `${v} ${tpl}`;
+        }
+        return String(v);
+    };
 
-    const raw =
+    const rawSource =
         (props?.data as any) ??
-        (dataKey && data ? (data as any)[dataKey] : null) ??
-        [];
+        (dataKey ? resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey) : null) ??
+        null;
+    const raw = Array.isArray(rawSource) ? rawSource : extractArray(rawSource, ["items", "data", "series"]);
 
     const items: PieDatum[] = Array.isArray(raw)
         ? raw

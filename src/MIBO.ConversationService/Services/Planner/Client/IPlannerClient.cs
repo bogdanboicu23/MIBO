@@ -4,5 +4,5 @@ namespace MIBO.ConversationService.Services.Planner.Client;
 
 public interface IPlannerClient
 {
-    Task<ToolPlanV1> PlanAsync(object plannerInput, CancellationToken ct);
+    Task<ToolPlanV1> PlanAsync(PlannerInputV1 plannerInput, CancellationToken ct);
 }

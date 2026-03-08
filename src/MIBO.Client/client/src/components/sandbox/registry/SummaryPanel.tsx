@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type TrendDirection = "up" | "down" | "neutral";
@@ -253,10 +254,11 @@ export function SummaryPanel({ props, data }: UiComponentProps) {
     const columns: number = Number(props?.columns ?? 0);
     const positiveIsGood: boolean = props?.positiveIsGood !== false;
 
-    const raw =
+    const rawSource =
         (props?.items as any) ??
-        (dataKey && data ? (data as any)[dataKey] : null) ??
+        (dataKey ? resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey) : null) ??
         null;
+    const raw = Array.isArray(rawSource) ? rawSource : extractArray(rawSource, ["items", "kpis", "data"]);
 
     const items: SummaryItem[] = Array.isArray(raw)
         ? raw.map((x: any) => ({

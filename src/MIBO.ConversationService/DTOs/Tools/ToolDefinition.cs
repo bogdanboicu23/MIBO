@@ -8,5 +8,6 @@ public sealed record ToolDefinition(
     int TimeoutMs,
     int RetryCount,
     int CacheTtlSeconds,
-    string[] RequiredArgs     // e.g. ["rangeDays"] or empty
+    string[] RequiredArgs,     // e.g. ["rangeDays"] or empty
+    Dictionary<string, object?> DefaultArgs
 );

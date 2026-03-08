@@ -35,8 +35,18 @@ public sealed class ToolPlanExecutor : IToolPlanExecutor
                 var resolvedArgs = _resolver.Resolve(step.Tool, step.Args, results);
                 var res = await _tools.ExecuteAsync(new ToolCall(step.Tool, resolvedArgs), ct);
 
-                // Keying strategy: by tool name (latest wins). Alternativ: $"{step.Id}:{step.Tool}"
+                // Keying strategy:
+                // - by tool name (latest wins)
+                // - by step id (stable chaining support for planner placeholders)
                 results[step.Tool] = res.Body;
+                if (!string.IsNullOrWhiteSpace(step.Id))
+                    results[step.Id] = res.Body;
+            }
+            catch (KeyNotFoundException)
+            {
+                // Unknown tools can still appear due to planner hallucinations.
+                // Skip step to keep chat pipeline resilient (no 500).
+                continue;
             }
             catch
             {

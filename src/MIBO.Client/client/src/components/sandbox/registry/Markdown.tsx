@@ -3,19 +3,9 @@ import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { codeToHtml } from "shiki";
+import { resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
 
 type ShikiTheme = "material-theme-ocean" | "github-light";
-
-function getByPath(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    for (const k of parts) {
-        if (cur == null) return undefined;
-        cur = cur[k];
-    }
-    return cur;
-}
 
 function isDarkMode(): boolean {
     if (typeof document === "undefined") return true;
@@ -141,16 +131,27 @@ export function Markdown(uiProps: UiComponentProps) {
 
     const content = useMemo(() => {
         if (typeof p.content === "string") return p.content;
+        if (typeof p.markdown === "string") return p.markdown;
 
         if (typeof p.dataKey === "string") {
-            const v = getByPath(data, p.dataKey) ?? (data as any)[p.dataKey];
+            const v = resolveFromDataKey(data as Record<string, any>, p.dataKey);
             if (typeof v === "string") return v;
+            if (v && typeof v === "object") {
+                const fromObject = (v as any).markdown ?? (v as any).content ?? (v as any).text;
+                if (typeof fromObject === "string") return fromObject;
+            }
         }
 
         return "";
     }, [p, data]);
 
-    if (!content) return null;
+    if (!content) {
+        return (
+            <div className="rounded-2xl border border-zinc-200/70 bg-white p-4 text-sm opacity-70 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">
+                Markdown content is empty.
+            </div>
+        );
+    }
 
     const theme: ShikiTheme = dark
         ? "material-theme-ocean"

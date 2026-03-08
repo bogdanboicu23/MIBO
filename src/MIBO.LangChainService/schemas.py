@@ -40,6 +40,7 @@ class PlannerConstraints(BaseModel):
 class PlannerMeta(BaseModel):
     conversationId: Optional[str] = None
     userId: Optional[str] = None
+    correlationId: Optional[str] = None
 
 
 class PlannerInputV1(BaseModel):

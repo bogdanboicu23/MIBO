@@ -35,7 +35,13 @@ public sealed class JsonFileToolCatalogProvider : IToolCatalogProvider
                 CacheTtlSeconds: t.TryGetProperty("cacheTtlSeconds", out var ttl) ? ttl.GetInt32() : 0,
                 RequiredArgs: t.TryGetProperty("requiredArgs", out var ra)
                     ? ra.EnumerateArray().Select(x => x.GetString()!).ToArray()
-                    : Array.Empty<string>()
+                    : Array.Empty<string>(),
+                DefaultArgs: t.TryGetProperty("defaultArgs", out var da)
+                    ? JsonSerializer.Deserialize<Dictionary<string, object?>>(
+                        da.GetRawText(),
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                    ) ?? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
             ));
         }
 

@@ -17,7 +17,7 @@ public sealed class LangChainPlannerClient : IPlannerClient
         _logger = logger;
     }
 
-    public async Task<ToolPlanV1> PlanAsync(object plannerInput, CancellationToken ct)
+    public async Task<ToolPlanV1> PlanAsync(PlannerInputV1 plannerInput, CancellationToken ct)
     {
         using var resp = await _http.PostAsJsonAsync("/langchain/v1/plan", plannerInput, JsonOpts, ct);
 

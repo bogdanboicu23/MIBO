@@ -4,6 +4,7 @@ using System.Text;
 using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace MIBO.IdentityService.Services;
@@ -18,12 +19,12 @@ public interface IAuthService
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IConfiguration _configuration;
+    private readonly JwtSettingsOptions _jwtSettings;
 
-    public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    public AuthService(UserManager<ApplicationUser> userManager, IOptions<JwtSettingsOptions> jwtSettings)
     {
         _userManager = userManager;
-        _configuration = configuration;
+        _jwtSettings = jwtSettings.Value;
     }
 
     public async Task<LoginResponse> UserLogin(UserDto data, CancellationToken ct = default)
@@ -77,10 +78,8 @@ public class AuthService : IAuthService
     private async Task<LoginResponse> GenerateLoginResponse(ApplicationUser user, CancellationToken ct = default)
     {
         var accessTokenKey =
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:AccessTokenSecret"] ??
-                                                            throw new InvalidOperationException()));
-        var accessTokenExpires = DateTime.UtcNow.AddMinutes(int.Parse(
-            _configuration["JwtSettings:AccessTokenExpirationMinutes"] ?? throw new InvalidOperationException()));
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.AccessTokenSecret));
+        var accessTokenExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
 
         // Get user roles
         var roles = await _userManager.GetRolesAsync(user);
@@ -89,10 +88,8 @@ public class AuthService : IAuthService
         var accessToken = GenerateToken(accessTokenKey, accessTokenExpires, user, roles);
 
         var refreshTokenKey =
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:RefreshTokenSecret"] ??
-                                                            throw new InvalidOperationException()));
-        var refreshTokenExpires = DateTime.UtcNow.AddDays(int.Parse(
-            _configuration["JwtSettings:RefreshTokenExpirationDays"] ?? throw new InvalidOperationException()));
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.RefreshTokenSecret));
+        var refreshTokenExpires = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays);
 
         // Generate refresh token with minimal claims
         var refreshToken = user.RefreshToken != null && !IsJwtExpired(user.RefreshToken)
@@ -141,8 +138,8 @@ public class AuthService : IAuthService
         }
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["JwtSettings:Issuer"],
-            audience: _configuration["JwtSettings:Audience"],
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: expires,
             signingCredentials: credentials
@@ -163,8 +160,8 @@ public class AuthService : IAuthService
         };
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["JwtSettings:Issuer"],
-            audience: _configuration["JwtSettings:Audience"],
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: expires,
             signingCredentials: credentials
@@ -184,13 +181,10 @@ public class AuthService : IAuthService
                 ValidateIssuerSigningKey = true,
                 ValidateLifetime = false,
 
-                ValidIssuer = _configuration["JwtSettings:Issuer"],
-                ValidAudience = _configuration["JwtSettings:Audience"],
+                ValidIssuer = _jwtSettings.Issuer,
+                ValidAudience = _jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(
-                        _configuration["JwtSettings:AccessTokenSecret"]
-                        ?? throw new InvalidOperationException("AccessTokenSecret is missing")
-                    )
+                    Encoding.UTF8.GetBytes(_jwtSettings.AccessTokenSecret)
                 )
             };
 

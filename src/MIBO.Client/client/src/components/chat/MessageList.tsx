@@ -6,8 +6,9 @@ export function MessageList(props: {
     isTyping: boolean;
     listRef: React.RefObject<HTMLDivElement>;
     empty?: React.ReactNode;
+    onUiAction?: (type: string, payload: Record<string, unknown>) => void;
 }) {
-    const { messages, isTyping, listRef, empty } = props;
+    const { messages, isTyping, listRef, empty, onUiAction } = props;
 
     return (
         <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-6">
@@ -21,6 +22,7 @@ export function MessageList(props: {
                             <MessageBubble
                                 key={m.id}
                                 msg={m}
+                                onUiAction={onUiAction}
                                 showTypingDots={isTyping && isLast && m.role === "assistant" && (m.content ?? "") === ""}
                             />
                         );

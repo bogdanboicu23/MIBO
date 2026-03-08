@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type DataPoint = { label: string; value: number };
@@ -100,15 +101,27 @@ export function LineChartCard({ props, data }: UiComponentProps) {
     const showDots: boolean = props?.showDots !== false;
     const showGrid: boolean = props?.showGrid !== false;
     const showLegend: boolean = props?.showLegend !== false;
-    const formatValue = (v: number): string =>
-        props?.formatValue
-            ? (props.formatValue as (n: number) => string)(v)
-            : String(v);
+    const formatCfg = props?.formatValue;
+    const formatValue = (v: number): string => {
+        if (typeof formatCfg === "function") {
+            try {
+                return String((formatCfg as (n: number) => unknown)(v));
+            } catch {
+                return String(v);
+            }
+        }
+        if (typeof formatCfg === "string" && formatCfg.trim()) {
+            const tpl = formatCfg.trim();
+            return tpl.includes("{value}") ? tpl.replaceAll("{value}", String(v)) : `${v} ${tpl}`;
+        }
+        return String(v);
+    };
 
-    const raw =
+    const rawSource =
         (props?.data as any) ??
-        (dataKey && data ? (data as any)[dataKey] : null) ??
+        (dataKey ? resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey) : null) ??
         null;
+    const raw = Array.isArray(rawSource) ? rawSource : extractArray(rawSource, ["series", "items", "data"]);
 
     const series = normalizeSeries(raw, PALETTE).map((s, i) => ({
         ...s,

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/utils/cn";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractArray, extractObject, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
 type Column = {
     key: string;
@@ -38,11 +40,15 @@ type DataTableProps = {
     actions?: {
         label: string;
         actionId: string;
+        actionType?: string;
+        payloadTemplate?: Record<string, unknown>;
         variant?: "primary" | "secondary" | "ghost";
     }[];
 
     rowAction?: {
         actionId: string; // ex: "shop.openProduct"
+        actionType?: string;
+        payloadTemplate?: Record<string, unknown>;
     };
 };
 
@@ -89,11 +95,73 @@ function compare(a: any, b: any) {
     return sa.localeCompare(sb);
 }
 
+function normalizeColumns(raw: any): Column[] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .map((c: any) => {
+            if (!c || typeof c !== "object") return null;
+            const key = String(c.key ?? c.selector ?? "").trim();
+            const header = String(c.header ?? c.name ?? key).trim();
+            if (!key) return null;
+            return {
+                key,
+                header,
+                type: c.type,
+                align: c.align,
+                width: c.width,
+            } as Column;
+        })
+        .filter(Boolean) as Column[];
+}
+
+function buildColumnsFromRows(rows: Record<string, any>[]): Column[] {
+    const sample = rows[0];
+    if (!sample || typeof sample !== "object") return [];
+    return Object.keys(sample)
+        .slice(0, 8)
+        .map((key) => ({ key, header: key }));
+}
+
 export function DataTableCard(props: UiComponentProps) {
     // aștept ca UiComponentProps să conțină props în props.props (sau direct).
     // dacă la tine structura e diferită, ajustezi cele 2 linii de mai jos.
     const spec = (props as any)?.props ?? (props as any);
-    const p: DataTableProps = spec;
+    const sourceData = (props as any)?.data ?? {};
+
+    const keyFromSpec = String((spec as any)?.dataKey ?? "");
+    const resolvedDataByKey = keyFromSpec
+        ? resolveFromDataKey(sourceData as Record<string, any>, keyFromSpec)
+        : undefined;
+    const fallbackContainer = extractObject(resolvedDataByKey) ?? extractObject(sourceData) ?? {};
+
+    const resolvedRows = (() => {
+        if (Array.isArray((spec as any)?.rows)) return (spec as any).rows;
+        if (typeof (spec as any)?.rowsKey === "string") {
+            const fromRowsKey = resolveFromDataKey(fallbackContainer, (spec as any).rowsKey);
+            const rowsFromRowsKey = extractArray(fromRowsKey, ["rows", "items", "products"]);
+            if (rowsFromRowsKey.length) return rowsFromRowsKey;
+        }
+        const fromDataKey = extractArray(resolvedDataByKey, ["rows", "items", "products", "data"]);
+        if (fromDataKey.length) return fromDataKey;
+        return [];
+    })();
+
+    const resolvedColumns = (() => {
+        const fromSpec = normalizeColumns((spec as any)?.columns);
+        if (fromSpec.length) return fromSpec;
+        if (typeof (spec as any)?.columnsKey === "string") {
+            const fromColumnsKey = resolveFromDataKey(fallbackContainer, (spec as any).columnsKey);
+            const cols = normalizeColumns(fromColumnsKey);
+            if (cols.length) return cols;
+        }
+        return buildColumnsFromRows(resolvedRows as Record<string, any>[]);
+    })();
+
+    const p: DataTableProps = {
+        ...(spec as DataTableProps),
+        rows: resolvedRows,
+        columns: resolvedColumns,
+    };
 
     const {
         title,
@@ -163,15 +231,6 @@ export function DataTableCard(props: UiComponentProps) {
         return sorted.slice(start, start + pageSize);
     }, [sorted, safePage, pageSize]);
 
-    const onAction = (actionId: string, payload?: any) => {
-        // dacă UiRenderer îți pasează un callback generic, îl folosești:
-        // ex: props.onAction?.(actionId, payload)
-        (props as any)?.onAction?.(actionId, payload);
-
-        // fallback: poți emite un event global dacă vrei (opțional)
-        // window.dispatchEvent(new CustomEvent("ui-action", { detail: { actionId, payload } }));
-    };
-
     const toggleSort = (key: string) => {
         setPage(1);
         setLocalSort((cur) => {
@@ -204,7 +263,19 @@ export function DataTableCard(props: UiComponentProps) {
                             {actions.map((a) => (
                                 <button
                                     key={a.actionId}
-                                    onClick={() => onAction(a.actionId, { source: "dataTable" })}
+                                    onClick={() => {
+                                        const actionType = resolveActionType(
+                                            { actionType: a.actionType ?? a.actionId },
+                                            a.actionId
+                                        );
+                                        const fallbackPayload = { source: "dataTable" } as Record<string, unknown>;
+                                        const payload = resolveActionPayload(
+                                            { payloadTemplate: a.payloadTemplate },
+                                            fallbackPayload,
+                                            { data: sourceData as Record<string, any>, extra: fallbackPayload }
+                                        );
+                                        (props as any)?.onAction?.(actionType, payload);
+                                    }}
                                     className={cn(
                                         "rounded-xl px-3 py-2 text-sm font-medium transition",
                                         a.variant === "primary" &&
@@ -307,7 +378,17 @@ export function DataTableCard(props: UiComponentProps) {
                                     )}
                                     onClick={() => {
                                         if (!rowAction?.actionId) return;
-                                        onAction(rowAction.actionId, { row: r, rowKey: key, source: "dataTable.row" });
+                                        const actionType = resolveActionType(
+                                            { actionType: rowAction.actionType ?? rowAction.actionId },
+                                            rowAction.actionId
+                                        );
+                                        const fallbackPayload = { row: r, rowKey: key, source: "dataTable.row" } as Record<string, unknown>;
+                                        const payload = resolveActionPayload(
+                                            { payloadTemplate: rowAction.payloadTemplate },
+                                            fallbackPayload,
+                                            { data: sourceData as Record<string, any>, item: r as Record<string, any>, extra: fallbackPayload }
+                                        );
+                                        (props as any)?.onAction?.(actionType, payload);
                                     }}
                                 >
                                     {columns.map((c) => {

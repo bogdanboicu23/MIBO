@@ -9,7 +9,12 @@ public sealed class ConversationDoc
 
     [BsonElement("conversationId")] public string ConversationId { get; set; } = default!;
     [BsonElement("userId")] public string UserId { get; set; } = default!;
+    [BsonElement("title")] public string Title { get; set; } = "New chat";
     [BsonElement("createdAt")] public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [BsonElement("updatedAt")] public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    [BsonElement("lastMessageAt")] public DateTime? LastMessageAt { get; set; }
+    [BsonElement("lastMessagePreview")] public string? LastMessagePreview { get; set; }
+    [BsonElement("messageCount")] public long MessageCount { get; set; }
 
     // opțional: tags, tenant, locale
     [BsonElement("meta")] public BsonDocument Meta { get; set; } = new();

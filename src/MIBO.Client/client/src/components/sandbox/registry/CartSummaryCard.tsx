@@ -1,16 +1,7 @@
 import { useMemo } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
-
-function getDot(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    for (const p of parts) {
-        if (cur == null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-}
+import { extractObject, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
 function resolveCart(props: any, data: any): any {
     const direct = props?.cart ?? props?.data;
@@ -18,17 +9,9 @@ function resolveCart(props: any, data: any): any {
 
     const dataKey = typeof props?.dataKey === "string" ? props.dataKey.trim() : "";
     if (dataKey) {
-        const v1 = data?.[dataKey];
-        if (v1 && typeof v1 === "object") return v1;
-
-        const v2 = getDot(data, dataKey);
-        if (v2 && typeof v2 === "object") return v2;
-
-        const last = dataKey.split(".").filter(Boolean).at(-1);
-        if (last) {
-            const v3 = data?.[last];
-            if (v3 && typeof v3 === "object") return v3;
-        }
+        const resolved = resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey);
+        const object = extractObject(resolved, ["cart"]);
+        if (object) return object;
     }
 
     for (const key of Object.keys(data ?? {})) {
@@ -42,7 +25,8 @@ function resolveCart(props: any, data: any): any {
 }
 
 export function CartSummaryCard({ props, data, onAction }: UiComponentProps) {
-    const checkoutActionType = String((props as any)?.checkoutActionType ?? "shop.checkout").trim() || "shop.checkout";
+    const actionTypeFromLegacy = String((props as any)?.checkoutActionType ?? "").trim();
+    const checkoutActionType = resolveActionType((props as any) ?? { actionType: actionTypeFromLegacy }, "shop.checkout");
     const cart = useMemo(() => resolveCart(props as any, data as any), [props, data]);
 
     if (!cart) {
@@ -111,7 +95,15 @@ export function CartSummaryCard({ props, data, onAction }: UiComponentProps) {
 
             <button
                 type="button"
-                onClick={() => onAction?.(checkoutActionType, { cartId: cart.id })}
+                onClick={() => {
+                    const fallbackPayload = { cartId: cart.id };
+                    const payload = resolveActionPayload(
+                        (props as any) ?? {},
+                        fallbackPayload,
+                        { data: (data ?? {}) as Record<string, any>, item: cart as any, extra: fallbackPayload }
+                    );
+                    onAction?.(checkoutActionType, payload);
+                }}
                 className="mt-4 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
             >
                 Checkout

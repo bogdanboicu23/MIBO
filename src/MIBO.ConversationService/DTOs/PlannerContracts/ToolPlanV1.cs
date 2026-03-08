@@ -15,6 +15,9 @@ public sealed class ToolPlanV1
 
     [JsonPropertyName("uiIntent")]
     public UiIntent? UiIntent { get; set; }
+
+    [JsonPropertyName("safety")]
+    public Dictionary<string, object?> Safety { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class ToolStep

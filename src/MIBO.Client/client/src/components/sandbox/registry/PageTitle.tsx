@@ -1,8 +1,29 @@
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractObject, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
 
-export function PageTitle({ props }: UiComponentProps) {
-    const text = String(props?.text ?? "Title");
-    const subtitle = String(props?.subtitle ?? "");
+export function PageTitle({ props, data }: UiComponentProps) {
+    const dataKey = String(props?.dataKey ?? "");
+    const sourceRaw = resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey);
+    const source = extractObject(sourceRaw) ?? {};
+
+    const textKey = String(props?.textKey ?? "");
+    const subtitleKey = String(props?.subtitleKey ?? "");
+
+    const text =
+        String(
+            props?.text ??
+            (textKey ? resolveFromDataKey(source, textKey) : undefined) ??
+            source.text ??
+            source.title ??
+            "Title"
+        );
+    const subtitle =
+        String(
+            props?.subtitle ??
+            (subtitleKey ? resolveFromDataKey(source, subtitleKey) : undefined) ??
+            source.subtitle ??
+            ""
+        );
 
     return (
         <div className="rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">

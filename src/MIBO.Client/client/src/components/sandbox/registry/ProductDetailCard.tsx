@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
+import { extractObject, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
 type Product = {
     id: string | number;
@@ -14,34 +16,18 @@ type Product = {
     stock?: number;
 };
 
-function getDot(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    for (const p of parts) {
-        if (cur == null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-}
-
 function resolveProduct(props: any, data: any): Product | null {
     const direct = props?.product ?? props?.data;
     if (direct && typeof direct === "object") return direct as Product;
 
     const dataKey = typeof props?.dataKey === "string" ? props.dataKey.trim() : "";
     if (dataKey) {
-        const v1 = data?.[dataKey];
-        if (v1 && typeof v1 === "object") return v1 as Product;
-
-        const v2 = getDot(data, dataKey);
-        if (v2 && typeof v2 === "object") return v2 as Product;
-
-        const last = dataKey.split(".").filter(Boolean).at(-1);
-        if (last) {
-            const v3 = data?.[last];
-            if (v3 && typeof v3 === "object") return v3 as Product;
+        const resolved = resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey);
+        if (Array.isArray(resolved) && resolved.length && typeof resolved[0] === "object") {
+            return resolved[0] as Product;
         }
+        const fromObject = extractObject(resolved, ["product", "item"]);
+        if (fromObject) return fromObject as Product;
     }
 
     // tool result often is { ...product fields } under some key:
@@ -61,7 +47,8 @@ function pickImage(p: Product, idx: number): string | null {
 }
 
 export function ProductDetailCard({ props, data, onAction }: UiComponentProps) {
-    const addToCartActionType = String((props as any)?.addToCartActionType ?? "shop.add_to_cart").trim() || "shop.add_to_cart";
+    const actionTypeFromLegacy = String((props as any)?.addToCartActionType ?? "").trim();
+    const addToCartActionType = resolveActionType((props as any) ?? { actionType: actionTypeFromLegacy }, "shop.add_to_cart");
     const userId = Number((props as any)?.userId ?? 1);
 
     const product = useMemo(() => resolveProduct(props as any, data as any), [props, data]);
@@ -83,10 +70,16 @@ export function ProductDetailCard({ props, data, onAction }: UiComponentProps) {
     const images = Array.isArray(product.images) ? product.images : [];
 
     const addToCart = () => {
-        onAction?.(addToCartActionType, {
+        const fallbackPayload = {
             userId,
             products: [{ id: product.id, quantity: Math.max(1, qty) }],
-        });
+        };
+        const payload = resolveActionPayload(
+            (props as any) ?? {},
+            fallbackPayload,
+            { data: (data ?? {}) as Record<string, any>, item: product as any, value: qty, form: { quantity: qty }, extra: fallbackPayload }
+        );
+        onAction?.(addToCartActionType, payload);
     };
 
     return (

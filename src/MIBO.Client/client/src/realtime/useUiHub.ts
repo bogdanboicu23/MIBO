@@ -52,7 +52,9 @@ export function useUiHub(params: {
                 setConnected(true);
 
                 // Join doar dacă e încă activ effect-ul
-                await conn.invoke("JoinConversation", conversationId);
+                if (conversationId) {
+                    await conn.invoke("JoinConversation", conversationId);
+                }
             } catch (err) {
                 if (!cancelled) {
                     console.error("SignalR connect error:", err);

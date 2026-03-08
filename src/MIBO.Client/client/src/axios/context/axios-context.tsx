@@ -4,10 +4,10 @@ import { createContext } from "react";
 
 interface ApiClient {
     get: <T = any>(url: string, options?: any) => Promise<T>;
-    post: <T = any>(url: string, data?: any) => Promise<T>;
-    put: <T = any>(url: string, data?: any) => Promise<T>;
-    patch: <T = any>(url: string, data?: any) => Promise<T>;
-    delete: <T = any>(url: string) => Promise<T>;
+    post: <T = any>(url: string, data?: any, options?: any) => Promise<T>;
+    put: <T = any>(url: string, data?: any, options?: any) => Promise<T>;
+    patch: <T = any>(url: string, data?: any, options?: any) => Promise<T>;
+    delete: <T = any>(url: string, options?: any) => Promise<T>;
     postBlob: (url: string, data: any) => Promise<Blob>;
     uploadFile: <T = any>(url: string, formData: FormData) => Promise<T>;
     postStream: (

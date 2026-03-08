@@ -2,6 +2,8 @@ import type { Message } from "@/types/chat.ts";
 import { cn } from "@/utils/cn.ts";
 import { applyBindings } from "@/components/sandbox/uiRuntime/applyBindings.ts";
 import { GenerativeUI } from "@/components/sandbox/GenerativeUI.tsx";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 
 function formatTime(ts: number) {
@@ -32,6 +34,16 @@ function TypingDots() {
       <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.1s]" />
       <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
     </span>
+    );
+}
+
+function AssistantText({ content }: { content: string }) {
+    return (
+        <div className="[&>p]:my-1 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_h1]:my-1 [&_h2]:my-1 [&_h3]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-zinc-200/60 [&_pre]:p-2 [&_code]:rounded [&_code]:bg-zinc-200/60 [&_code]:px-1 [&_code]:py-0.5 dark:[&_pre]:bg-zinc-800/80 dark:[&_code]:bg-zinc-800/80">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content}
+            </ReactMarkdown>
+        </div>
     );
 }
 
@@ -73,7 +85,13 @@ export function MessageBubble({ msg, showTypingDots = false, onUiAction, }: {
                 {/* Center bubble */}
                 <div className="min-w-0 w-full">
                     <div className={bubbleClass}>
-                        {!isUser && showTypingDots ? <TypingDots /> : <>{msg.content}</>}
+                        {!isUser && showTypingDots ? (
+                            <TypingDots />
+                        ) : isUser ? (
+                            <>{msg.content}</>
+                        ) : (
+                            <AssistantText content={msg.content ?? ""} />
+                        )}
                     </div>
 
                     {/* ✅ Generative UI INSIDE assistant message bubble (persistent in history) */}

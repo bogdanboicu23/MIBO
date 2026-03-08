@@ -4,7 +4,7 @@ using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using MIBO.IdentityService.Services;
 using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
@@ -15,7 +15,6 @@ namespace MIBO.IdentityService.Tests.Unit.Services;
 public class AuthServiceTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
-    private readonly Mock<IConfiguration> _configurationMock;
     private readonly AuthService _sut;
 
     public AuthServiceTests()
@@ -25,16 +24,17 @@ public class AuthServiceTests
         _userManagerMock = new Mock<UserManager<ApplicationUser>>(
             userStore.Object, null, null, null, null, null, null, null, null);
 
-        // Setup Configuration
-        _configurationMock = new Mock<IConfiguration>();
-        _configurationMock.Setup(x => x["JwtSettings:AccessTokenSecret"]).Returns("ThisIsAVerySecureKeyForTestingPurposes123!");
-        _configurationMock.Setup(x => x["JwtSettings:RefreshTokenSecret"]).Returns("ThisIsAnotherVerySecureKeyForRefreshTokens123!");
-        _configurationMock.Setup(x => x["JwtSettings:AccessTokenExpirationMinutes"]).Returns("15");
-        _configurationMock.Setup(x => x["JwtSettings:RefreshTokenExpirationDays"]).Returns("7");
-        _configurationMock.Setup(x => x["JwtSettings:Issuer"]).Returns("TestIssuer");
-        _configurationMock.Setup(x => x["JwtSettings:Audience"]).Returns("TestAudience");
+        var jwtSettings = Options.Create(new JwtSettingsOptions
+        {
+            AccessTokenSecret = "ThisIsAVerySecureKeyForTestingPurposes123!",
+            RefreshTokenSecret = "ThisIsAnotherVerySecureKeyForRefreshTokens123!",
+            AccessTokenExpirationMinutes = 15,
+            RefreshTokenExpirationDays = 7,
+            Issuer = "TestIssuer",
+            Audience = "TestAudience"
+        });
 
-        _sut = new AuthService(_userManagerMock.Object, _configurationMock.Object);
+        _sut = new AuthService(_userManagerMock.Object, jwtSettings);
     }
 
     [Fact]

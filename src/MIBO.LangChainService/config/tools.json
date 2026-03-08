@@ -1,0 +1,253 @@
+{
+  "tools": [
+    {
+      "name": "shop.listProducts",
+      "description": "List products with pagination.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products?limit={limit}&skip={skip}",
+      "requiredArgs": ["limit", "skip"],
+      "defaultArgs": { "limit": 12, "skip": 0 },
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "limitPath": "$.limit",
+        "skipPath": "$.skip"
+      }
+    },
+    {
+      "name": "shop.searchProducts",
+      "description": "Search products by query string q.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/search?q={q}&limit={limit}&skip={skip}",
+      "requiredArgs": ["q", "limit", "skip"],
+      "defaultArgs": { "limit": 12, "skip": 0 },
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "limitPath": "$.limit",
+        "skipPath": "$.skip"
+      }
+    },
+    {
+      "name": "shop.getProduct",
+      "description": "Get a single product by id.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/{id}",
+      "requiredArgs": ["id"],
+      "cacheTtlSeconds": 300,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": { "productPath": "$" }
+    },
+    {
+      "name": "shop.listCategories",
+      "description": "List all product categories.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/categories",
+      "requiredArgs": [],
+      "cacheTtlSeconds": 3600,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": { "categoriesPath": "$" }
+    },
+    {
+      "name": "shop.listProductsByCategory",
+      "description": "List products in a category (slug).",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products/category/{category}?limit={limit}&skip={skip}",
+      "requiredArgs": ["category", "limit", "skip"],
+      "defaultArgs": { "limit": 12, "skip": 0 },
+      "cacheTtlSeconds": 120,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "limitPath": "$.limit",
+        "skipPath": "$.skip"
+      }
+    },
+    {
+      "name": "shop.listProductsSorted",
+      "description": "List products sorted by key and order.",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/products?limit={limit}&skip={skip}&sortBy={sortBy}&order={order}",
+      "requiredArgs": ["limit", "skip", "sortBy", "order"],
+      "defaultArgs": { "limit": 12, "skip": 0, "sortBy": "rating", "order": "desc" },
+      "cacheTtlSeconds": 60,
+      "timeoutMs": 4000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.products",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "shop.getCart",
+      "description": "Get cart by id (DummyJSON).",
+      "method": "GET",
+      "urlTemplate": "https://dummyjson.com/carts/{cartId}",
+      "requiredArgs": ["cartId"],
+      "cacheTtlSeconds": 5,
+      "timeoutMs": 4000,
+      "retryCount": 1,
+      "returns": {
+        "cartPath": "$",
+        "itemsPath": "$.products",
+        "totalPath": "$.total",
+        "discountedTotalPath": "$.discountedTotal",
+        "totalProductsPath": "$.totalProducts",
+        "totalQuantityPath": "$.totalQuantity"
+      }
+    },
+    {
+      "name": "shop.addToCart",
+      "description": "Add products to cart (DummyJSON).",
+      "method": "POST",
+      "urlTemplate": "https://dummyjson.com/carts/add",
+      "requiredArgs": ["userId", "products"],
+      "defaultArgs": { "userId": 1 },
+      "cacheTtlSeconds": 0,
+      "timeoutMs": 4000,
+      "retryCount": 1,
+      "returns": {
+        "cartPath": "$",
+        "cartIdPath": "$.id"
+      }
+    },
+    {
+      "name": "finance.getSummary",
+      "description": "Get financial summary for the current user including total balance, income, expenses, account balances, and expense breakdown by category. No arguments needed.",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/summary/user/1",
+      "requiredArgs": [],
+      "cacheTtlSeconds": 30,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "summaryPath": "$",
+        "totalBalancePath": "$.totalBalance",
+        "totalIncomePath": "$.totalIncome",
+        "totalExpensesPath": "$.totalExpenses",
+        "accountBalancesPath": "$.accountBalances",
+        "expenseSummaryPath": "$.expenseSummary"
+      }
+    },
+    {
+      "name": "finance.getAccounts",
+      "description": "List all bank accounts for the current user with balance, type, currency, and account details.",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/accounts/user/1?skip={skip}&limit={limit}",
+      "requiredArgs": [],
+      "defaultArgs": { "skip": 0, "limit": 30 },
+      "cacheTtlSeconds": 30,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.items",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "finance.getTransactions",
+      "description": "List recent transactions for the current user. Supports filtering by type (debit/credit), category, startDate, endDate, and sorting by sortBy and order (asc/desc).",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/transactions/user/1?skip={skip}&limit={limit}&type={type}&category={category}&startDate={startDate}&endDate={endDate}&sortBy={sortBy}&order={order}",
+      "requiredArgs": [],
+      "defaultArgs": { "skip": 0, "limit": 30 },
+      "cacheTtlSeconds": 15,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.items",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "finance.searchTransactions",
+      "description": "Search transactions by keyword (description, merchant, or category).",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/transactions/search?q={q}&skip={skip}&limit={limit}",
+      "requiredArgs": ["q"],
+      "defaultArgs": { "skip": 0, "limit": 30 },
+      "cacheTtlSeconds": 15,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.items",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "finance.getExpenses",
+      "description": "List expenses for the current user. Supports filtering by category, startDate, endDate, and sorting.",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/expenses/user/1?skip={skip}&limit={limit}&category={category}&startDate={startDate}&endDate={endDate}&sortBy={sortBy}&order={order}",
+      "requiredArgs": [],
+      "defaultArgs": { "skip": 0, "limit": 30 },
+      "cacheTtlSeconds": 15,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.items",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "finance.getBudgets",
+      "description": "List budgets for the current user. Supports filtering by category, isActive (true/false), and period (daily/weekly/monthly/yearly).",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/budgets/user/1?skip={skip}&limit={limit}&category={category}&isActive={isActive}&period={period}",
+      "requiredArgs": [],
+      "defaultArgs": { "skip": 0, "limit": 30 },
+      "cacheTtlSeconds": 30,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "itemsPath": "$.items",
+        "totalPath": "$.total"
+      }
+    },
+    {
+      "name": "finance.getExpenseAnalytics",
+      "description": "Get expense analytics with category breakdown (amount, percentage, count, color), time series, and statistics (average, median, min, max). Supports period filter: today, yesterday, thisweek, lastweek, thismonth, lastmonth, last30days, last90days, thisyear, lastyear.",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/analytics/expenses/user/1?period={period}&startDate={startDate}&endDate={endDate}",
+      "requiredArgs": [],
+      "defaultArgs": { "period": "last30days" },
+      "cacheTtlSeconds": 30,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "analyticsPath": "$",
+        "byCategoryPath": "$.byCategory",
+        "timeSeriesPath": "$.timeSeries",
+        "statisticsPath": "$.statistics"
+      }
+    },
+    {
+      "name": "finance.getTransactionAnalytics",
+      "description": "Get transaction analytics including total income, total expenses, net cash flow, breakdown by type, and daily balance over time.",
+      "method": "GET",
+      "urlTemplate": "https://financial.mibo.monster/api/analytics/transactions/user/1?startDate={startDate}&endDate={endDate}",
+      "requiredArgs": [],
+      "cacheTtlSeconds": 30,
+      "timeoutMs": 5000,
+      "retryCount": 2,
+      "returns": {
+        "analyticsPath": "$",
+        "totalIncomePath": "$.totalIncome",
+        "totalExpensesPath": "$.totalExpenses",
+        "netFlowPath": "$.netFlow",
+        "byTypePath": "$.byType",
+        "dailyBalancePath": "$.dailyBalance"
+      }
+    }
+  ]
+}

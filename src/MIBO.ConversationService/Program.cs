@@ -6,11 +6,15 @@ using MIBO.ConversationService.Helper;
 using MIBO.ConversationService.Hubs;
 using MIBO.ConversationService.Middleware.Http;
 using MIBO.ConversationService.Services.Actions.Handler;
+using MIBO.ConversationService.Services.Actions.Binding;
+using MIBO.ConversationService.Services.Actions.Patch;
 using MIBO.ConversationService.Services.Actions.Router;
 using MIBO.ConversationService.Services.Actions.RoutingSpecProvider;
 using MIBO.ConversationService.Services.Answer;
 using MIBO.ConversationService.Services.Background;
 using MIBO.ConversationService.Services.Chat;
+using MIBO.ConversationService.Services.Chat.Pipeline;
+using MIBO.ConversationService.Services.Chat.Pipeline.Steps;
 using MIBO.ConversationService.Services.Composer.Text;
 using MIBO.ConversationService.Services.Composer.TextSpecProvider;
 using MIBO.ConversationService.Services.Composer.Ui;
@@ -34,6 +38,7 @@ using MIBO.ConversationService.Services.Tools;
 using MIBO.ConversationService.Services.Tools.BindingResolver;
 using MIBO.ConversationService.Services.Tools.PlanExecutor;
 using MIBO.ConversationService.Services.UI;
+using MIBO.ConversationService.Services.UI.Validation;
 using MIBO.Storage.Mongo;
 using MIBO.Storage.Mongo.Store.Conversation;
 using MIBO.Storage.Mongo.Store.Ui;
@@ -101,7 +106,7 @@ builder.Services.AddHostedService<ToolRegistryRefresher>();
 
 builder.Services.AddSingleton<IToolPolicyProvider, DefaultToolPolicyProvider>();
 builder.Services.AddSingleton<IToolCacheKeyStrategy, DefaultToolCacheKeyStrategy>();
-builder.Services.AddSingleton<IArgBindingResolver, NoOpArgBindingResolver>();
+builder.Services.AddSingleton<IArgBindingResolver, SmartArgBindingResolver>();
 
 builder.Services.AddSingleton<IToolExecutor, ToolExecutor>();
 
@@ -111,6 +116,7 @@ builder.Services.AddSingleton<ITextComposeSpecProvider, JsonFileTextComposeSpecP
 builder.Services.AddSingleton<IUiComposeSpecProvider, JsonFileUiComposeSpecProvider>();
 builder.Services.AddScoped<ITextComposer, TextComposer>();
 builder.Services.AddScoped<IUiComposer, UiComposer>();
+builder.Services.AddSingleton<IUiContractValidator, UiContractValidator>();
 
 // ---------- PLANNER INPUT ----------
 builder.Services.AddScoped<IPlannerInputFactory, PlannerInputFactory>();
@@ -125,11 +131,23 @@ builder.Services.AddSingleton<IUiSubscriptionStore, MongoUiSubscriptionStore>();
 builder.Services.AddScoped<IPlanValidator, PlanValidator>();
 builder.Services.AddScoped<IToolPlanExecutor, ToolPlanExecutor>();
 builder.Services.AddScoped<IFallbackPlanner, RuleBasedFallbackPlanner>();
+builder.Services.AddScoped<IChatPipeline, ChatPipeline>();
+builder.Services.AddScoped<IChatPipelineStep, PersistUserMessageStep>();
+builder.Services.AddScoped<IChatPipelineStep, LoadConversationContextStep>();
+builder.Services.AddScoped<IChatPipelineStep, ResolveConversationMemoryIntentStep>();
+builder.Services.AddScoped<IChatPipelineStep, BuildPlannerInputStep>();
+builder.Services.AddScoped<IChatPipelineStep, ResolvePlanStep>();
+builder.Services.AddScoped<IChatPipelineStep, ExecuteToolsStep>();
+builder.Services.AddScoped<IChatPipelineStep, ComposeUiStep>();
+builder.Services.AddScoped<IChatPipelineStep, ComposeTextStep>();
+builder.Services.AddScoped<IChatPipelineStep, PersistAssistantMessageStep>();
 builder.Services.AddScoped<IChatOrchestrator, ChatOrchestrator>();
 
 // ---------- ACTIONS ----------
 builder.Services.AddSingleton<IActionRoutingSpecProvider, JsonFileActionRoutingSpecProvider>();
 builder.Services.AddSingleton<IActionRouter, ActionRouter>();
+builder.Services.AddSingleton<IActionArgumentBinder, TemplateActionArgumentBinder>();
+builder.Services.AddSingleton<IActionPatchComposer, ActionPatchComposer>();
 builder.Services.AddScoped<IActionHandler, ActionHandler>();
 
 

@@ -1,16 +1,7 @@
 import { useMemo } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
-
-function getDot(obj: unknown, path: string): unknown {
-    if (!path) return undefined;
-    const parts = path.split(".").filter(Boolean);
-    let cur: any = obj;
-    for (const p of parts) {
-        if (cur == null) return undefined;
-        cur = cur[p];
-    }
-    return cur;
-}
+import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { resolveActionPayload, resolveActionType } from "@/components/sandbox/registry/actionResolver";
 
 function resolveCategories(props: any, data: any): string[] {
     const direct = props?.items ?? props?.categories ?? props?.data;
@@ -18,32 +9,19 @@ function resolveCategories(props: any, data: any): string[] {
 
     const dataKey = typeof props?.dataKey === "string" ? props.dataKey.trim() : "";
     if (dataKey) {
-        const v1 = data?.[dataKey];
-        if (Array.isArray(v1)) return v1.map((x: any) => String(x?.name ?? x));
-
-        const v2 = getDot(data, dataKey);
-        if (Array.isArray(v2)) return v2.map((x: any) => String(x?.name ?? x));
-
-        const last = dataKey.split(".").filter(Boolean).at(-1);
-        if (last) {
-            const v3 = data?.[last];
-            if (Array.isArray(v3)) return v3.map((x: any) => String(x?.name ?? x));
-        }
+        const resolved = resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey);
+        const list = extractArray(resolved, ["categories", "items", "products"]);
+        if (list.length) return list.map((x: any) => String(x?.name ?? x?.label ?? x));
     }
 
-    // common tool-result shape: { categories: [...] }
-    for (const key of Object.keys(data ?? {})) {
-        const val = data?.[key];
-        if (val && typeof val === "object" && Array.isArray((val as any).categories)) {
-            return (val as any).categories.map((x: any) => String(x?.name ?? x));
-        }
-    }
+    const list = extractArray(data, ["categories"]);
+    if (list.length) return list.map((x: any) => String(x?.name ?? x?.label ?? x));
 
     return [];
 }
 
 export function CategoryChips({ props, data, onAction }: UiComponentProps) {
-    const actionType = String((props as any)?.actionType ?? "shop.select_category").trim() || "shop.select_category";
+    const actionType = resolveActionType((props as any) ?? {}, "shop.select_category");
     const selectedKey = String((props as any)?.selectedKey ?? "").trim();
 
     const categories = useMemo(() => resolveCategories(props as any, data as any), [props, data]);
@@ -62,7 +40,14 @@ export function CategoryChips({ props, data, onAction }: UiComponentProps) {
                             <button
                                 key={c}
                                 type="button"
-                                onClick={() => onAction?.(actionType, { category: c })}
+                                onClick={() => {
+                                    const payload = resolveActionPayload(
+                                        (props as any) ?? {},
+                                        { category: c },
+                                        { data: (data ?? {}) as Record<string, any>, value: c, extra: { category: c } }
+                                    );
+                                    onAction?.(actionType, payload);
+                                }}
                                 className={[
                                     "rounded-full border px-3 py-1.5 text-sm",
                                     active

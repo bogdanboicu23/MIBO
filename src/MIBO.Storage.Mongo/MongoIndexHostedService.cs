@@ -33,6 +33,17 @@ public sealed class MongoIndexHostedService : IHostedService
             cancellationToken: cancellationToken
         );
 
+        // conversations: fast list by user sorted by update time
+        await conv.Indexes.CreateOneAsync(
+            new CreateIndexModel<ConversationDoc>(
+                Builders<ConversationDoc>.IndexKeys
+                    .Ascending(x => x.UserId)
+                    .Descending(x => x.UpdatedAt),
+                new CreateIndexOptions { Name = "ix_conversation_user_updatedAt" }
+            ),
+            cancellationToken: cancellationToken
+        );
+
         // messages: query last messages by conversationId
         await msg.Indexes.CreateOneAsync(
             new CreateIndexModel<MessageDoc>(
@@ -40,6 +51,18 @@ public sealed class MongoIndexHostedService : IHostedService
                     .Ascending(x => x.ConversationId)
                     .Descending(x => x.CreatedAt),
                 new CreateIndexOptions { Name = "ix_messages_conversation_createdAt" }
+            ),
+            cancellationToken: cancellationToken
+        );
+
+        // messages: scoped reads by conversationId + userId
+        await msg.Indexes.CreateOneAsync(
+            new CreateIndexModel<MessageDoc>(
+                Builders<MessageDoc>.IndexKeys
+                    .Ascending(x => x.ConversationId)
+                    .Ascending(x => x.UserId)
+                    .Descending(x => x.CreatedAt),
+                new CreateIndexOptions { Name = "ix_messages_conv_user_createdAt" }
             ),
             cancellationToken: cancellationToken
         );
