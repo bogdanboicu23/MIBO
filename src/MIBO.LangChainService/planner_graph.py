@@ -32,6 +32,11 @@ class LangGraphPlanner:
             timeout=settings.GROQ_TIMEOUT_SECONDS,
             max_tokens=settings.GROQ_MAX_TOKENS,
         )
+        # JSON-mode LLM: guarantees valid JSON output, eliminating manual
+        # extraction and repair cycles in planning/reasoning stages.
+        self._llm_json = self._llm.bind(
+            response_format={"type": "json_object"}
+        )
 
         self._plugin_registry = PlannerPluginRegistry()
         self._plugin_registry.register_default_plugins()
@@ -42,9 +47,9 @@ class LangGraphPlanner:
         self._capability_registry = CapabilityRegistry()
 
         self._intent_stage = IntentDetectionStage(self._plugin_registry)
-        self._reasoning_stage = ReasoningStage(self._llm)
-        self._planning_stage = PlanGenerationStage(self._llm)
-        self._validation_stage = PlanValidationStage(self._llm, self._plugin_registry)
+        self._reasoning_stage = ReasoningStage(self._llm_json)
+        self._planning_stage = PlanGenerationStage(self._llm_json)
+        self._validation_stage = PlanValidationStage(self._llm_json, self._plugin_registry)
         self._composition_stage = ResponseCompositionStage()
         self._graph = self._build_graph()
 
