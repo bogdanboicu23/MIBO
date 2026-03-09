@@ -54,6 +54,12 @@ public sealed class ToolExecutor : IToolExecutor
     {
         var def = _registry.Get(call.Tool);
         var args = MergeWithDefaults(def.DefaultArgs, call.Args);
+
+        // Inject userId from request context so URL templates with {userId} are resolved automatically
+        var hdr = _headers.Get();
+        if (!args.ContainsKey("userId") && !string.IsNullOrEmpty(hdr.UserId))
+            args["userId"] = hdr.UserId;
+
         ValidateArgs(def, args);
 
         var url = RenderUrl(def.UrlTemplate, args);
@@ -61,8 +67,6 @@ public sealed class ToolExecutor : IToolExecutor
 
         var cacheTtl = def.CacheTtlSeconds > 0 ? def.CacheTtlSeconds : _opt.DefaultCacheTtlSeconds;
         var cacheable = def.Method.Equals("GET", StringComparison.OrdinalIgnoreCase) && cacheTtl > 0;
-
-        var hdr = _headers.Get();
         var cacheKey = cacheable ? _cacheKeys.Build(def.Name, url, hdr.UserId) : null;
 
         if (cacheable && cacheKey is not null)
