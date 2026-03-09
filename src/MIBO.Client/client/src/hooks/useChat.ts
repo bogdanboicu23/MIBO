@@ -586,6 +586,10 @@ export function useChat() {
         setIsTyping(false);
     }
 
+    /**
+     * Send user prompt -> /v1/chat/stream (SSE)
+     * Streams text tokens in real-time; UI payload arrives as a named "ui" event.
+     */
     async function send(text: string) {
         if (!text.trim() || isTyping) return;
 
@@ -637,7 +641,17 @@ export function useChat() {
                     locale: navigator.language,
                 },
             };
+        const convId = currentActive.id;
 
+        const payload = {
+            conversationId: convId,
+            userId: "u-demo-001",
+            prompt: trimmed,
+        };
+
+        try {
+            await api.postStream(endpoints.conversations.stream, payload, {
+                signal: ac.signal,
             const data = await api.post<{ text: string; uiV1: any | null; correlationId: string; schema?: string; warnings?: string[] | null }>(
                 endpoints.conversations.chat,
                 payload
@@ -666,8 +680,54 @@ export function useChat() {
             }));
         } catch (e: any) {
             if (e?.name === "CanceledError" || e?.name === "AbortError") return;
+                onToken: (token: string) => {
+                    updateConversation(convId, (c: any) => ({
+                        ...c,
+                        messages: c.messages.map((m: any) =>
+                            m.id === assistantId
+                                ? { ...m, content: (m.content ?? "") + token }
+                                : m
+                        ),
+                        updatedAt: Date.now(),
+                    }));
+                },
+
+                onEvent: (eventType: string, data: any) => {
+                    if (eventType === "ui") {
+                        updateConversation(convId, (c: any) => ({
+                            ...c,
+                            messages: c.messages.map((m: any) =>
+                                m.id === assistantId ? { ...m, uiV1: data } : m
+                            ),
+                            uiV1: data,
+                            updatedAt: Date.now(),
+                        }));
+                    } else if (eventType === "done") {
+                        updateConversation(convId, (c: any) => ({
+                            ...c,
+                            correlationId: data?.correlationId ?? null,
+                        }));
+                    }
+                },
+
+                onDone: () => {
+                    setIsTyping(false);
+                    abortRef.current = null;
+                },
+
+                onError: () => {
+                    setIsTyping(false);
+                    abortRef.current = null;
+                },
+            });
+        } catch (e) {
+            if ((e as any)?.name === "CanceledError" || (e as any)?.name === "AbortError") return;
 
             updateConversation(currentActive.id, (c) => ({
+            setIsTyping(false);
+            abortRef.current = null;
+
+            updateConversation(convId, (c: any) => ({
                 ...c,
                 messages: c.messages.map((m) =>
                     m.id === assistantId && (m.content ?? "").trim() === ""

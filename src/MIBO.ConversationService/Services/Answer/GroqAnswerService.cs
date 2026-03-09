@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 using MIBO.ConversationService.Services.GroqChat;
 
 namespace MIBO.ConversationService.Services.Answer;
@@ -184,5 +185,22 @@ public sealed class GroqAnswerService : IAnswerService
         }
 
         return "";
+    }
+}
+
+        return await _groq.SendMessageAsync(userPrompt, ct);
+    }
+
+    public async IAsyncEnumerable<string> StreamAnswerAsync(
+        string conversationId,
+        string userId,
+        string userPrompt,
+        object conversationContext,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        await foreach (var token in _groq.StreamMessageAsync(userPrompt, ct))
+        {
+            yield return token;
+        }
     }
 }
