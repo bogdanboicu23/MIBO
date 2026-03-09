@@ -54,6 +54,13 @@ const flatItems: FlatItem[] = files.map((file) => {
 
 flatItems.sort((a, b) => a.order - b.order);
 
+const navItemsFiltered = flatItems.filter((item) => {
+    if (item.category !== "components") return true;
+    if (item.slug === "/components") return true;
+    if (item.slug.startsWith("/components/sandbox-registry")) return true;
+    return false;
+});
+
 function buildTree(items: FlatItem[], depth: number = 0, prefix: string = ""): NavItem[] {
     const groups = new Map<string, FlatItem[]>();
 
@@ -97,9 +104,9 @@ function buildTree(items: FlatItem[], depth: number = 0, prefix: string = ""): N
     return result.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
 }
 
-const navItems = buildTree(flatItems);
+const navItems = buildTree(navItemsFiltered);
 
-const searchIndex: SearchEntry[] = flatItems.map((i) => ({
+const searchIndex: SearchEntry[] = navItemsFiltered.map((i) => ({
     title: i.title,
     description: i.description,
     slug: i.slug,
@@ -127,4 +134,4 @@ export const searchIndex: Array<{
 `;
 
 fs.writeFileSync(outputFile, output, "utf-8");
-console.log(`Generated navigation with ${flatItems.length} pages.`);
+console.log(`Generated navigation with ${navItemsFiltered.length} pages.`);

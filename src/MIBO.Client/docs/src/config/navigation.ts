@@ -155,72 +155,158 @@ export const navItems: NavItem[] = [
   {
     "title": "Component Library",
     "slug": "/components",
-    "description": "Overview of MIBO's reusable UI component library",
+    "description": "Documentation for the sandbox UI registry used by dynamic client rendering",
     "category": "components",
     "order": 40,
     "children": [
       {
-        "title": "Button",
-        "slug": "/components/button",
-        "description": "Multi-variant button component with size and style options",
+        "title": "Sandbox Registry Components",
+        "slug": "/components/sandbox-registry",
+        "description": "Complete documentation for all dynamic UI components used by client sandbox runtime",
         "category": "components",
-        "order": 41
-      },
-      {
-        "title": "Card",
-        "slug": "/components/card",
-        "description": "Compound card component with header, title, content, and footer sections",
-        "category": "components",
-        "order": 42
-      },
-      {
-        "title": "Input",
-        "slug": "/components/input",
-        "description": "Form input component with label, hint, and error states",
-        "category": "components",
-        "order": 43
-      },
-      {
-        "title": "Select",
-        "slug": "/components/select",
-        "description": "Styled select dropdown with label, hint, and error support",
-        "category": "components",
-        "order": 44
-      },
-      {
-        "title": "Textarea",
-        "slug": "/components/textarea",
-        "description": "Minimal textarea component with transparent background",
-        "category": "components",
-        "order": 45
-      },
-      {
-        "title": "Badge",
-        "slug": "/components/badge",
-        "description": "Inline badge component with multiple visual variants",
-        "category": "components",
-        "order": 46
-      },
-      {
-        "title": "Table",
-        "slug": "/components/table",
-        "description": "Compound table component with styled head, body, rows, and cells",
-        "category": "components",
-        "order": 47
-      },
-      {
-        "title": "Spinner",
-        "slug": "/components/spinner",
-        "description": "Animated loading spinner component",
-        "category": "components",
-        "order": 48
-      },
-      {
-        "title": "IconButton",
-        "slug": "/components/icon-button",
-        "description": "Square button component optimized for icon content",
-        "category": "components",
-        "order": 49
+        "order": 70,
+        "children": [
+          {
+            "title": "ActionPanel",
+            "slug": "/components/sandbox-registry/action-panel",
+            "description": "Action orchestration panel with payload templates and variant buttons",
+            "category": "components",
+            "order": 71
+          },
+          {
+            "title": "BarChartCard",
+            "slug": "/components/sandbox-registry/bar-chart-card",
+            "description": "SVG bar chart with grouped, stacked and horizontal modes",
+            "category": "components",
+            "order": 72
+          },
+          {
+            "title": "Carousel",
+            "slug": "/components/sandbox-registry/carousel",
+            "description": "Generic registry-based horizontal list renderer",
+            "category": "components",
+            "order": 73
+          },
+          {
+            "title": "CartSummaryCard",
+            "slug": "/components/sandbox-registry/cart-summary-card",
+            "description": "Checkout summary card with product rows and totals",
+            "category": "components",
+            "order": 74
+          },
+          {
+            "title": "CategoryChips",
+            "slug": "/components/sandbox-registry/category-chips",
+            "description": "Interactive category selector for filtering flows",
+            "category": "components",
+            "order": 75
+          },
+          {
+            "title": "DataTableCard",
+            "slug": "/components/sandbox-registry/data-table-card",
+            "description": "Configurable table with search, sorting, and actions",
+            "category": "components",
+            "order": 76
+          },
+          {
+            "title": "FormCard",
+            "slug": "/components/sandbox-registry/form-card",
+            "description": "Schema-driven dynamic form with submit and reset actions",
+            "category": "components",
+            "order": 77
+          },
+          {
+            "title": "JsonViewerCard",
+            "slug": "/components/sandbox-registry/json-viewer-card",
+            "description": "JSON inspector with collapsible raw output",
+            "category": "components",
+            "order": 78
+          },
+          {
+            "title": "KpiCard",
+            "slug": "/components/sandbox-registry/kpi-card",
+            "description": "Single metric card for dashboard KPIs",
+            "category": "components",
+            "order": 79
+          },
+          {
+            "title": "LineChartCard",
+            "slug": "/components/sandbox-registry/line-chart-card",
+            "description": "Interactive line chart with optional area and legend",
+            "category": "components",
+            "order": 80
+          },
+          {
+            "title": "Markdown",
+            "slug": "/components/sandbox-registry/markdown",
+            "description": "Markdown renderer with GFM and code highlighting",
+            "category": "components",
+            "order": 81
+          },
+          {
+            "title": "PageTitle",
+            "slug": "/components/sandbox-registry/page-title",
+            "description": "Title and subtitle block with runtime binding",
+            "category": "components",
+            "order": 82
+          },
+          {
+            "title": "Pagination",
+            "slug": "/components/sandbox-registry/pagination",
+            "description": "Prev/next pager with computed page state",
+            "category": "components",
+            "order": 83
+          },
+          {
+            "title": "PieChartCard",
+            "slug": "/components/sandbox-registry/pie-chart-card",
+            "description": "Donut-style pie chart with legend and hover focus",
+            "category": "components",
+            "order": 84
+          },
+          {
+            "title": "ProductCarouselCard",
+            "slug": "/components/sandbox-registry/product-carousel-card",
+            "description": "Product rail with open and secondary actions",
+            "category": "components",
+            "order": 85
+          },
+          {
+            "title": "ProductDetailCard",
+            "slug": "/components/sandbox-registry/product-detail-card",
+            "description": "Detailed product card with quantity and cart action",
+            "category": "components",
+            "order": 86
+          },
+          {
+            "title": "SearchBar",
+            "slug": "/components/sandbox-registry/search-bar",
+            "description": "Search input with Enter and button submit actions",
+            "category": "components",
+            "order": 87
+          },
+          {
+            "title": "SortDropdown",
+            "slug": "/components/sandbox-registry/sort-dropdown",
+            "description": "Sort selector with customizable option payloads",
+            "category": "components",
+            "order": 88
+          },
+          {
+            "title": "SummaryPanel",
+            "slug": "/components/sandbox-registry/summary-panel",
+            "description": "Multi-KPI panel with trends and sparkline mini charts",
+            "category": "components",
+            "order": 89
+          },
+          {
+            "title": "TimelineCard",
+            "slug": "/components/sandbox-registry/timeline-card",
+            "description": "Event timeline list with clickable items",
+            "category": "components",
+            "order": 90
+          }
+        ]
       }
     ]
   },
@@ -410,62 +496,8 @@ export const searchIndex: Array<{
   },
   {
     "title": "Component Library",
-    "description": "Overview of MIBO's reusable UI component library",
+    "description": "Documentation for the sandbox UI registry used by dynamic client rendering",
     "slug": "/components",
-    "category": "components"
-  },
-  {
-    "title": "Button",
-    "description": "Multi-variant button component with size and style options",
-    "slug": "/components/button",
-    "category": "components"
-  },
-  {
-    "title": "Card",
-    "description": "Compound card component with header, title, content, and footer sections",
-    "slug": "/components/card",
-    "category": "components"
-  },
-  {
-    "title": "Input",
-    "description": "Form input component with label, hint, and error states",
-    "slug": "/components/input",
-    "category": "components"
-  },
-  {
-    "title": "Select",
-    "description": "Styled select dropdown with label, hint, and error support",
-    "slug": "/components/select",
-    "category": "components"
-  },
-  {
-    "title": "Textarea",
-    "description": "Minimal textarea component with transparent background",
-    "slug": "/components/textarea",
-    "category": "components"
-  },
-  {
-    "title": "Badge",
-    "description": "Inline badge component with multiple visual variants",
-    "slug": "/components/badge",
-    "category": "components"
-  },
-  {
-    "title": "Table",
-    "description": "Compound table component with styled head, body, rows, and cells",
-    "slug": "/components/table",
-    "category": "components"
-  },
-  {
-    "title": "Spinner",
-    "description": "Animated loading spinner component",
-    "slug": "/components/spinner",
-    "category": "components"
-  },
-  {
-    "title": "IconButton",
-    "description": "Square button component optimized for icon content",
-    "slug": "/components/icon-button",
     "category": "components"
   },
   {
@@ -527,5 +559,131 @@ export const searchIndex: Array<{
     "description": "Monitoring, logging, and tracing with OpenTelemetry, Prometheus, Grafana, and Loki",
     "slug": "/deployment/observability",
     "category": "deployment"
+  },
+  {
+    "title": "Sandbox Registry Components",
+    "description": "Complete documentation for all dynamic UI components used by client sandbox runtime",
+    "slug": "/components/sandbox-registry",
+    "category": "components"
+  },
+  {
+    "title": "ActionPanel",
+    "description": "Action orchestration panel with payload templates and variant buttons",
+    "slug": "/components/sandbox-registry/action-panel",
+    "category": "components"
+  },
+  {
+    "title": "BarChartCard",
+    "description": "SVG bar chart with grouped, stacked and horizontal modes",
+    "slug": "/components/sandbox-registry/bar-chart-card",
+    "category": "components"
+  },
+  {
+    "title": "Carousel",
+    "description": "Generic registry-based horizontal list renderer",
+    "slug": "/components/sandbox-registry/carousel",
+    "category": "components"
+  },
+  {
+    "title": "CartSummaryCard",
+    "description": "Checkout summary card with product rows and totals",
+    "slug": "/components/sandbox-registry/cart-summary-card",
+    "category": "components"
+  },
+  {
+    "title": "CategoryChips",
+    "description": "Interactive category selector for filtering flows",
+    "slug": "/components/sandbox-registry/category-chips",
+    "category": "components"
+  },
+  {
+    "title": "DataTableCard",
+    "description": "Configurable table with search, sorting, and actions",
+    "slug": "/components/sandbox-registry/data-table-card",
+    "category": "components"
+  },
+  {
+    "title": "FormCard",
+    "description": "Schema-driven dynamic form with submit and reset actions",
+    "slug": "/components/sandbox-registry/form-card",
+    "category": "components"
+  },
+  {
+    "title": "JsonViewerCard",
+    "description": "JSON inspector with collapsible raw output",
+    "slug": "/components/sandbox-registry/json-viewer-card",
+    "category": "components"
+  },
+  {
+    "title": "KpiCard",
+    "description": "Single metric card for dashboard KPIs",
+    "slug": "/components/sandbox-registry/kpi-card",
+    "category": "components"
+  },
+  {
+    "title": "LineChartCard",
+    "description": "Interactive line chart with optional area and legend",
+    "slug": "/components/sandbox-registry/line-chart-card",
+    "category": "components"
+  },
+  {
+    "title": "Markdown",
+    "description": "Markdown renderer with GFM and code highlighting",
+    "slug": "/components/sandbox-registry/markdown",
+    "category": "components"
+  },
+  {
+    "title": "PageTitle",
+    "description": "Title and subtitle block with runtime binding",
+    "slug": "/components/sandbox-registry/page-title",
+    "category": "components"
+  },
+  {
+    "title": "Pagination",
+    "description": "Prev/next pager with computed page state",
+    "slug": "/components/sandbox-registry/pagination",
+    "category": "components"
+  },
+  {
+    "title": "PieChartCard",
+    "description": "Donut-style pie chart with legend and hover focus",
+    "slug": "/components/sandbox-registry/pie-chart-card",
+    "category": "components"
+  },
+  {
+    "title": "ProductCarouselCard",
+    "description": "Product rail with open and secondary actions",
+    "slug": "/components/sandbox-registry/product-carousel-card",
+    "category": "components"
+  },
+  {
+    "title": "ProductDetailCard",
+    "description": "Detailed product card with quantity and cart action",
+    "slug": "/components/sandbox-registry/product-detail-card",
+    "category": "components"
+  },
+  {
+    "title": "SearchBar",
+    "description": "Search input with Enter and button submit actions",
+    "slug": "/components/sandbox-registry/search-bar",
+    "category": "components"
+  },
+  {
+    "title": "SortDropdown",
+    "description": "Sort selector with customizable option payloads",
+    "slug": "/components/sandbox-registry/sort-dropdown",
+    "category": "components"
+  },
+  {
+    "title": "SummaryPanel",
+    "description": "Multi-KPI panel with trends and sparkline mini charts",
+    "slug": "/components/sandbox-registry/summary-panel",
+    "category": "components"
+  },
+  {
+    "title": "TimelineCard",
+    "description": "Event timeline list with clickable items",
+    "slug": "/components/sandbox-registry/timeline-card",
+    "category": "components"
   }
 ];
