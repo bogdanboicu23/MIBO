@@ -11,6 +11,7 @@ import { FeatureGrid, FeatureCard } from "./FeatureGrid";
 import { LinkCard, LinkCardGrid } from "./LinkCard";
 import { SectionDivider, SectionHeader } from "./SectionDivider";
 import { MiboIntroPreview } from "../MiboIntroPreview";
+import { RegistryComponentDoc } from "./RegistryComponentDoc";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mdxComponents: Record<string, ComponentType<any>> = {
@@ -39,4 +40,5 @@ export const mdxComponents: Record<string, ComponentType<any>> = {
     SectionDivider,
     SectionHeader,
     MiboIntroPreview,
+    RegistryComponentDoc,
 };

@@ -49,4 +49,10 @@ builder.AddJavaScriptApp("client", "../MIBO.Client/client")
     .WithExternalHttpEndpoints()
     .PublishAsDockerFile();
 
+// Docs frontend
+builder.AddJavaScriptApp("docs", "../MIBO.Client/docs")
+    .WithHttpEndpoint(env: "PORT")
+    .WithExternalHttpEndpoints()
+    .PublishAsDockerFile();
+
 builder.Build().Run();
