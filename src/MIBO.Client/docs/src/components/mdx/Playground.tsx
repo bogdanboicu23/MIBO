@@ -28,7 +28,9 @@ export function Playground({ code, noInline = false }: PlaygroundProps) {
                         Preview
                     </div>
                     <div className="flex items-center justify-center p-6">
-                        <LivePreview />
+                        <div className="w-full max-w-3xl">
+                            <LivePreview />
+                        </div>
                     </div>
                 </div>
                 <div>
