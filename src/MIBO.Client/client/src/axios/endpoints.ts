@@ -5,7 +5,7 @@ export const endpoints = {
         refresh: '/auth/refresh-token',
     },
     conversations: {
-        stream: "/conversations/stream",
+        stream: "/v1/chat/stream",
 
         // NEW (backend .NET)
         chat: "/v1/chat",

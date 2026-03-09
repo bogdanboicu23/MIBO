@@ -35,6 +35,7 @@ type StreamOptions = {
     onToken: (token: string) => void;
     onDone?: () => void;
     onError?: (err: unknown) => void;
+    onEvent?: (eventType: string, data: any) => void;
 };
 
 const getTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -220,6 +221,17 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
                             } catch {
                                 return handleError(new Error(payload || "Stream error"));
                             }
+                        }
+
+                        // named events (e.g. "ui") -> route through onEvent callback
+                        if (currentEvent && opts.onEvent) {
+                            try {
+                                const obj = JSON.parse(payload);
+                                opts.onEvent(currentEvent, obj);
+                            } catch {
+                                opts.onEvent(currentEvent, payload);
+                            }
+                            continue;
                         }
 
                         // default: token chunks

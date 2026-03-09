@@ -32,4 +32,10 @@ public sealed class ChatPipelineContext
     public List<string> Warnings { get; } = new();
 
     public bool SkipPlanning { get; set; }
+
+    /// <summary>
+    /// When true, ComposeTextStep and PersistAssistantMessageStep are skipped.
+    /// The orchestrator handles text streaming and persistence manually.
+    /// </summary>
+    public bool StreamMode { get; set; }
 }

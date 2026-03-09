@@ -8,4 +8,11 @@ public interface IAnswerService
         string userPrompt,
         object conversationContext,
         CancellationToken ct);
+
+    IAsyncEnumerable<string> StreamAnswerAsync(
+        string conversationId,
+        string userId,
+        string userPrompt,
+        object conversationContext,
+        CancellationToken ct);
 }

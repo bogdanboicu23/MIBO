@@ -586,6 +586,10 @@ export function useChat() {
         setIsTyping(false);
     }
 
+    /**
+     * Send user prompt -> /v1/chat/stream (SSE)
+     * Streams text tokens in real-time; UI payload arrives as a named "ui" event.
+     */
     async function send(text: string) {
         if (!text.trim() || isTyping) return;
 
@@ -611,7 +615,9 @@ export function useChat() {
             uiV1: null,
         };
 
-        updateConversation(currentActive.id, (c) => ({
+        const convId = currentActive.id;
+
+        updateConversation(convId, (c) => ({
             ...c,
             messages: [...c.messages, userMsg, assistantMsg],
             updatedAt: now,
@@ -627,47 +633,65 @@ export function useChat() {
         const ac = new AbortController();
         abortRef.current = ac;
 
+        const payload = {
+            conversationId: convId,
+            userId: DEMO_USER_ID,
+            prompt: trimmed,
+            clientContext: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                locale: navigator.language,
+            },
+        };
+
         try {
-            const payload = {
-                conversationId: currentActive.id,
-                userId: DEMO_USER_ID,
-                prompt: trimmed,
-                clientContext: {
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    locale: navigator.language,
+            await api.postStream(endpoints.conversations.stream, payload, {
+                signal: ac.signal,
+
+                onToken: (token: string) => {
+                    updateConversation(convId, (c) => ({
+                        ...c,
+                        messages: c.messages.map((m) =>
+                            m.id === assistantId
+                                ? { ...m, content: (m.content ?? "") + token }
+                                : m
+                        ),
+                        updatedAt: Date.now(),
+                    }));
                 },
-            };
 
-            const data = await api.post<{ text: string; uiV1: any | null; correlationId: string; schema?: string; warnings?: string[] | null }>(
-                endpoints.conversations.chat,
-                payload
-            );
+                onEvent: (eventType: string, data: any) => {
+                    if (eventType === "ui") {
+                        const normalized = resolveAssistantUi(data, "");
+                        updateConversation(convId, (c) => ({
+                            ...c,
+                            messages: c.messages.map((m) =>
+                                m.id === assistantId ? { ...m, uiV1: normalized } : m
+                            ),
+                            uiV1: normalized,
+                            updatedAt: Date.now(),
+                        }));
+                    } else if (eventType === "done") {
+                        updateConversation(convId, (c) => ({
+                            ...c,
+                            correlationId: data?.correlationId ?? null,
+                        }));
+                    }
+                },
 
-            const warningSuffix =
-                Array.isArray(data.warnings) && data.warnings.length > 0
-                    ? `\n\n[Warnings: ${data.warnings.join(", ")}]`
-                    : "";
+                onDone: () => {
+                    setIsTyping(false);
+                    abortRef.current = null;
+                },
 
-            updateConversation(currentActive.id, (c) => ({
-                ...c,
-                messages: c.messages.map((m) =>
-                    m.id === assistantId
-                        ? {
-                            ...m,
-                            content: `${data.text ?? ""}${warningSuffix}`,
-                            uiV1: resolveAssistantUi(data.uiV1, `${data.text ?? ""}${warningSuffix}`),
-                        }
-                        : m
-                ),
-                updatedAt: Date.now(),
-                uiV1: resolveAssistantUi(data.uiV1, `${data.text ?? ""}${warningSuffix}`) ?? c.uiV1 ?? null,
-                correlationId: data.correlationId ?? null,
-                loaded: true,
-            }));
+                onError: () => {
+                    setIsTyping(false);
+                    abortRef.current = null;
+                },
+            });
         } catch (e: any) {
             if (e?.name === "CanceledError" || e?.name === "AbortError") return;
 
-            updateConversation(currentActive.id, (c) => ({
+            updateConversation(convId, (c) => ({
                 ...c,
                 messages: c.messages.map((m) =>
                     m.id === assistantId && (m.content ?? "").trim() === ""

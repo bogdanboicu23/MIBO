@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using MIBO.ConversationService.Services.GroqChat;
 
@@ -51,6 +52,26 @@ public sealed class GroqAnswerService : IAnswerService
         {
             _logger.LogError(ex, "Groq answer failed for conversationId={ConversationId}", conversationId);
             return "Nu am putut genera textul acum, dar poți continua interacțiunea din UI.";
+        }
+    }
+
+    public async IAsyncEnumerable<string> StreamAnswerAsync(
+        string conversationId,
+        string userId,
+        string userPrompt,
+        object conversationContext,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        var prompt = BuildContextAwarePrompt(
+            conversationId,
+            userId,
+            userPrompt,
+            conversationContext
+        );
+
+        await foreach (var token in _groq.StreamMessageAsync(prompt, ct))
+        {
+            yield return token;
         }
     }
 

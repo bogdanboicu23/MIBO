@@ -27,6 +27,8 @@ public sealed class ComposeTextStep : IChatPipelineStep
 
     public async Task ExecuteAsync(ChatPipelineContext context, CancellationToken ct)
     {
+        if (context.StreamMode) return;
+
         if (context.SkipPlanning && !string.IsNullOrWhiteSpace(context.Text))
             return;
 
