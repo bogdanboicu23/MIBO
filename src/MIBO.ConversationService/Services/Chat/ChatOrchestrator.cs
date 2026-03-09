@@ -92,7 +92,8 @@ public sealed class ChatOrchestrator : IChatOrchestrator
 
             yield return new SseEvent(null, JsonSerializer.Serialize(new { t = context.Text }));
 
-            await PersistAssistantAsync(req, context.Text, context.UiV1, correlationId, ct);
+            // Fire-and-forget persistence — don't delay the "done" event
+            _ = PersistAssistantInBackgroundAsync(req, context.Text, context.UiV1, correlationId);
             yield return new SseEvent("done", JsonSerializer.Serialize(new { correlationId }));
             yield break;
         }
@@ -115,23 +116,32 @@ public sealed class ChatOrchestrator : IChatOrchestrator
 
         var fullText = textBuilder.ToString();
 
-        // Persist assistant message
-        await PersistAssistantAsync(req, fullText, context.UiV1, correlationId, ct);
+        // Fire-and-forget persistence — don't delay the "done" event
+        _ = PersistAssistantInBackgroundAsync(req, fullText, context.UiV1, correlationId);
 
         // Signal done
         yield return new SseEvent("done", JsonSerializer.Serialize(new { correlationId }));
     }
 
-    private async Task PersistAssistantAsync(
-        ChatRequest req, string text, object? uiV1, string correlationId, CancellationToken ct)
+    private async Task PersistAssistantInBackgroundAsync(
+        ChatRequest req, string text, object? uiV1, string correlationId)
     {
-        await _store.AppendAssistantMessageAsync(
-            req.ConversationId, req.UserId, text, uiV1, correlationId, ct);
-
-        if (uiV1 is not null)
+        try
         {
-            await _uiInstanceStore.UpsertFromAssistantMessageAsync(
-                req.ConversationId, req.UserId, uiV1, ct);
+            await _store.AppendAssistantMessageAsync(
+                req.ConversationId, req.UserId, text, uiV1, correlationId, CancellationToken.None);
+
+            if (uiV1 is not null)
+            {
+                await _uiInstanceStore.UpsertFromAssistantMessageAsync(
+                    req.ConversationId, req.UserId, uiV1, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Background persist of assistant message failed for conversationId={ConversationId}",
+                req.ConversationId);
         }
     }
 

@@ -23,7 +23,7 @@ public sealed class PersistAssistantMessageStep : IChatPipelineStep
     {
         if (context.StreamMode) return;
 
-        await _store.AppendAssistantMessageAsync(
+        var messageTask = _store.AppendAssistantMessageAsync(
             context.Request.ConversationId,
             context.Request.UserId,
             context.Text,
@@ -32,13 +32,20 @@ public sealed class PersistAssistantMessageStep : IChatPipelineStep
             ct
         );
 
-        if (context.UiV1 is null) return;
+        if (context.UiV1 is null)
+        {
+            await messageTask;
+            return;
+        }
 
-        await _uiInstanceStore.UpsertFromAssistantMessageAsync(
+        // Run both MongoDB writes concurrently
+        var uiTask = _uiInstanceStore.UpsertFromAssistantMessageAsync(
             context.Request.ConversationId,
             context.Request.UserId,
             context.UiV1,
             ct
         );
+
+        await Task.WhenAll(messageTask, uiTask);
     }
 }

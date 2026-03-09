@@ -59,8 +59,7 @@ class ReasoningStage:
             return {"mode": "disabled", "intent": intent}
 
         prompt = (
-            "Return JSON only with keys: intent, needs_tools, requested_visuals, entities, filters, confidence. "
-            "No markdown.\n"
+            "Return JSON with keys: intent, needs_tools, requested_visuals, entities, filters, confidence.\n"
             f"User prompt: {input_data.userPrompt}\n"
             f"Intent signals: {json.dumps(intent, ensure_ascii=False)}\n"
             f"Top tools: {json.dumps([t.get('name') for t in shortlisted_tools], ensure_ascii=False)}\n"
@@ -74,7 +73,7 @@ class ReasoningStage:
                     HumanMessage(content=prompt),
                 ]
             )
-            raw = safe_json_loads(str(resp.content))
+            raw = json.loads(str(resp.content))
             if not isinstance(raw, dict):
                 raw = {}
             raw.setdefault("intentSignals", intent)
@@ -123,7 +122,12 @@ class PlanValidationStage:
         allowed_tools: set[str],
     ) -> Dict[str, Any]:
         try:
-            raw = safe_json_loads(raw_response)
+            # With JSON mode active, json.loads should succeed directly.
+            # Fall back to safe_json_loads (bracket extraction) if needed.
+            try:
+                raw = json.loads(raw_response)
+            except json.JSONDecodeError:
+                raw = safe_json_loads(raw_response)
         except Exception as ex:
             raw = self._repair_with_model(raw_text=raw_response, error=f"JSON parse failed: {ex}")
 
