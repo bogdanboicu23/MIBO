@@ -615,7 +615,9 @@ export function useChat() {
             uiV1: null,
         };
 
-        updateConversation(currentActive.id, (c) => ({
+        const convId = currentActive.id;
+
+        updateConversation(convId, (c) => ({
             ...c,
             messages: [...c.messages, userMsg, assistantMsg],
             updatedAt: now,
@@ -631,59 +633,24 @@ export function useChat() {
         const ac = new AbortController();
         abortRef.current = ac;
 
-        try {
-            const payload = {
-                conversationId: currentActive.id,
-                userId: DEMO_USER_ID,
-                prompt: trimmed,
-                clientContext: {
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    locale: navigator.language,
-                },
-            };
-        const convId = currentActive.id;
-
         const payload = {
             conversationId: convId,
-            userId: "u-demo-001",
+            userId: DEMO_USER_ID,
             prompt: trimmed,
+            clientContext: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                locale: navigator.language,
+            },
         };
 
         try {
             await api.postStream(endpoints.conversations.stream, payload, {
                 signal: ac.signal,
-            const data = await api.post<{ text: string; uiV1: any | null; correlationId: string; schema?: string; warnings?: string[] | null }>(
-                endpoints.conversations.chat,
-                payload
-            );
 
-            const warningSuffix =
-                Array.isArray(data.warnings) && data.warnings.length > 0
-                    ? `\n\n[Warnings: ${data.warnings.join(", ")}]`
-                    : "";
-
-            updateConversation(currentActive.id, (c) => ({
-                ...c,
-                messages: c.messages.map((m) =>
-                    m.id === assistantId
-                        ? {
-                            ...m,
-                            content: `${data.text ?? ""}${warningSuffix}`,
-                            uiV1: resolveAssistantUi(data.uiV1, `${data.text ?? ""}${warningSuffix}`),
-                        }
-                        : m
-                ),
-                updatedAt: Date.now(),
-                uiV1: resolveAssistantUi(data.uiV1, `${data.text ?? ""}${warningSuffix}`) ?? c.uiV1 ?? null,
-                correlationId: data.correlationId ?? null,
-                loaded: true,
-            }));
-        } catch (e: any) {
-            if (e?.name === "CanceledError" || e?.name === "AbortError") return;
                 onToken: (token: string) => {
-                    updateConversation(convId, (c: any) => ({
+                    updateConversation(convId, (c) => ({
                         ...c,
-                        messages: c.messages.map((m: any) =>
+                        messages: c.messages.map((m) =>
                             m.id === assistantId
                                 ? { ...m, content: (m.content ?? "") + token }
                                 : m
@@ -694,16 +661,17 @@ export function useChat() {
 
                 onEvent: (eventType: string, data: any) => {
                     if (eventType === "ui") {
-                        updateConversation(convId, (c: any) => ({
+                        const normalized = resolveAssistantUi(data, "");
+                        updateConversation(convId, (c) => ({
                             ...c,
-                            messages: c.messages.map((m: any) =>
-                                m.id === assistantId ? { ...m, uiV1: data } : m
+                            messages: c.messages.map((m) =>
+                                m.id === assistantId ? { ...m, uiV1: normalized } : m
                             ),
-                            uiV1: data,
+                            uiV1: normalized,
                             updatedAt: Date.now(),
                         }));
                     } else if (eventType === "done") {
-                        updateConversation(convId, (c: any) => ({
+                        updateConversation(convId, (c) => ({
                             ...c,
                             correlationId: data?.correlationId ?? null,
                         }));
@@ -720,14 +688,10 @@ export function useChat() {
                     abortRef.current = null;
                 },
             });
-        } catch (e) {
-            if ((e as any)?.name === "CanceledError" || (e as any)?.name === "AbortError") return;
+        } catch (e: any) {
+            if (e?.name === "CanceledError" || e?.name === "AbortError") return;
 
-            updateConversation(currentActive.id, (c) => ({
-            setIsTyping(false);
-            abortRef.current = null;
-
-            updateConversation(convId, (c: any) => ({
+            updateConversation(convId, (c) => ({
                 ...c,
                 messages: c.messages.map((m) =>
                     m.id === assistantId && (m.content ?? "").trim() === ""

@@ -21,6 +21,8 @@ public sealed class PersistAssistantMessageStep : IChatPipelineStep
 
     public async Task ExecuteAsync(ChatPipelineContext context, CancellationToken ct)
     {
+        if (context.StreamMode) return;
+
         await _store.AppendAssistantMessageAsync(
             context.Request.ConversationId,
             context.Request.UserId,
