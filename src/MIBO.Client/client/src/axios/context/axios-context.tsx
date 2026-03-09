@@ -18,6 +18,7 @@ interface ApiClient {
             onToken: (token: string) => void;
             onDone?: () => void;
             onError?: (err: unknown) => void;
+            onEvent?: (eventType: string, data: any) => void;
         }
     ) => Promise<void>;
 }
