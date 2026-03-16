@@ -1,69 +1,37 @@
 import { useState, useRef, useCallback } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
-import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { normalizeSeriesChartData, resolveChartSource } from "@/components/sandbox/registry/chartData";
+import { ColorCustomizer } from "@/components/sandbox/registry/ColorCustomizer";
+import {
+    DEFAULT_PALETTE,
+    getComponentPalette,
+    getSeriesColorMap,
+    getValueColorMap,
+    normalizeColorKey,
+    resolveMappedColor,
+    resolvePaletteColor,
+} from "@/components/sandbox/registry/colorPalette";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type DataPoint = { label: string; value: number; color?: string };
 type Series = { name: string; data: DataPoint[]; color?: string };
 
-// ── palette – same as PieChartCard & LineChartCard ────────────────────────────
-const PALETTE = [
-    "#6366f1",
-    "#f59e0b",
-    "#10b981",
-    "#f43f5e",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#14b8a6",
-    "#f97316",
-    "#a3e635",
-];
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-function normalizeSeries(raw: any, palette: string[]): Series[] {
-    if (!raw) return [];
-
-    // Single series: flat array of { label, value }
-    if (
-        Array.isArray(raw) &&
-        raw.length > 0 &&
-        ("value" in (raw[0] ?? {}) || "label" in (raw[0] ?? {}))
-    ) {
-        return [
-            {
-                name: "Value",
-                color: palette[0],
-                data: raw.map((x: any, i: number) => ({
-                    label: String(x?.label ?? x?.name ?? `Item ${i + 1}`),
-                    value: Number(x?.value ?? 0),
-                    color: x?.color ?? undefined,
-                })),
-            },
-        ];
-    }
-
-    // Multi-series: array of { name, data[], color? }
-    if (Array.isArray(raw)) {
-        return raw.map((s: any, i: number) => ({
-            name: String(s?.name ?? `Series ${i + 1}`),
-            color: s?.color ?? palette[i % palette.length],
-            data: Array.isArray(s?.data)
-                ? s.data.map((x: any, j: number) => ({
-                    label: String(x?.label ?? x?.name ?? `Item ${j + 1}`),
-                    value: Number(x?.value ?? 0),
-                }))
-                : [],
-        }));
-    }
-
-    return [];
-}
-
 // ── component ─────────────────────────────────────────────────────────────────
 export function BarChartCard({ props, data }: UiComponentProps) {
     const title = String(props?.title ?? "Bar Chart");
-    const dataKey = String(props?.dataKey ?? "");
+    const fieldHints = (props?.fieldHints && typeof props.fieldHints === "object"
+        ? props.fieldHints
+        : undefined) as { labelField?: string; valueField?: string } | undefined;
+    const labelKey = typeof props?.labelKey === "string"
+        ? props.labelKey
+        : typeof fieldHints?.labelField === "string"
+            ? fieldHints.labelField
+            : undefined;
+    const valueKey = typeof props?.valueKey === "string"
+        ? props.valueKey
+        : typeof fieldHints?.valueField === "string"
+            ? fieldHints.valueField
+            : undefined;
     const horizontal: boolean = props?.horizontal === true;
     const stacked: boolean = props?.stacked === true;
     const showGrid: boolean = props?.showGrid !== false;
@@ -88,20 +56,57 @@ export function BarChartCard({ props, data }: UiComponentProps) {
         return String(v);
     };
 
-    const rawSource =
-        (props?.data as any) ??
-        (dataKey ? resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey) : null) ??
-        null;
-    const raw = Array.isArray(rawSource) ? rawSource : extractArray(rawSource, ["series", "items", "data"]);
+    const rawSource = resolveChartSource(props, (data ?? {}) as Record<string, any>);
+    const palette = getComponentPalette(props, DEFAULT_PALETTE);
+    const valueColors = getValueColorMap(props);
+    const seriesColors = getSeriesColorMap(props);
+    const [customValueColors, setCustomValueColors] = useState<Record<string, string>>({});
+    const [customSeriesColors, setCustomSeriesColors] = useState<Record<string, string>>({});
 
-    const series: Series[] = normalizeSeries(raw, PALETTE).map((s, i) => ({
+    const series: Series[] = normalizeSeriesChartData(rawSource, palette, { labelKey, valueKey, fieldHints }).map((s, i) => ({
         ...s,
-        color: s.color ?? PALETTE[i % PALETTE.length],
+        color: resolveMappedColor(customSeriesColors, s.name)
+            ?? s.color
+            ?? resolveMappedColor(seriesColors, s.name)
+            ?? resolvePaletteColor(palette, i),
     }));
 
     const isSingleSeries = series.length === 1;
     const allLabels = series.length > 0 ? series[0].data.map((d) => d.label) : [];
     const dataLen = allLabels.length;
+    const resolveBarColor = (seriesIndex: number, groupIndex: number): string => {
+        const targetSeries = series[seriesIndex];
+        const point = targetSeries?.data[groupIndex];
+        const pointColor = point?.color;
+        const customValueColor = resolveMappedColor(customValueColors, point?.label);
+
+        if (customValueColor) {
+            return customValueColor;
+        }
+
+        if (pointColor) {
+            return pointColor;
+        }
+
+        if (isSingleSeries) {
+            return resolveMappedColor(valueColors, point?.label)
+                ?? resolvePaletteColor(palette, groupIndex);
+        }
+
+        return targetSeries?.color ?? resolvePaletteColor(palette, seriesIndex);
+    };
+    const updateValueColor = (label: string, color: string) => {
+        setCustomValueColors((current) => ({
+            ...current,
+            [normalizeColorKey(label)]: color,
+        }));
+    };
+    const updateSeriesColor = (name: string, color: string) => {
+        setCustomSeriesColors((current) => ({
+            ...current,
+            [normalizeColorKey(name)]: color,
+        }));
+    };
 
     // ── chart geometry ──────────────────────────────────────────────────────────
     const W = 680;
@@ -226,10 +231,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
         series.forEach((s, si) => {
             const val = s.data[gi]?.value ?? 0;
             const len = toLength(val);
-            const color =
-                isSingleSeries && s.data[gi]?.color
-                    ? s.data[gi].color!
-                    : (s.color ?? PALETTE[si % PALETTE.length]);
+            const color = resolveBarColor(si, gi);
 
             const isHov =
                 hovered?.gi === gi && (hovered?.si === si || stacked);
@@ -307,15 +309,46 @@ export function BarChartCard({ props, data }: UiComponentProps) {
     return (
         <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950 select-none">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-          {title}
-        </span>
-                {hovered !== null && (
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {allLabels[hovered.gi]}
-          </span>
-                )}
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                    {title}
+                </span>
+                <div className="flex items-center gap-2">
+                    {hovered !== null && (
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
+                            {allLabels[hovered.gi]}
+                        </span>
+                    )}
+                    <ColorCustomizer
+                        sections={isSingleSeries
+                            ? [
+                                {
+                                    title: "Values",
+                                    items: allLabels.map((label, index) => ({
+                                        key: label,
+                                        label,
+                                        color: resolveBarColor(0, index),
+                                    })),
+                                    onChange: updateValueColor,
+                                },
+                            ]
+                            : [
+                                {
+                                    title: "Series",
+                                    items: series.map((entry, index) => ({
+                                        key: entry.name,
+                                        label: entry.name,
+                                        color: entry.color ?? resolvePaletteColor(palette, index),
+                                    })),
+                                    onChange: updateSeriesColor,
+                                },
+                            ]}
+                        onReset={() => {
+                            setCustomValueColors({});
+                            setCustomSeriesColors({});
+                        }}
+                    />
+                </div>
             </div>
 
             {series.length === 0 || dataLen === 0 ? (
@@ -475,9 +508,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                                 </p>
                                 {series.map((s, si) => {
                                     const val = s.data[hovered.gi]?.value ?? 0;
-                                    const color = isSingleSeries && s.data[hovered.gi]?.color
-                                        ? s.data[hovered.gi].color!
-                                        : (s.color ?? PALETTE[si % PALETTE.length]);
+                                    const color = resolveBarColor(si, hovered.gi);
                                     return (
                                         <div key={si} className="flex items-center gap-1.5">
                       <span
@@ -507,7 +538,7 @@ export function BarChartCard({ props, data }: UiComponentProps) {
                                 <div key={i} className="flex items-center gap-1.5">
                   <span
                       className="inline-block h-2.5 w-2.5 rounded-sm"
-                      style={{ background: s.color ?? PALETTE[i % PALETTE.length] }}
+                      style={{ background: s.color ?? resolvePaletteColor(palette, i) }}
                   />
                                     <span className="text-xs text-zinc-600 dark:text-zinc-400">
                     {s.name}

@@ -124,6 +124,14 @@ jobs:
             --namespace=${{ env.NAMESPACE }} \
             --from-literal=GROQ_API_KEY='${{ secrets.GROQ_API_KEY }}' \
             --from-literal=GROQ_MODEL='${{ secrets.GROQ_MODEL }}' \
+            --from-literal=MONGO_URI='${{ secrets.MONGO_CONNECTION_STRING }}' \
+            --from-literal=MONGO_DATABASE='${{ secrets.MONGO_DATABASE }}' \
+            --from-literal=MONGO_CONVERSATIONS_COLLECTION='conversations' \
+            --from-literal=MONGO_MESSAGES_COLLECTION='messages' \
+            --from-literal=Mongo__ConnectionString='${{ secrets.MONGO_CONNECTION_STRING }}' \
+            --from-literal=Mongo__Database='${{ secrets.MONGO_DATABASE }}' \
+            --from-literal=Mongo__ConversationsCollection='conversations' \
+            --from-literal=Mongo__MessagesCollection='messages' \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy with Helm

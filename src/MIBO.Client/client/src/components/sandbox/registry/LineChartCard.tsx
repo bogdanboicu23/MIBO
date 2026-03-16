@@ -1,59 +1,17 @@
 import { useState, useRef, useCallback } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
-import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
-
-// ── types ─────────────────────────────────────────────────────────────────────
-type DataPoint = { label: string; value: number };
-type Series = { name: string; data: DataPoint[]; color?: string };
-
-// ── palette – same as PieChartCard ────────────────────────────────────────────
-const PALETTE = [
-    "#6366f1",
-    "#f59e0b",
-    "#10b981",
-    "#f43f5e",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#14b8a6",
-    "#f97316",
-    "#a3e635",
-];
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-function normalizeSeries(raw: any, palette: string[]): Series[] {
-    if (!raw) return [];
-
-    // Single series: array of { label, value } objects
-    if (Array.isArray(raw) && raw.length > 0 && "value" in (raw[0] ?? {})) {
-        return [
-            {
-                name: "Value",
-                color: palette[0],
-                data: raw.map((x: any) => ({
-                    label: String(x?.label ?? x?.name ?? ""),
-                    value: Number(x?.value ?? 0),
-                })),
-            },
-        ];
-    }
-
-    // Multi-series: array of { name, data[], color? }
-    if (Array.isArray(raw)) {
-        return raw.map((s: any, i: number) => ({
-            name: String(s?.name ?? `Series ${i + 1}`),
-            color: s?.color ?? palette[i % palette.length],
-            data: Array.isArray(s?.data)
-                ? s.data.map((x: any) => ({
-                    label: String(x?.label ?? x?.name ?? ""),
-                    value: Number(x?.value ?? 0),
-                }))
-                : [],
-        }));
-    }
-
-    return [];
-}
+import { normalizeSeriesChartData, resolveChartSource } from "@/components/sandbox/registry/chartData";
+import { ColorCustomizer } from "@/components/sandbox/registry/ColorCustomizer";
+import {
+    DEFAULT_PALETTE,
+    getComponentPalette,
+    getSeriesColorMap,
+    getValueColorMap,
+    normalizeColorKey,
+    readColorProp,
+    resolveMappedColor,
+    resolvePaletteColor,
+} from "@/components/sandbox/registry/colorPalette";
 
 function buildSvgPath(points: { x: number; y: number }[], smooth: boolean): string {
     if (points.length === 0) return "";
@@ -95,7 +53,19 @@ function buildAreaPath(
 // ── component ─────────────────────────────────────────────────────────────────
 export function LineChartCard({ props, data }: UiComponentProps) {
     const title = String(props?.title ?? "Line Chart");
-    const dataKey = String(props?.dataKey ?? "");
+    const fieldHints = (props?.fieldHints && typeof props.fieldHints === "object"
+        ? props.fieldHints
+        : undefined) as { labelField?: string; valueField?: string } | undefined;
+    const labelKey = typeof props?.labelKey === "string"
+        ? props.labelKey
+        : typeof fieldHints?.labelField === "string"
+            ? fieldHints.labelField
+            : undefined;
+    const valueKey = typeof props?.valueKey === "string"
+        ? props.valueKey
+        : typeof fieldHints?.valueField === "string"
+            ? fieldHints.valueField
+            : undefined;
     const smooth: boolean = props?.smooth !== false;
     const showArea: boolean = props?.showArea !== false;
     const showDots: boolean = props?.showDots !== false;
@@ -117,16 +87,59 @@ export function LineChartCard({ props, data }: UiComponentProps) {
         return String(v);
     };
 
-    const rawSource =
-        (props?.data as any) ??
-        (dataKey ? resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey) : null) ??
-        null;
-    const raw = Array.isArray(rawSource) ? rawSource : extractArray(rawSource, ["series", "items", "data"]);
+    const rawSource = resolveChartSource(props, (data ?? {}) as Record<string, any>);
+    const palette = getComponentPalette(props, DEFAULT_PALETTE);
+    const seriesColors = getSeriesColorMap(props);
+    const valueColors = getValueColorMap(props);
+    const baseSeries = normalizeSeriesChartData(rawSource, palette, { labelKey, valueKey, fieldHints });
+    const [customValueColors, setCustomValueColors] = useState<Record<string, string>>({});
+    const [customSeriesColors, setCustomSeriesColors] = useState<Record<string, string>>({});
+    const [customLineColor, setCustomLineColor] = useState<string | null>(null);
+    const singleSeriesColor = customLineColor ?? readColorProp(props?.lineColor) ?? readColorProp(props?.color);
 
-    const series = normalizeSeries(raw, PALETTE).map((s, i) => ({
+    const series = baseSeries.map((s, i) => ({
         ...s,
-        color: s.color ?? PALETTE[i % PALETTE.length],
+        color: resolveMappedColor(customSeriesColors, s.name)
+            ?? s.color
+            ?? (baseSeries.length === 1 ? singleSeriesColor : undefined)
+            ?? resolveMappedColor(seriesColors, s.name)
+            ?? resolvePaletteColor(palette, i),
     }));
+    const isSingleSeries = series.length === 1;
+
+    const resolvePointColor = (seriesIndex: number, pointIndex: number): string => {
+        const targetSeries = series[seriesIndex];
+        const point = targetSeries?.data[pointIndex];
+        const customValueColor = resolveMappedColor(customValueColors, point?.label);
+
+        if (customValueColor) {
+            return customValueColor;
+        }
+
+        if (point?.color) {
+            return point.color;
+        }
+
+        if (isSingleSeries) {
+            return resolveMappedColor(valueColors, point?.label)
+                ?? targetSeries?.color
+                ?? resolvePaletteColor(palette, pointIndex);
+        }
+
+        return targetSeries?.color ?? resolvePaletteColor(palette, seriesIndex);
+    };
+    const updateValueColor = (label: string, color: string) => {
+        setCustomValueColors((current) => ({
+            ...current,
+            [normalizeColorKey(label)]: color,
+        }));
+    };
+    const updateSeriesColor = (name: string, color: string) => {
+        setCustomSeriesColors((current) => ({
+            ...current,
+            [normalizeColorKey(name)]: color,
+        }));
+    };
 
     // ── chart geometry ──────────────────────────────────────────────────────────
     const W = 480;
@@ -206,15 +219,58 @@ export function LineChartCard({ props, data }: UiComponentProps) {
     return (
         <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950 select-none">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-          {title}
-        </span>
-                {crosshair !== null && (
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
-            {allLabels[crosshair]}
-          </span>
-                )}
+            <div className="mb-4 flex items-start justify-between gap-3">
+                <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                    {title}
+                </span>
+                <div className="flex items-center gap-2">
+                    {crosshair !== null && (
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
+                            {allLabels[crosshair]}
+                        </span>
+                    )}
+                    <ColorCustomizer
+                        sections={isSingleSeries
+                            ? [
+                                {
+                                    title: "Line",
+                                    items: [
+                                        {
+                                            key: "__line__",
+                                            label: series[0]?.name ?? "Line",
+                                            color: series[0]?.color ?? resolvePaletteColor(palette, 0),
+                                        },
+                                    ],
+                                    onChange: (_key, color) => setCustomLineColor(color),
+                                },
+                                {
+                                    title: "Values",
+                                    items: allLabels.map((label, index) => ({
+                                        key: label,
+                                        label,
+                                        color: resolvePointColor(0, index),
+                                    })),
+                                    onChange: updateValueColor,
+                                },
+                            ]
+                            : [
+                                {
+                                    title: "Series",
+                                    items: series.map((entry, index) => ({
+                                        key: entry.name,
+                                        label: entry.name,
+                                        color: entry.color ?? resolvePaletteColor(palette, index),
+                                    })),
+                                    onChange: updateSeriesColor,
+                                },
+                            ]}
+                        onReset={() => {
+                            setCustomLineColor(null);
+                            setCustomValueColors({});
+                            setCustomSeriesColors({});
+                        }}
+                    />
+                </div>
             </div>
 
             {series.length === 0 || dataLen === 0 ? (
@@ -331,13 +387,14 @@ export function LineChartCard({ props, data }: UiComponentProps) {
                                 seriesPaths.map((s, si) =>
                                     s.pts.map((pt, i) => {
                                         const isHov = crosshair === i;
+                                        const pointColor = resolvePointColor(si, i);
                                         return (
                                             <circle
                                                 key={`dot-${si}-${i}`}
                                                 cx={pt.x}
                                                 cy={pt.y}
                                                 r={isHov ? 5 : 3}
-                                                fill={s.color}
+                                                fill={pointColor}
                                                 stroke="white"
                                                 strokeWidth="1.5"
                                                 className="dark:stroke-zinc-950"
@@ -345,7 +402,7 @@ export function LineChartCard({ props, data }: UiComponentProps) {
                                                     transition: "r .15s, opacity .2s",
                                                     opacity: crosshair !== null && !isHov ? 0.4 : 1,
                                                     filter: isHov
-                                                        ? `drop-shadow(0 0 5px ${s.color})`
+                                                        ? `drop-shadow(0 0 5px ${pointColor})`
                                                         : "none",
                                                 }}
                                             />
@@ -399,14 +456,14 @@ export function LineChartCard({ props, data }: UiComponentProps) {
                                     <div key={i} className="flex items-center gap-1.5">
                     <span
                         className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: s.color ?? PALETTE[i] }}
+                        style={{ background: resolvePointColor(i, crosshair) }}
                     />
                                         <span className="text-[10px] text-zinc-600 dark:text-zinc-300">
                       {s.name}
                     </span>
                                         <span
                                             className="ml-auto text-[10px] font-semibold tabular-nums"
-                                            style={{ color: s.color ?? PALETTE[i] }}
+                                            style={{ color: resolvePointColor(i, crosshair) }}
                                         >
                       {formatValue(s.data[crosshair]?.value ?? 0)}
                     </span>
@@ -423,7 +480,7 @@ export function LineChartCard({ props, data }: UiComponentProps) {
                                 <div key={i} className="flex items-center gap-1.5">
                   <span
                       className="inline-block h-2.5 w-2.5 rounded-full"
-                      style={{ background: s.color ?? PALETTE[i] }}
+                      style={{ background: s.color ?? resolvePaletteColor(palette, i) }}
                   />
                                     <span className="text-xs text-zinc-600 dark:text-zinc-400">
                     {s.name}

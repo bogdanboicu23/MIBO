@@ -1,22 +1,17 @@
 import { useState, useRef } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
-import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { normalizeFlatChartData, resolveChartSource } from "@/components/sandbox/registry/chartData";
+import { ColorCustomizer } from "@/components/sandbox/registry/ColorCustomizer";
+import {
+    DEFAULT_PALETTE,
+    getComponentPalette,
+    getValueColorMap,
+    normalizeColorKey,
+    resolveMappedColor,
+    resolvePaletteColor,
+} from "@/components/sandbox/registry/colorPalette";
 
 type PieDatum = { name: string; value: number; color?: string };
-
-// ── palette ───────────────────────────────────────────────────────────────────
-const PALETTE = [
-    "#6366f1", // indigo
-    "#f59e0b", // amber
-    "#10b981", // emerald
-    "#f43f5e", // rose
-    "#3b82f6", // blue
-    "#8b5cf6", // violet
-    "#ec4899", // pink
-    "#14b8a6", // teal
-    "#f97316", // orange
-    "#a3e635", // lime
-];
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function polarToCartesian(cx: number, cy: number, r: number, deg: number) {
@@ -52,7 +47,19 @@ function slicePath(
 // ── component ─────────────────────────────────────────────────────────────────
 export function PieChartCard({ props, data }: UiComponentProps) {
     const title = String(props?.title ?? "Pie Chart");
-    const dataKey = String(props?.dataKey ?? "");
+    const fieldHints = (props?.fieldHints && typeof props.fieldHints === "object"
+        ? props.fieldHints
+        : undefined) as { labelField?: string; valueField?: string } | undefined;
+    const labelKey = typeof props?.labelKey === "string"
+        ? props.labelKey
+        : typeof fieldHints?.labelField === "string"
+            ? fieldHints.labelField
+            : undefined;
+    const valueKey = typeof props?.valueKey === "string"
+        ? props.valueKey
+        : typeof fieldHints?.valueField === "string"
+            ? fieldHints.valueField
+            : undefined;
     const showLegend = props?.showLegend !== false;
     const formatCfg = props?.formatValue;
     const formatValue = (v: number) => {
@@ -70,21 +77,21 @@ export function PieChartCard({ props, data }: UiComponentProps) {
         return String(v);
     };
 
-    const rawSource =
-        (props?.data as any) ??
-        (dataKey ? resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey) : null) ??
-        null;
-    const raw = Array.isArray(rawSource) ? rawSource : extractArray(rawSource, ["items", "data", "series"]);
+    const rawSource = resolveChartSource(props, (data ?? {}) as Record<string, any>);
+    const palette = getComponentPalette(props, DEFAULT_PALETTE);
+    const valueColors = getValueColorMap(props);
+    const [customValueColors, setCustomValueColors] = useState<Record<string, string>>({});
 
-    const items: PieDatum[] = Array.isArray(raw)
-        ? raw
-            .map((x: any, i: number) => ({
-                name: String(x?.name ?? x?.label ?? `Item ${i + 1}`),
-                value: Number(x?.value ?? 0),
-                color: x?.color ?? PALETTE[i % PALETTE.length],
-            }))
-            .filter((x: PieDatum) => Number.isFinite(x.value) && x.value > 0)
-        : [];
+    const items: PieDatum[] = normalizeFlatChartData(rawSource, { labelKey, valueKey, fieldHints })
+        .map((item, i) => ({
+            name: item.label,
+            value: item.value,
+            color: resolveMappedColor(customValueColors, item.label)
+                ?? item.color
+                ?? resolveMappedColor(valueColors, item.label)
+                ?? resolvePaletteColor(palette, i),
+        }))
+        .filter((x: PieDatum) => Number.isFinite(x.value) && x.value > 0);
 
     const total = items.reduce((s, x) => s + x.value, 0);
 
@@ -126,15 +133,37 @@ export function PieChartCard({ props, data }: UiComponentProps) {
     const hoveredItem = hovered !== null ? items[hovered] : null;
     const displayPct =
         hoveredItem ? ((hoveredItem.value / total) * 100).toFixed(1) : null;
+    const updateValueColor = (label: string, color: string) => {
+        setCustomValueColors((current) => ({
+            ...current,
+            [normalizeColorKey(label)]: color,
+        }));
+    };
 
     return (
         <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950 select-none">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex items-start justify-between gap-3">
                 <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{title}</span>
-                <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
-          total: {formatValue(total)}
-        </span>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 tabular-nums">
+                        total: {formatValue(total)}
+                    </span>
+                    <ColorCustomizer
+                        sections={[
+                            {
+                                title: "Values",
+                                items: items.map((item, index) => ({
+                                    key: item.name,
+                                    label: item.name,
+                                    color: item.color ?? resolvePaletteColor(palette, index),
+                                })),
+                                onChange: updateValueColor,
+                            },
+                        ]}
+                        onReset={() => setCustomValueColors({})}
+                    />
+                </div>
             </div>
 
             {items.length === 0 ? (

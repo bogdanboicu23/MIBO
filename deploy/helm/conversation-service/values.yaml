@@ -5,13 +5,26 @@ image:
   tag: test-latest
   pullPolicy: Always
 
+imagePullSecrets:
+  - name: do-registry-secret
+
 service:
   type: ClusterIP
   port: 8080
 
+secrets:
+  name: conversation-service-secrets
+
 env:
   ASPNETCORE_URLS: "http://+:8080"
   ASPNETCORE_ENVIRONMENT: "Production"
+
+probes:
+  path: /api/health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 6
 
 resources:
   requests:
@@ -22,7 +35,7 @@ resources:
     memory: 512Mi
 
 ingress:
-  enabled: true
+  enabled: false
   className: traefik
   annotations: {}
   hosts:

@@ -52,6 +52,17 @@ type DataTableProps = {
     };
 };
 
+type FieldHints = {
+    collectionPath?: string | null;
+    defaultTableFields?: string[];
+    labelField?: string | null;
+    valueField?: string | null;
+    fields?: Array<{
+        name: string;
+        kind: string;
+    }>;
+};
+
 function formatCell(type: Column["type"], value: any) {
     if (value == null) return "—";
 
@@ -99,8 +110,12 @@ function normalizeColumns(raw: any): Column[] {
     if (!Array.isArray(raw)) return [];
     return raw
         .map((c: any) => {
+            if (typeof c === "string") {
+                const key = c.trim();
+                return key ? ({ key, header: key } as Column) : null;
+            }
             if (!c || typeof c !== "object") return null;
-            const key = String(c.key ?? c.selector ?? "").trim();
+            const key = String(c.key ?? c.field ?? c.selector ?? "").trim();
             const header = String(c.header ?? c.name ?? key).trim();
             if (!key) return null;
             return {
@@ -122,11 +137,101 @@ function buildColumnsFromRows(rows: Record<string, any>[]): Column[] {
         .map((key) => ({ key, header: key }));
 }
 
+function toHeaderLabel(key: string): string {
+    return key
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/^\w/, (char) => char.toUpperCase());
+}
+
+function looksLikeDate(value: unknown): boolean {
+    if (typeof value !== "string" || !value.trim()) {
+        return false;
+    }
+
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed);
+}
+
+function inferColumnTypeFromData(
+    rows: Record<string, any>[],
+    key: string,
+    hintedKind?: string
+): Column["type"] {
+    const normalizedHint = typeof hintedKind === "string" ? hintedKind.toLowerCase() : "";
+    if (normalizedHint === "money" || normalizedHint === "currency") {
+        return "money";
+    }
+    if (normalizedHint === "date") {
+        return "date";
+    }
+    if (normalizedHint === "boolean") {
+        return "badge";
+    }
+    if (normalizedHint === "number" || normalizedHint === "integer") {
+        return "number";
+    }
+
+    const samples = rows
+        .map((row) => row?.[key])
+        .filter((value) => value !== undefined && value !== null)
+        .slice(0, 12);
+
+    if (!samples.length) {
+        return "text";
+    }
+
+    if (samples.every((value) => typeof value === "boolean")) {
+        return "badge";
+    }
+
+    if (samples.every((value) => typeof value === "number")) {
+        return "number";
+    }
+
+    if (samples.every((value) => looksLikeDate(value))) {
+        return "date";
+    }
+
+    return "text";
+}
+
+function buildColumnsFromFieldHints(
+    rows: Record<string, any>[],
+    fieldHints?: FieldHints
+): Column[] {
+    const hintedFields = Array.isArray(fieldHints?.fields)
+        ? fieldHints.fields.filter((field) => field && typeof field.name === "string" && field.name.trim())
+        : [];
+    const hintedFieldKinds = hintedFields.reduce<Record<string, string>>((accumulator, field) => {
+        accumulator[field.name] = field.kind;
+        return accumulator;
+    }, {});
+    const fields = Array.isArray(fieldHints?.defaultTableFields)
+        ? fieldHints.defaultTableFields.filter((field) => typeof field === "string" && field.trim())
+        : hintedFields.map((field) => field.name);
+
+    if (!fields.length) {
+        return buildColumnsFromRows(rows);
+    }
+
+    return fields.map((key) => ({
+        key,
+        header: toHeaderLabel(key),
+        type: inferColumnTypeFromData(rows, key, hintedFieldKinds[key]),
+    }));
+}
+
 export function DataTableCard(props: UiComponentProps) {
     // aștept ca UiComponentProps să conțină props în props.props (sau direct).
     // dacă la tine structura e diferită, ajustezi cele 2 linii de mai jos.
     const spec = (props as any)?.props ?? (props as any);
     const sourceData = (props as any)?.data ?? {};
+    const fieldHints = ((spec as any)?.fieldHints && typeof (spec as any).fieldHints === "object"
+        ? (spec as any).fieldHints
+        : null) as FieldHints | null;
 
     const keyFromSpec = String((spec as any)?.dataKey ?? "");
     const resolvedDataByKey = keyFromSpec
@@ -141,6 +246,11 @@ export function DataTableCard(props: UiComponentProps) {
             const rowsFromRowsKey = extractArray(fromRowsKey, ["rows", "items", "products"]);
             if (rowsFromRowsKey.length) return rowsFromRowsKey;
         }
+        if (typeof fieldHints?.collectionPath === "string" && fieldHints.collectionPath.trim()) {
+            const hintedRows = resolveFromDataKey(fallbackContainer, fieldHints.collectionPath.trim());
+            const rowsFromHint = extractArray(hintedRows, ["rows", "items", "products", "data"]);
+            if (rowsFromHint.length) return rowsFromHint;
+        }
         const fromDataKey = extractArray(resolvedDataByKey, ["rows", "items", "products", "data"]);
         if (fromDataKey.length) return fromDataKey;
         return [];
@@ -154,13 +264,27 @@ export function DataTableCard(props: UiComponentProps) {
             const cols = normalizeColumns(fromColumnsKey);
             if (cols.length) return cols;
         }
-        return buildColumnsFromRows(resolvedRows as Record<string, any>[]);
+        return buildColumnsFromFieldHints(resolvedRows as Record<string, any>[], fieldHints ?? undefined);
+    })();
+
+    const resolvedRowAction = (() => {
+        const raw = (spec as any)?.rowAction;
+        if (!raw || typeof raw !== "object") return undefined;
+        const actionId = String(raw.actionId ?? raw.type ?? raw.actionType ?? "").trim();
+        if (!actionId) return undefined;
+        const actionType = String(raw.actionType ?? raw.type ?? "").trim();
+        return {
+            actionId,
+            actionType: actionType || undefined,
+            payloadTemplate: raw.payloadTemplate,
+        };
     })();
 
     const p: DataTableProps = {
         ...(spec as DataTableProps),
         rows: resolvedRows,
         columns: resolvedColumns,
+        rowAction: resolvedRowAction,
     };
 
     const {
@@ -265,10 +389,13 @@ export function DataTableCard(props: UiComponentProps) {
                                     key={a.actionId}
                                     onClick={() => {
                                         const actionType = resolveActionType(
-                                            { actionType: a.actionType ?? a.actionId },
-                                            a.actionId
+                                            { actionType: a.actionType },
+                                            "ui.action.execute"
                                         );
-                                        const fallbackPayload = { source: "dataTable" } as Record<string, unknown>;
+                                        const fallbackPayload = {
+                                            actionId: a.actionId,
+                                            source: "dataTable",
+                                        } as Record<string, unknown>;
                                         const payload = resolveActionPayload(
                                             { payloadTemplate: a.payloadTemplate },
                                             fallbackPayload,
@@ -379,10 +506,15 @@ export function DataTableCard(props: UiComponentProps) {
                                     onClick={() => {
                                         if (!rowAction?.actionId) return;
                                         const actionType = resolveActionType(
-                                            { actionType: rowAction.actionType ?? rowAction.actionId },
-                                            rowAction.actionId
+                                            { actionType: rowAction.actionType },
+                                            "ui.action.execute"
                                         );
-                                        const fallbackPayload = { row: r, rowKey: key, source: "dataTable.row" } as Record<string, unknown>;
+                                        const fallbackPayload = {
+                                            actionId: rowAction.actionId,
+                                            row: r,
+                                            rowKey: key,
+                                            source: "dataTable.row",
+                                        } as Record<string, unknown>;
                                         const payload = resolveActionPayload(
                                             { payloadTemplate: rowAction.payloadTemplate },
                                             fallbackPayload,

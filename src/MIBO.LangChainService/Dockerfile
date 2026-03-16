@@ -31,9 +31,5 @@ USER appuser
 
 EXPOSE 8088
 
-# container healthcheck (K8s probes are still recommended)
-HEALTHCHECK --interval=10s --timeout=5s --retries=10 \
-  CMD wget -qO- http://127.0.0.1:${PORT}/langchain/healthz || exit 1
-
 # IMPORTANT: main.py is at /app/main.py => "main:app"
 CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port ${PORT} --proxy-headers"]

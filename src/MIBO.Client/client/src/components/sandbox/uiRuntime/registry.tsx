@@ -56,6 +56,7 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     formCard: FormCard,
     timelineCard: TimelineCard,
     jsonViewer: JsonViewerCard,
+    text: Markdown,
 
     // aliases for planner/backend naming variance
     piechart: PieChartCard,
@@ -81,6 +82,17 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     actions: ActionPanel,
     json: JsonViewerCard,
     "json-viewer": JsonViewerCard,
+
+    // legacy aliases normalized to native sandbox components
+    product_card: ProductDetailCard,
+    product_list: ProductCarouselCard,
+    search_bar: SearchBar,
+    finance_dashboard: SummaryPanel,
+    data_table: DataTableCard,
+    pie_chart: PieChartCard,
+    bar_chart: BarChartCard,
+    line_chart: LineChartCard,
+    kpi_card: KpiCard,
 
     __unknown__: Unknown,
 };

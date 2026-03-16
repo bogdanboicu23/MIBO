@@ -8,24 +8,59 @@ export type ActionContext = {
     extra?: Record<string, any>;
 };
 
+const MUSTACHE_FULL_TOKEN = /^\{\{\s*([^}]+?)\s*\}\}$/;
+const MUSTACHE_INLINE_TOKEN = /\{\{\s*([^}]+?)\s*\}\}/g;
+
+function resolveNamedToken(token: string, ctx: ActionContext): unknown {
+    const raw = token.trim();
+    if (!raw) return undefined;
+
+    if (raw.startsWith("$")) {
+        return resolveNamedToken(raw.slice(1), ctx);
+    }
+
+    if (raw.startsWith("item.")) return getByPath(ctx.item, raw.slice(5));
+    if (raw === "item") return ctx.item;
+
+    if (raw.startsWith("form.")) return getByPath(ctx.form, raw.slice(5));
+    if (raw === "form") return ctx.form;
+
+    if (raw.startsWith("data.")) return getByPath(ctx.data, raw.slice(5));
+    if (raw === "data") return ctx.data;
+
+    if (raw === "value") return ctx.value;
+
+    if (raw.startsWith("extra.")) return getByPath(ctx.extra, raw.slice(6));
+    if (raw === "extra") return ctx.extra;
+
+    if (ctx.extra && Object.prototype.hasOwnProperty.call(ctx.extra, raw)) return ctx.extra[raw];
+    if (ctx.form && Object.prototype.hasOwnProperty.call(ctx.form, raw)) return ctx.form[raw];
+    if (ctx.item && Object.prototype.hasOwnProperty.call(ctx.item, raw)) return ctx.item[raw];
+    if (ctx.data && Object.prototype.hasOwnProperty.call(ctx.data, raw)) return ctx.data[raw];
+
+    return raw;
+}
+
 function resolveToken(raw: unknown, ctx: ActionContext): unknown {
     if (typeof raw !== "string") return raw;
 
-    if (raw.startsWith("$item.")) return getByPath(ctx.item, raw.slice(6));
-    if (raw === "$item") return ctx.item;
+    const trimmed = raw.trim();
+    const fullMustache = MUSTACHE_FULL_TOKEN.exec(trimmed);
+    if (fullMustache) {
+        const resolved = resolveNamedToken(fullMustache[1], ctx);
+        return resolved === undefined ? raw : resolved;
+    }
 
-    if (raw.startsWith("$form.")) return getByPath(ctx.form, raw.slice(6));
-    if (raw === "$form") return ctx.form;
+    MUSTACHE_INLINE_TOKEN.lastIndex = 0;
+    if (MUSTACHE_INLINE_TOKEN.test(raw)) {
+        MUSTACHE_INLINE_TOKEN.lastIndex = 0;
+        return raw.replace(MUSTACHE_INLINE_TOKEN, (_, token: string) => {
+            const resolved = resolveNamedToken(token, ctx);
+            return resolved === undefined || resolved === null ? "" : String(resolved);
+        });
+    }
 
-    if (raw.startsWith("$data.")) return getByPath(ctx.data, raw.slice(6));
-    if (raw === "$data") return ctx.data;
-
-    if (raw === "$value") return ctx.value;
-
-    if (raw.startsWith("$extra.")) return getByPath(ctx.extra, raw.slice(7));
-    if (raw === "$extra") return ctx.extra;
-
-    return raw;
+    return resolveNamedToken(raw, ctx);
 }
 
 export function deepResolveTemplate(template: unknown, ctx: ActionContext): unknown {
@@ -60,7 +95,10 @@ export function resolveActionPayload(
     if (payloadTemplate && typeof payloadTemplate === "object") {
         const resolved = deepResolveTemplate(payloadTemplate, ctx);
         if (resolved && typeof resolved === "object") {
-            return resolved as Record<string, unknown>;
+            return {
+                ...fallbackPayload,
+                ...(resolved as Record<string, unknown>),
+            };
         }
     }
 
@@ -68,7 +106,10 @@ export function resolveActionPayload(
     if (payloadDataKey && ctx.data) {
         const fromData = resolveFromDataKey(ctx.data, payloadDataKey);
         if (fromData && typeof fromData === "object") {
-            return fromData as Record<string, unknown>;
+            return {
+                ...fallbackPayload,
+                ...(fromData as Record<string, unknown>),
+            };
         }
     }
 

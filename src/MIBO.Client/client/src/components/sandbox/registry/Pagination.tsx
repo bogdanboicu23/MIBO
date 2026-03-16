@@ -8,7 +8,14 @@ function getNumber(data: Record<string, any>, key: string): number | null {
 }
 
 export function Pagination({ props, data, onAction }: UiComponentProps) {
-    const actionType = resolveActionType((props as any) ?? {}, "shop.change_page");
+    const dataSourceId = String((props as any)?.dataSourceId ?? (props as any)?.data_source ?? "").trim();
+    const actionId = String((props as any)?.actionId ?? "").trim();
+    const sourceKey = String((props as any)?.sourceKey ?? "").trim();
+    const actionType = actionId
+        ? resolveActionType((props as any) ?? {}, "ui.action.execute")
+        : dataSourceId
+            ? "data.query"
+            : resolveActionType((props as any) ?? {}, "data.query");
     const totalKey = String((props as any)?.totalKey ?? "");
     const limitKey = String((props as any)?.limitKey ?? "");
     const skipKey = String((props as any)?.skipKey ?? "");
@@ -30,9 +37,14 @@ export function Pagination({ props, data, onAction }: UiComponentProps) {
     const go = (nextSkip: number) => {
         const safeSkip = Math.max(0, nextSkip);
         const page = Math.floor(safeSkip / limit) + 1;
+        const fallbackPayload = actionId
+            ? { actionId, dataSourceId, sourceKey, skip: safeSkip, limit, page }
+            : dataSourceId
+                ? { dataSourceId, sourceKey, skip: safeSkip, limit, page }
+                : { skip: safeSkip, limit, page };
         const payload = resolveActionPayload(
             (props as any) ?? {},
-            { skip: safeSkip, limit, page },
+            fallbackPayload,
             { data: source, value: page, extra: { skip: safeSkip, limit, page, total } }
         );
         onAction?.(actionType, payload);

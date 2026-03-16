@@ -1,12 +1,30 @@
-import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import type { Conversation, Message } from "../types/chat";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Conversation, Message } from "@/types/chat";
+import type { UiActionState, UiDataSourceState, UiFieldHints, UiV1 } from "@/types/ui.ts";
 import { endpoints } from "@/axios/endpoints.ts";
-import { useAxios } from "@/axios/hooks";
 import { uidStr } from "@/_mock/conversations.ts";
+import { CONFIG } from "@/global-config";
+import { useAxios } from "@/axios/hooks";
+import { useAuthContext } from "@/auth/hooks";
+import {
+    buildUiFromAgentResponse,
+    type AgentFinalResponse,
+    executeSandboxAction,
+    joinUrl,
+    querySandboxDataSource,
+} from "@/utils/agent-chat";
 
-const DEMO_USER_ID = "u-demo-001";
+const ANONYMOUS_USER_ID_KEY = "mibo.chat.anonymous-user-id.v1";
 
-type ServerConversationSummary = {
+type ChatModel = "AI Agent" | "AI Agent Pro";
+
+type AgentStreamEvent = {
+    type: "session" | "status" | "chunk" | "done" | "error";
+    content?: string;
+    session_id?: string;
+};
+
+type ConversationSummaryDto = {
     conversationId: string;
     userId: string;
     title: string;
@@ -17,854 +35,783 @@ type ServerConversationSummary = {
     messageCount: number;
 };
 
-type ServerConversationMessage = {
+type ConversationMessageDto = {
     messageId: string;
     conversationId: string;
     userId: string;
     role: "user" | "assistant" | "system";
     text: string;
-    uiV1: any | null;
-    correlationId: string;
+    uiV1?: UiV1 | null;
+    assistantPayload?: AgentFinalResponse | null;
+    correlationId?: string;
     createdAt: string;
 };
 
-type ServerConversationDetails = {
-    conversation: ServerConversationSummary;
-    messages: ServerConversationMessage[];
+type ConversationDetailsDto = {
+    conversation: ConversationSummaryDto;
+    messages: ConversationMessageDto[];
 };
 
-const COMPONENT_NAME_ALIASES: Record<string, string> = {
-    piechart: "pieChart",
-    pie: "pieChart",
-    barchart: "barChart",
-    bar: "barChart",
-    linechart: "lineChart",
-    line: "lineChart",
-    datatable: "dataTable",
-    table: "dataTable",
-    productcarousel: "productCarousel",
-    productdetail: "productDetail",
-    kpi: "kpiCard",
-    kpicard: "kpiCard",
-    pagetitle: "pageTitle",
-    search: "searchBar",
-    searchinput: "searchBar",
-    sort: "sortDropdown",
-    categories: "categoryChips",
-    categorychips: "categoryChips",
-    summary: "summaryPanel",
-    actionpanel: "actionPanel",
-    actions: "actionPanel",
-    form: "formCard",
-    formcard: "formCard",
-    timeline: "timelineCard",
-    timelinecard: "timelineCard",
-    json: "jsonViewer",
-    jsonviewer: "jsonViewer",
-    markdown: "markdown",
-    pagination: "pagination",
-    cartsummary: "cartSummary",
-    carousel: "carousel",
+type CreateConversationDto = {
+    title?: string;
+    userId?: string;
 };
 
-const KNOWN_COMPONENT_NAMES = new Set<string>([
-    "pieChart",
-    "barChart",
-    "lineChart",
-    "dataTable",
-    "productCarousel",
-    "productDetail",
-    "kpiCard",
-    "pageTitle",
-    "searchBar",
-    "sortDropdown",
-    "categoryChips",
-    "pagination",
-    "cartSummary",
-    "carousel",
-    "summaryPanel",
-    "markdown",
-    "actionPanel",
-    "formCard",
-    "timelineCard",
-    "jsonViewer",
-]);
-
-const PLACEHOLDER_COMPONENT_NAMES = new Set<string>([
-    "type",
-    "props",
-    "component",
-    "components",
-    "children",
-    "items",
-    "root",
-]);
-
-function normalizeComponentName(raw: unknown): string {
-    const name = String(raw ?? "").trim();
-    if (!name) return "";
-    const compact = name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-    return COMPONENT_NAME_ALIASES[compact] ?? name;
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function inferComponentNameFromProps(props: Record<string, unknown>): string | null {
-    const p = props ?? {};
-    const explicit = normalizeComponentName((p as any).component ?? (p as any).name ?? (p as any).kind);
-    if (explicit && KNOWN_COMPONENT_NAMES.has(explicit)) return explicit;
+function getSourceRegistry(ui: UiV1 | null | undefined): Record<string, UiDataSourceState> {
+    const registry = ui?.meta?.sourceRegistry;
+    return isRecord(registry) ? (registry as Record<string, UiDataSourceState>) : {};
+}
 
-    if (Array.isArray((p as any).columns) || Array.isArray((p as any).rows) || (p as any).rowKey || (p as any).rowsKey) {
-        return "dataTable";
+function getActionRegistry(ui: UiV1 | null | undefined): Record<string, UiActionState> {
+    const registry = ui?.meta?.actionRegistry;
+    return isRecord(registry) ? (registry as Record<string, UiActionState>) : {};
+}
+
+function getFetchedAtMillis(value: string | null | undefined): number {
+    if (!value) {
+        return Date.now();
     }
 
-    if ((p as any).total !== undefined && (p as any).limit !== undefined && (p as any).skip !== undefined) {
-        return "pagination";
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function patchUiDataSourceResult(
+    ui: UiV1,
+    sourceKeys: string[],
+    result: { data?: Record<string, unknown>; fieldHints?: UiFieldHints | null; fetchedAtUtc?: string | null },
+    requestArgs: Record<string, unknown>
+): UiV1 {
+    if (!sourceKeys.length || !result.data) {
+        return ui;
     }
 
-    if ((p as any).placeholder !== undefined && ((p as any).actionType || (p as any).payloadTemplate || (p as any).submitOnEmpty !== undefined)) {
-        return "searchBar";
-    }
+    const nextSourceRegistry = { ...getSourceRegistry(ui) };
+    const nextData = { ...(ui.data ?? {}) };
+    const fetchedAt = getFetchedAtMillis(result.fetchedAtUtc);
 
-    if (Array.isArray((p as any).options) && ((p as any).actionType || (p as any).payloadTemplate || (p as any).selected !== undefined)) {
-        return "sortDropdown";
-    }
-
-    if (Array.isArray((p as any).data)) {
-        const first = ((p as any).data as any[]).find((x) => x && typeof x === "object") as Record<string, unknown> | undefined;
-        if (first) {
-            const hasPieShape = "value" in first && ("name" in first || "label" in first || "category" in first);
-            if (hasPieShape || (p as any).showLegend !== undefined || (p as any).formatValue !== undefined) return "pieChart";
-            const hasLineOrBarShape =
-                ("x" in first || "label" in first || "name" in first) &&
-                ("y" in first || "value" in first);
-            if (hasLineOrBarShape) return "barChart";
+    for (const sourceKey of sourceKeys) {
+        nextData[sourceKey] = result.data;
+        const current = nextSourceRegistry[sourceKey];
+        if (current) {
+            nextSourceRegistry[sourceKey] = {
+                ...current,
+                lastArgs: requestArgs,
+                fieldHints: result.fieldHints ?? current.fieldHints ?? null,
+                lastFetchedAt: fetchedAt,
+            };
         }
     }
 
-    if ((p as any).product || (p as any).productId || (p as any).thumbnail || (p as any).images) return "productDetail";
-    if (Array.isArray((p as any).products) || (p as any).itemComponent) return "productCarousel";
-    if (Array.isArray((p as any).actions) && !Array.isArray((p as any).columns)) return "actionPanel";
-    if (Array.isArray((p as any).events) || Array.isArray((p as any).timeline)) return "timelineCard";
-    if ((p as any).value !== undefined && ((p as any).label || (p as any).title || (p as any).unit)) return "kpiCard";
-    if ((p as any).markdown || ((p as any).content && typeof (p as any).content === "string")) return "markdown";
-    if ((p as any).text !== undefined || (p as any).subtitle !== undefined) return "pageTitle";
-
-    return null;
-}
-
-function normalizeBackendUi(ui: any): any {
-    if (!ui || typeof ui !== "object") return null;
-    if (ui.schema !== "ui.v1") return ui;
-
-    const root = normalizeUiNode(ui.root);
-    if (!root) return null;
-
-    const bindings = normalizeBindings(ui.bindings, root);
-    const subscriptions = Array.isArray(ui.subscriptions) ? ui.subscriptions : [];
-    const data = ui.data && typeof ui.data === "object" ? ui.data : {};
-
     return {
-        schema: "ui.v1",
-        root,
-        data,
-        bindings,
-        subscriptions,
-    };
-}
-
-function looksLikeMarkdownUiCandidate(text: string): boolean {
-    const t = (text ?? "").trim();
-    if (!t) return false;
-    if (t.includes("```")) return true;
-    if (/\n\s*[-*]\s+/.test(t)) return true;
-    if (/\n\s*\d+\.\s+/.test(t)) return true;
-    return false;
-}
-
-function buildMarkdownUiFromText(text: string): any {
-    return {
-        schema: "ui.v1",
-        root: {
-            type: "layout",
-            name: "column",
-            props: { gap: 12 },
-            children: [
-                {
-                    type: "component",
-                    name: "markdown",
-                    props: {
-                        title: "Code / Markdown",
-                        content: text,
-                        showCodeHeader: true,
-                    },
-                    children: [],
-                },
-            ],
+        ...ui,
+        data: nextData,
+        meta: {
+            ...(ui.meta ?? {}),
+            sourceRegistry: nextSourceRegistry,
+            dataSources: nextSourceRegistry,
         },
-        data: {},
-        bindings: [],
-        subscriptions: [],
     };
 }
 
-function resolveAssistantUi(rawUi: any, text: string): any {
-    const normalized = normalizeBackendUi(rawUi);
-    if (normalized) return normalized;
-    if (looksLikeMarkdownUiCandidate(text)) return buildMarkdownUiFromText(text);
-    return null;
+function parseTimestamp(value: string | number | null | undefined): number {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+
+    if (typeof value === "string") {
+        const parsed = Date.parse(value);
+        if (Number.isFinite(parsed)) {
+            return parsed;
+        }
+    }
+
+    return Date.now();
 }
 
-function normalizeUiNode(node: any): any | null {
-    if (!node) return null;
-
-    if (node.root && Object.keys(node).length === 1) {
-        return normalizeUiNode(node.root);
+function getAnonymousUserId(): string {
+    if (typeof window === "undefined") {
+        return "anonymous";
     }
 
-    // Legacy layout shorthand:
-    // { type: "column"|"row"|"grid", components: [...] }
-    if (typeof node.type === "string" && ["column", "row", "grid"].includes(node.type)) {
-        const childrenRaw = Array.isArray(node.components)
-            ? node.components
-            : Array.isArray(node.children)
-                ? node.children
-                : [];
-        const children = childrenRaw.map((c: any) => normalizeUiNode(c)).filter(Boolean);
-        return {
-            type: "layout",
-            name: node.type,
-            props: node.props && typeof node.props === "object" ? node.props : {},
-            children,
-        };
+    const existing = window.localStorage.getItem(ANONYMOUS_USER_ID_KEY);
+    if (existing) {
+        return existing;
     }
 
-    // Legacy component shorthand:
-    // { type: "dataTable", props: {...} } or { component: "dataTable", ... }
-    if (typeof node.type === "string" && !["layout", "component"].includes(node.type)) {
-        let props = node.props && typeof node.props === "object" ? node.props : {};
-        // tolerate malformed payloads like props: { props: { ... } }
-        if (
-            props &&
-            typeof props === "object" &&
-            "props" in (props as any) &&
-            typeof (props as any).props === "object" &&
-            Object.keys(props as any).length === 1
-        ) {
-            props = (props as any).props;
-        }
-        const normalizedName = normalizeComponentName(node.type);
-        const inferred = inferComponentNameFromProps(props);
-        const name =
-            KNOWN_COMPONENT_NAMES.has(normalizedName)
-                ? normalizedName
-                : (inferred ?? normalizedName);
+    const nextId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `anon_${uidStr()}`;
 
-        if (!name || (PLACEHOLDER_COMPONENT_NAMES.has(String(name).toLowerCase()) && !inferred)) {
-            return null;
-        }
-        const childrenRaw = Array.isArray(node.children)
-            ? node.children
-            : Array.isArray(node.components)
-                ? node.components
-                : [];
-        const children = childrenRaw.map((c: any) => normalizeUiNode(c)).filter(Boolean);
-        return {
-            type: "component",
-            name,
-            props,
-            children,
-        };
-    }
-
-    if (node.type === "layout" || node.type === "component") {
-        const inferredName =
-            node.name ??
-            (node.type === "component" ? node.component : undefined) ??
-            (node.type === "layout" ? "column" : undefined);
-        const rawName = String(inferredName ?? "").trim();
-        if (!rawName) return null;
-        const childrenRaw = Array.isArray(node.children)
-            ? node.children
-            : Array.isArray(node.components)
-                ? node.components
-                : [];
-        const children = childrenRaw.map((c: any) => normalizeUiNode(c)).filter(Boolean);
-        let props = node.props && typeof node.props === "object" ? node.props : {};
-        if (
-            props &&
-            typeof props === "object" &&
-            "props" in (props as any) &&
-            typeof (props as any).props === "object" &&
-            Object.keys(props as any).length === 1
-        ) {
-            props = (props as any).props;
-        }
-
-        if (node.type === "layout") {
-            const normalizedLayout = normalizeComponentName(rawName);
-            const name = ["column", "row", "grid"].includes(normalizedLayout) ? normalizedLayout : "column";
-            return {
-                type: "layout",
-                name,
-                props,
-                children,
-            };
-        }
-
-        const normalizedName = normalizeComponentName(rawName);
-        const inferred = inferComponentNameFromProps(props);
-        const finalName =
-            KNOWN_COMPONENT_NAMES.has(normalizedName)
-                ? normalizedName
-                : (inferred ?? normalizedName);
-        const isPlaceholder = PLACEHOLDER_COMPONENT_NAMES.has(normalizedName.toLowerCase());
-        if (isPlaceholder && !inferred) {
-            if (Object.keys(props).length === 0 && children.length === 0) return null;
-            return null;
-        }
-
-        return {
-            type: node.type,
-            name: finalName,
-            props,
-            children,
-        };
-    }
-
-    if (typeof node.component === "string") {
-        const props = { ...node };
-        delete props.component;
-        delete props.children;
-        delete props.root;
-        const normalizedName = normalizeComponentName(node.component);
-        const inferred = inferComponentNameFromProps(props);
-        const name =
-            KNOWN_COMPONENT_NAMES.has(normalizedName)
-                ? normalizedName
-                : (inferred ?? normalizedName);
-        if (!name) return null;
-        return {
-            type: "component",
-            name,
-            props,
-            children: [],
-        };
-    }
-
-    if (typeof node === "object") {
-        const children = Object.entries(node)
-            .filter(([k]) => !["root", "bindings", "subscriptions"].includes(k))
-            .map(([k, v]) => {
-                const props = v && typeof v === "object" ? ((v as any).props ?? v) : {};
-                const normalizedName = normalizeComponentName(k);
-                const inferred = inferComponentNameFromProps(props);
-                const name =
-                    KNOWN_COMPONENT_NAMES.has(normalizedName)
-                        ? normalizedName
-                        : (inferred ?? normalizedName);
-                if (!name || (PLACEHOLDER_COMPONENT_NAMES.has(normalizedName.toLowerCase()) && !inferred)) {
-                    return null;
-                }
-                return {
-                    type: "component",
-                    name,
-                    props,
-                    children: [],
-                };
-            })
-            .filter(Boolean);
-
-        if (children.length > 0) {
-            return {
-                type: "layout",
-                name: "column",
-                props: { gap: 12 },
-                children,
-            };
-        }
-    }
-
-    return null;
+    window.localStorage.setItem(ANONYMOUS_USER_ID_KEY, nextId);
+    return nextId;
 }
 
-function normalizeBindings(bindings: any, root: any): any[] {
-    if (!Array.isArray(bindings)) return [];
+function parseSseEvent(rawEvent: string): AgentStreamEvent | null {
+    const dataLines = rawEvent
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => (line.startsWith("data: ") ? line.slice(6) : line.slice(5)).trimStart());
 
-    const normalizeFrom = (raw: unknown): string => {
-        const s = String(raw ?? "").trim();
-        const m = /^\$\{(?:tool|step):(.+)\}$/.exec(s);
-        return m?.[1]?.trim() || s;
+    if (dataLines.length === 0) {
+        return null;
+    }
+
+    return JSON.parse(dataLines.join("\n")) as AgentStreamEvent;
+}
+
+function buildChatUrl(): string {
+    return joinUrl(CONFIG.apiServerUrl, endpoints.conversations.chat);
+}
+
+function updateLatestAssistantMessage(messages: Message[], update: (message: Message) => Message): Message[] {
+    const nextMessages = [...messages];
+    for (let index = nextMessages.length - 1; index >= 0; index -= 1) {
+        if (nextMessages[index].role !== "assistant") {
+            continue;
+        }
+
+        nextMessages[index] = update(nextMessages[index]);
+        break;
+    }
+    return nextMessages;
+}
+
+function mapMessage(dto: ConversationMessageDto): Message {
+    const assistantPayload = isRecord(dto.assistantPayload) ? (dto.assistantPayload as AgentFinalResponse) : null;
+    const derivedUi =
+        dto.uiV1
+        ?? (assistantPayload ? buildUiFromAgentResponse(assistantPayload) : null);
+
+    return {
+        id: dto.messageId || uidStr(),
+        role: dto.role,
+        content: dto.text ?? "",
+        createdAt: parseTimestamp(dto.createdAt),
+        uiV1: derivedUi,
     };
-
-    const normalizePath = (raw: unknown): string => {
-        const p = String(raw ?? "").trim();
-        if (!p) return "/root";
-        if (p.startsWith("/")) return p;
-        return findComponentPath(root, p) ?? "/root";
-    };
-
-    return bindings
-        .map((b) => {
-            if (b && typeof b === "object" && b.componentPath && b.prop && b.from) {
-                return {
-                    componentPath: normalizePath(b.componentPath),
-                    prop: String(b.prop),
-                    from: normalizeFrom(b.from),
-                };
-            }
-
-            if (b && typeof b === "object" && b.component && b.prop && b.tool) {
-                const comp = String(b.component);
-                const arg = b.arg ? String(b.arg) : "";
-                const from = normalizeFrom(arg ? `${String(b.tool)}.${arg}` : String(b.tool));
-                const componentPath = findComponentPath(root, comp) ?? "/root";
-                return {
-                    componentPath,
-                    prop: String(b.prop),
-                    from: comp === "productDetail" && arg === "products" ? `${String(b.tool)}.products.0` : from,
-                };
-            }
-
-            return null;
-        })
-        .filter(Boolean);
 }
 
-function findComponentPath(node: any, name: string, path = "/root"): string | null {
-    if (!node || typeof node !== "object") return null;
-    if (node.type === "component" && String(node.name) === name) return path;
+function getLatestAssistantUi(messages: Message[]): UiV1 | null {
+    return (
+        [...messages]
+            .reverse()
+            .find((message) => message.role === "assistant" && message.uiV1)?.uiV1
+        ?? null
+    );
+}
 
-    if (!Array.isArray(node.children)) return null;
-    for (let i = 0; i < node.children.length; i++) {
-        const found = findComponentPath(node.children[i], name, `${path}/children/${i}`);
-        if (found) return found;
-    }
-    return null;
+function mapSummaryToConversation(summary: ConversationSummaryDto, existing?: Conversation | null): Conversation {
+    const nextMessages = existing?.messages ?? [];
+    const nextUi = existing?.uiV1 ?? getLatestAssistantUi(nextMessages);
+
+    return {
+        id: summary.conversationId,
+        sessionId: summary.conversationId,
+        title: summary.title,
+        messages: nextMessages,
+        updatedAt: parseTimestamp(summary.updatedAt),
+        uiV1: nextUi,
+    };
+}
+
+function mapDetailsToConversation(details: ConversationDetailsDto): Conversation {
+    const messages = Array.isArray(details.messages) ? details.messages.map(mapMessage) : [];
+    return {
+        id: details.conversation.conversationId,
+        sessionId: details.conversation.conversationId,
+        title: details.conversation.title,
+        messages,
+        updatedAt: parseTimestamp(details.conversation.updatedAt),
+        uiV1: getLatestAssistantUi(messages),
+    };
+}
+
+function mergeConversationSummaries(summaries: ConversationSummaryDto[], current: Conversation[]): Conversation[] {
+    const currentMap = new Map(current.map((conversation) => [conversation.id, conversation]));
+    return summaries.map((summary) => mapSummaryToConversation(summary, currentMap.get(summary.conversationId) ?? null));
 }
 
 export function useChat() {
     const { api } = useAxios();
+    const { user } = useAuthContext();
 
+    const userId = useMemo(() => user?.id ?? getAnonymousUserId(), [user?.id]);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeId, setActiveId] = useState("");
-    const [model, setModel] = useState<"AI Agent" | "AI Agent Pro">("AI Agent");
+    const [model, setModel] = useState<ChatModel>("AI Agent");
     const [isTyping, setIsTyping] = useState(false);
 
+    const listRef = useRef<HTMLDivElement>(null);
+    const abortRef = useRef<AbortController | null>(null);
+    const refreshedSourceRunsRef = useRef<Set<string>>(new Set());
+    const loadedConversationIdsRef = useRef<Set<string>>(new Set());
+    const loadingConversationIdsRef = useRef<Set<string>>(new Set());
+
     const active = useMemo(
-        () => conversations.find((c) => c.id === activeId),
+        () => conversations.find((conversation) => conversation.id === activeId),
         [conversations, activeId]
     );
 
-    const listRef = useRef<HTMLDivElement>(null as any);
-    const abortRef = useRef<AbortController | null>(null);
+    const requestOptions = useMemo(
+        () => ({
+            headers: {
+                "X-User-Id": userId,
+            },
+        }),
+        [userId]
+    );
 
     const updateConversation = useCallback(
-        (convId: string, updater: (c: Conversation) => Conversation) => {
-            setConversations((prev) => prev.map((c) => (c.id === convId ? updater(c) : c)));
+        (conversationId: string, updater: (conversation: Conversation) => Conversation) => {
+            setConversations((previous) => {
+                const index = previous.findIndex((conversation) => conversation.id === conversationId);
+                if (index === -1) {
+                    return previous;
+                }
+
+                const updated = updater(previous[index]);
+                return [
+                    updated,
+                    ...previous.slice(0, index),
+                    ...previous.slice(index + 1),
+                ];
+            });
         },
         []
     );
 
-    const mapSummaryToConversation = useCallback((item: ServerConversationSummary): Conversation => {
-        return {
-            id: item.conversationId,
-            title: item.title || "New chat",
-            updatedAt: Date.parse(item.updatedAt) || Date.now(),
-            messages: [],
-            uiV1: null,
-            correlationId: null,
-            loaded: false,
-            lastMessagePreview: item.lastMessagePreview ?? null,
-        };
-    }, []);
-
-    const loadConversationList = useCallback(async () => {
-        const data = await api.get<{ items: ServerConversationSummary[] }>(endpoints.conversations.list, {
-            params: { userId: DEMO_USER_ID, skip: 0, limit: 100 },
-        });
-
-        const mapped = (data.items ?? []).map(mapSummaryToConversation);
-        setConversations(mapped);
-
-        if (mapped.length > 0) {
-            setActiveId((prev) => prev || mapped[0].id);
-        }
-    }, [api, mapSummaryToConversation]);
-
-    const loadConversationDetails = useCallback(
+    const loadConversationDetail = useCallback(
         async (conversationId: string) => {
-            const data = await api.get<ServerConversationDetails>(endpoints.conversations.detail(conversationId), {
-                params: { userId: DEMO_USER_ID, messagesLimit: 300 },
-            });
+            if (!conversationId || loadedConversationIdsRef.current.has(conversationId) || loadingConversationIdsRef.current.has(conversationId)) {
+                return;
+            }
 
-            const messages: Message[] = (data.messages ?? []).map((m) => ({
-                id: m.messageId,
-                role: m.role,
-                content: m.text,
-                uiV1: m.role === "assistant" ? resolveAssistantUi(m.uiV1, m.text ?? "") : null,
-                createdAt: Date.parse(m.createdAt) || Date.now(),
-            }));
+            loadingConversationIdsRef.current.add(conversationId);
 
-            const latestUi = [...messages].reverse().find((m) => m.role === "assistant" && m.uiV1)?.uiV1 ?? null;
+            try {
+                const details = await api.get<ConversationDetailsDto>(
+                    endpoints.conversations.detail(conversationId),
+                    requestOptions
+                );
 
-            updateConversation(conversationId, (c) => ({
-                ...c,
-                title: data.conversation?.title || c.title,
-                updatedAt: Date.parse(data.conversation?.updatedAt ?? "") || c.updatedAt,
-                messages,
-                uiV1: latestUi,
-                loaded: true,
-                lastMessagePreview: data.conversation?.lastMessagePreview ?? c.lastMessagePreview,
-            }));
+                if (loadedConversationIdsRef.current.has(conversationId)) {
+                    return;
+                }
+
+                loadedConversationIdsRef.current.add(conversationId);
+                setConversations((previous) => {
+                    const hydrated = mapDetailsToConversation(details);
+                    const index = previous.findIndex((conversation) => conversation.id === hydrated.id);
+                    if (index === -1) {
+                        return [hydrated, ...previous];
+                    }
+
+                    return [
+                        hydrated,
+                        ...previous.slice(0, index),
+                        ...previous.slice(index + 1),
+                    ];
+                });
+            } finally {
+                loadingConversationIdsRef.current.delete(conversationId);
+            }
         },
-        [api, updateConversation]
+        [api, requestOptions]
     );
 
     useEffect(() => {
-        void loadConversationList();
-    }, [loadConversationList]);
+        loadedConversationIdsRef.current.clear();
+        loadingConversationIdsRef.current.clear();
+        setConversations([]);
+        setActiveId("");
+
+        let cancelled = false;
+
+        void (async () => {
+            try {
+                const summaries = await api.get<ConversationSummaryDto[]>(
+                    endpoints.conversations.list,
+                    requestOptions
+                );
+
+                if (cancelled) {
+                    return;
+                }
+
+                setConversations((previous) => mergeConversationSummaries(Array.isArray(summaries) ? summaries : [], previous));
+            } catch {
+                if (!cancelled) {
+                    setConversations([]);
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [api, requestOptions]);
 
     useEffect(() => {
-        if (!activeId) return;
-        const conv = conversations.find((c) => c.id === activeId);
-        if (!conv || conv.loaded) return;
-        void loadConversationDetails(activeId);
-    }, [activeId, conversations, loadConversationDetails]);
+        if (activeId && conversations.some((conversation) => conversation.id === activeId)) {
+            return;
+        }
 
-    async function newChat() {
-        const created = await api.post<ServerConversationSummary>(endpoints.conversations.list, {
-            title: "New chat",
-        }, {
-            params: { userId: DEMO_USER_ID },
-        });
+        setActiveId(conversations[0]?.id ?? "");
+    }, [activeId, conversations]);
 
-        const c = mapSummaryToConversation(created);
-        c.loaded = true;
+    useEffect(() => {
+        if (!activeId) {
+            return;
+        }
 
-        setConversations((prev) => [c, ...prev]);
-        setActiveId(c.id);
-        return c;
-    }
+        void loadConversationDetail(activeId).catch(() => undefined);
+    }, [activeId, loadConversationDetail]);
 
-    function selectConversation(id: string) {
-        setActiveId(id);
-    }
+    const newChat = useCallback(async () => {
+        const created = await api.post<ConversationSummaryDto>(
+            endpoints.conversations.list,
+            { userId } satisfies CreateConversationDto,
+            requestOptions
+        );
 
-    async function renameConversation(id: string, title: string) {
+        const conversation = mapSummaryToConversation(created);
+        loadedConversationIdsRef.current.add(conversation.id);
+
+        setConversations((previous) => [
+            conversation,
+            ...previous.filter((item) => item.id !== conversation.id),
+        ]);
+        setActiveId(conversation.id);
+        return conversation;
+    }, [api, requestOptions, userId]);
+
+    const selectConversation = useCallback((conversationId: string) => {
+        setActiveId(conversationId);
+    }, []);
+
+    const renameConversation = useCallback(async (conversationId: string, title: string) => {
         const nextTitle = title.trim() || "Untitled";
-        updateConversation(id, (c) => ({ ...c, title: nextTitle }));
+        await api.patch(
+            endpoints.conversations.detail(conversationId),
+            { title: nextTitle, userId },
+            requestOptions
+        );
 
-        try {
-            await api.patch(endpoints.conversations.detail(id), { title: nextTitle }, {
-                params: { userId: DEMO_USER_ID },
-            });
-        } catch {
-            await loadConversationList();
-        }
-    }
+        updateConversation(conversationId, (conversation) => ({
+            ...conversation,
+            title: nextTitle,
+            updatedAt: Date.now(),
+        }));
+    }, [api, requestOptions, updateConversation, userId]);
 
-    async function deleteConversation(id: string) {
-        const prev = conversations;
-        setConversations((p) => p.filter((c) => c.id !== id));
+    const deleteConversation = useCallback(async (conversationId: string) => {
+        await api.delete(endpoints.conversations.detail(conversationId), requestOptions);
 
-        if (id === activeId) {
-            const next = conversations.find((c) => c.id !== id)?.id;
-            setActiveId(next ?? "");
-        }
+        loadedConversationIdsRef.current.delete(conversationId);
+        loadingConversationIdsRef.current.delete(conversationId);
 
-        try {
-            await api.delete(endpoints.conversations.detail(id), {
-                params: { userId: DEMO_USER_ID },
-            });
-        } catch {
-            setConversations(prev);
-        }
-    }
+        setConversations((previous) => previous.filter((conversation) => conversation.id !== conversationId));
+        setActiveId((previous) => (previous === conversationId ? "" : previous));
+    }, [api, requestOptions]);
 
-    function stop() {
+    const stop = useCallback(() => {
         abortRef.current?.abort();
         abortRef.current = null;
         setIsTyping(false);
-    }
+    }, []);
 
-    /**
-     * Send user prompt -> /v1/chat/stream (SSE)
-     * Streams text tokens in real-time; UI payload arrives as a named "ui" event.
-     */
-    async function send(text: string) {
-        if (!text.trim() || isTyping) return;
+    const updateConversationUi = useCallback(
+        (conversationId: string, updater: (ui: UiV1) => UiV1) => {
+            updateConversation(conversationId, (conversation) => {
+                const latestAssistantIndex = [...conversation.messages]
+                    .reverse()
+                    .findIndex((message) => message.role === "assistant");
 
-        let currentActive = active;
-        if (!currentActive) {
-            currentActive = await newChat();
+                if (latestAssistantIndex === -1) {
+                    return conversation;
+                }
+
+                const targetIndex = conversation.messages.length - 1 - latestAssistantIndex;
+                const targetMessage = conversation.messages[targetIndex];
+                const baseUi = (targetMessage.uiV1 ?? conversation.uiV1) as UiV1 | null;
+                if (!baseUi) {
+                    return conversation;
+                }
+
+                const nextUi = updater(baseUi);
+                const nextMessages = [...conversation.messages];
+                nextMessages[targetIndex] = {
+                    ...targetMessage,
+                    uiV1: nextUi,
+                };
+
+                return {
+                    ...conversation,
+                    messages: nextMessages,
+                    uiV1: nextUi,
+                    updatedAt: Date.now(),
+                };
+            });
+        },
+        [updateConversation]
+    );
+
+    const sendAction = useCallback(
+        async (type: string, payload: Record<string, unknown>) => {
+            if (!active?.uiV1) {
+                return;
+            }
+
+            const ui = active.uiV1;
+            const sourceRegistry = getSourceRegistry(ui);
+            const actionRegistry = getActionRegistry(ui);
+            const sourceKey = typeof payload.sourceKey === "string" ? payload.sourceKey : "";
+            const dataSourceId = typeof payload.dataSourceId === "string"
+                ? payload.dataSourceId
+                : typeof payload.data_source === "string"
+                    ? payload.data_source
+                    : "";
+            const actionId = typeof payload.actionId === "string" ? payload.actionId : "";
+            const resolvedAction = actionId
+                ? actionRegistry[actionId]
+                : undefined;
+
+            const directSource = sourceKey && sourceRegistry[sourceKey]
+                ? sourceRegistry[sourceKey]
+                : undefined;
+            const fallbackSourceEntry = Object.entries(sourceRegistry).find(([, source]) => source.id === dataSourceId);
+            const actionTargetSourceEntry = resolvedAction?.dataSourceId
+                ? Object.entries(sourceRegistry).find(([, source]) => source.id === resolvedAction.dataSourceId)
+                : undefined;
+            const targetSourceKey = actionTargetSourceEntry?.[0] || sourceKey || fallbackSourceEntry?.[0] || "";
+            const targetSource = actionTargetSourceEntry?.[1] ?? directSource ?? fallbackSourceEntry?.[1];
+            const requestArgs = {
+                ...(isRecord(targetSource?.lastArgs) ? targetSource.lastArgs : {}),
+                ...payload,
+                ...(resolvedAction?.dataSourceId ? { dataSourceId: resolvedAction.dataSourceId } : {}),
+            };
+
+            try {
+                if (type === "data.query" && targetSource) {
+                    const result = await querySandboxDataSource(targetSource, requestArgs);
+                    updateConversationUi(active.id, (currentUi) =>
+                        patchUiDataSourceResult(currentUi, [targetSourceKey], result, requestArgs)
+                    );
+                    return;
+                }
+
+                const inlineAction: UiActionState | null = resolvedAction ?? (
+                    targetSource
+                        ? {
+                            id: actionId || dataSourceId || type,
+                            actionType: type || "ui.action.execute",
+                            handler: targetSource.handler,
+                            dataSourceId: targetSource.id,
+                            defaultArgs: targetSource.defaultArgs,
+                            refreshDataSourceIds: [],
+                        }
+                        : null
+                );
+
+                if (!inlineAction) {
+                    return;
+                }
+
+                const result = await executeSandboxAction({
+                    action: inlineAction,
+                    dataSource: targetSource,
+                    dataSources: sourceRegistry,
+                    payload: requestArgs,
+                });
+
+                updateConversationUi(active.id, (currentUi) => {
+                    let nextUi = currentUi;
+                    const currentRegistry = getSourceRegistry(nextUi);
+
+                    const primarySourceKeys = Object.entries(currentRegistry)
+                        .filter(([key, source]) =>
+                            key === targetSourceKey
+                            || (resolvedAction?.dataSourceId && source.id === resolvedAction.dataSourceId)
+                            || (result.dataSourceId && source.id === result.dataSourceId)
+                        )
+                        .map(([key]) => key);
+
+                    nextUi = patchUiDataSourceResult(nextUi, primarySourceKeys, result, requestArgs);
+
+                    for (const refresh of result.refreshes ?? []) {
+                        const refreshKeys = Object.entries(getSourceRegistry(nextUi))
+                            .filter(([, source]) => refresh.dataSourceId && source.id === refresh.dataSourceId)
+                            .map(([key]) => key);
+                        nextUi = patchUiDataSourceResult(
+                            nextUi,
+                            refreshKeys,
+                            refresh,
+                            getSourceRegistry(nextUi)[refreshKeys[0] ?? ""]?.defaultArgs ?? {}
+                        );
+                    }
+
+                    return nextUi;
+                });
+            } catch {
+                updateConversation(active.id, (conversation) => ({
+                    ...conversation,
+                    messages: updateLatestAssistantMessage(conversation.messages, (message) => ({
+                        ...message,
+                        content: [message.content ?? "", "Unable to refresh that component right now."]
+                            .filter(Boolean)
+                            .join("\n"),
+                    })),
+                    updatedAt: Date.now(),
+                }));
+            }
+        },
+        [active, updateConversation, updateConversationUi]
+    );
+
+    useEffect(() => {
+        if (!active?.uiV1) {
+            return;
         }
-        if (!currentActive) return;
 
-        abortRef.current?.abort();
+        const sourceRegistry = getSourceRegistry(active.uiV1);
+        const refreshableSources = Object.entries(sourceRegistry).filter(([sourceKey, source]) => {
+            const refreshOnLoad = source.refreshOnLoad === true;
+            const refreshOnOpen = source.refreshOnConversationOpen === true;
+            const staleAfterMs = typeof source.staleAfterMs === "number" ? source.staleAfterMs : null;
+            const lastFetchedAt = typeof source.lastFetchedAt === "number" ? source.lastFetchedAt : null;
+            const isStale = staleAfterMs !== null
+                && staleAfterMs >= 0
+                && typeof lastFetchedAt === "number"
+                && Date.now() - lastFetchedAt >= staleAfterMs;
+            const runKey = `${active.id}:${active.uiV1?.uiInstanceId ?? "ui"}:${sourceKey}`;
+            const needsInitialLoad = refreshOnLoad && lastFetchedAt === null && !refreshedSourceRunsRef.current.has(runKey);
 
-        const now = Date.now();
-        const trimmed = text.trim();
+            return needsInitialLoad || refreshOnOpen || isStale;
+        });
 
-        const userMsg: Message = { id: uidStr(), role: "user", content: trimmed, createdAt: now };
+        if (!refreshableSources.length) {
+            return;
+        }
 
+        let cancelled = false;
+
+        void (async () => {
+            for (const [sourceKey, source] of refreshableSources) {
+                const runKey = `${active.id}:${active.uiV1?.uiInstanceId ?? "ui"}:${sourceKey}`;
+                refreshedSourceRunsRef.current.add(runKey);
+
+                try {
+                    const result = await querySandboxDataSource(
+                        source,
+                        (isRecord(source.lastArgs) ? source.lastArgs : source.defaultArgs) ?? {}
+                    );
+
+                    if (cancelled) {
+                        return;
+                    }
+
+                    updateConversationUi(active.id, (ui) =>
+                        patchUiDataSourceResult(
+                            ui,
+                            [sourceKey],
+                            result,
+                            (isRecord(source.lastArgs) ? source.lastArgs : source.defaultArgs) ?? {}
+                        )
+                    );
+                } catch {
+                    if (cancelled) {
+                        return;
+                    }
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [active?.id, active?.uiV1?.uiInstanceId, updateConversationUi]);
+
+    const send = useCallback(async (rawText: string) => {
+        const text = rawText.trim();
+        if (!text || isTyping) {
+            return;
+        }
+
+        let conversationId = active?.id ?? "";
         const assistantId = uidStr();
-        const assistantMsg: Message = {
-            id: assistantId,
-            role: "assistant",
-            content: "",
-            createdAt: now,
-            uiV1: null,
-        };
-
-        const convId = currentActive.id;
-
-        updateConversation(convId, (c) => ({
-            ...c,
-            messages: [...c.messages, userMsg, assistantMsg],
-            updatedAt: now,
-            loaded: true,
-            title:
-                c.title === "New chat"
-                    ? trimmed.slice(0, 60) + (trimmed.length > 60 ? "…" : "")
-                    : c.title,
-            lastMessagePreview: trimmed,
-        }));
-
-        setIsTyping(true);
-        const ac = new AbortController();
-        abortRef.current = ac;
-
-        const payload = {
-            conversationId: convId,
-            userId: DEMO_USER_ID,
-            prompt: trimmed,
-            clientContext: {
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                locale: navigator.language,
-            },
-        };
+        const now = Date.now();
+        let chunkBuffer = "";
 
         try {
-            await api.postStream(endpoints.conversations.stream, payload, {
-                signal: ac.signal,
+            const conversation = active ?? await newChat();
+            conversationId = conversation.id;
 
-                onToken: (token: string) => {
-                    updateConversation(convId, (c) => ({
-                        ...c,
-                        messages: c.messages.map((m) =>
-                            m.id === assistantId
-                                ? { ...m, content: (m.content ?? "") + token }
-                                : m
-                        ),
-                        updatedAt: Date.now(),
-                    }));
-                },
+            loadedConversationIdsRef.current.add(conversationId);
 
-                onEvent: (eventType: string, data: any) => {
-                    if (eventType === "ui") {
-                        const normalized = resolveAssistantUi(data, "");
-                        updateConversation(convId, (c) => ({
-                            ...c,
-                            messages: c.messages.map((m) =>
-                                m.id === assistantId ? { ...m, uiV1: normalized } : m
-                            ),
-                            uiV1: normalized,
-                            updatedAt: Date.now(),
-                        }));
-                    } else if (eventType === "done") {
-                        updateConversation(convId, (c) => ({
-                            ...c,
-                            correlationId: data?.correlationId ?? null,
-                        }));
-                    }
-                },
+            const userMessage: Message = {
+                id: uidStr(),
+                role: "user",
+                content: text,
+                createdAt: now,
+            };
+            const assistantMessage: Message = {
+                id: assistantId,
+                role: "assistant",
+                content: "",
+                createdAt: now,
+                uiV1: null,
+                status: "Opening pipeline...",
+            };
 
-                onDone: () => {
-                    setIsTyping(false);
-                    abortRef.current = null;
-                },
-
-                onError: () => {
-                    setIsTyping(false);
-                    abortRef.current = null;
-                },
-            });
-        } catch (e: any) {
-            if (e?.name === "CanceledError" || e?.name === "AbortError") return;
-
-            updateConversation(convId, (c) => ({
-                ...c,
-                messages: c.messages.map((m) =>
-                    m.id === assistantId && (m.content ?? "").trim() === ""
-                        ? { ...m, content: "Eroare la răspunsul AI / conexiune. Încearcă din nou." }
-                        : m
-                ),
-                updatedAt: Date.now(),
+            updateConversation(conversationId, (current) => ({
+                ...current,
+                title:
+                    current.title === "New chat"
+                        ? text.slice(0, 60) + (text.length > 60 ? "…" : "")
+                        : current.title,
+                messages: [...current.messages, userMessage, assistantMessage],
+                updatedAt: now,
             }));
+            setActiveId(conversationId);
+            setIsTyping(true);
+
+            abortRef.current?.abort();
+            const controller = new AbortController();
+            abortRef.current = controller;
+
+            const response = await fetch(buildChatUrl(), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-User-Id": userId,
+                },
+                body: JSON.stringify({
+                    conversationId,
+                    userId,
+                    prompt: text,
+                }),
+                signal: controller.signal,
+            });
+
+            if (!response.ok || !response.body) {
+                throw new Error("Unable to reach the AI gateway.");
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+
+                while (true) {
+                    const boundaryIndex = buffer.indexOf("\n\n");
+                    if (boundaryIndex === -1) {
+                        break;
+                    }
+
+                    const rawEvent = buffer.slice(0, boundaryIndex).trim();
+                    buffer = buffer.slice(boundaryIndex + 2);
+
+                    if (!rawEvent) {
+                        continue;
+                    }
+
+                    const event = parseSseEvent(rawEvent);
+                    if (!event) {
+                        continue;
+                    }
+
+                    switch (event.type) {
+                        case "session":
+                            break;
+
+                        case "status":
+                            updateConversation(conversationId, (current) => ({
+                                ...current,
+                                messages: current.messages.map((message) =>
+                                    message.id === assistantId
+                                        ? { ...message, status: event.content ?? "Thinking..." }
+                                        : message
+                                ),
+                                updatedAt: Date.now(),
+                            }));
+                            break;
+
+                        case "chunk":
+                            chunkBuffer += event.content ?? "";
+                            break;
+
+                        case "done": {
+                            const rawPayload = (event.content ?? chunkBuffer).trim();
+                            const parsed = JSON.parse(rawPayload || "{}") as AgentFinalResponse;
+                            const ui = buildUiFromAgentResponse(parsed);
+
+                            updateConversation(conversationId, (current) => ({
+                                ...current,
+                                messages: current.messages.map((message) =>
+                                    message.id === assistantId
+                                        ? {
+                                            ...message,
+                                            content: typeof parsed.text === "string" ? parsed.text : "",
+                                            status: undefined,
+                                            uiV1: ui,
+                                        }
+                                        : message
+                                ),
+                                uiV1: ui,
+                                updatedAt: Date.now(),
+                            }));
+
+                            setIsTyping(false);
+                            abortRef.current = null;
+                            return;
+                        }
+
+                        case "error":
+                            throw new Error(event.content ?? "The AI returned an error.");
+                    }
+                }
+            }
+
+            throw new Error("The stream closed before the final response arrived.");
+        } catch (error) {
+            if ((error as Error)?.name === "AbortError") {
+                return;
+            }
+
+            const message = error instanceof Error ? error.message : "The request failed.";
+            if (conversationId) {
+                updateConversation(conversationId, (current) => ({
+                    ...current,
+                    messages: current.messages.map((entry) =>
+                        entry.id === assistantId
+                            ? {
+                                ...entry,
+                                content: message,
+                                status: undefined,
+                            }
+                            : entry
+                    ),
+                    updatedAt: Date.now(),
+                }));
+            }
         } finally {
             setIsTyping(false);
             abortRef.current = null;
         }
-    }
-
-    async function sendAction(type: string, payload: Record<string, unknown>, uiContext?: any) {
-        if (!active) return;
-        const payloadUi = (payload as any)?.__ui ?? null;
-        const focusedComponentId =
-            typeof payloadUi?.component === "string" ? payloadUi.component :
-            typeof payloadUi?.path === "string" ? payloadUi.path :
-            null;
-
-        const req = {
-            schema: "action.v1",
-            conversationId: active.id,
-            userId: DEMO_USER_ID,
-            action: { type, payload },
-            uiContext: uiContext ?? { focusedComponentId },
-        };
-
-        const data = await api.post<{
-            schema: string;
-            text?: string | null;
-            uiPatch?: any | null;
-            uiV1?: any | null;
-            correlationId?: string;
-            toolStates?: Record<string, unknown> | null;
-            warnings?: string[] | null;
-        }>(
-            endpoints.conversations.action,
-            req
-        );
-
-        const hasPatch = Boolean(data.uiPatch);
-
-        if (hasPatch) {
-            applyPatchToConversation(active.id, data.uiPatch);
-        }
-
-        if (data.toolStates && hasPatch) {
-            applyPatchToConversation(active.id, {
-                schema: "ui.patch.v1",
-                ops: [{ op: "set", path: "/toolStates", value: data.toolStates }],
-            });
-        }
-
-        // UI actions should update current card in-place by default.
-        // If backend returns text/UI without patch, append assistant message for backward compatibility.
-        if (!hasPatch && (data.text || data.uiV1)) {
-            const now = Date.now();
-            const msg: Message = {
-                id: uidStr(),
-                role: "assistant",
-                content: data.text ?? "",
-                uiV1: resolveAssistantUi(data.uiV1, data.text ?? ""),
-                createdAt: now,
-            };
-            updateConversation(active.id, (c) => ({
-                ...c,
-                messages: [...c.messages, msg],
-                updatedAt: now,
-                uiV1: resolveAssistantUi(data.uiV1, data.text ?? "") ?? c.uiV1,
-            }));
-        }
-
-        if (hasPatch && (data.text || (data.warnings && data.warnings.length))) {
-            const statusParts = [
-                data.text ?? "",
-                ...(Array.isArray(data.warnings) ? data.warnings.map((w) => `[warn:${w}]`) : []),
-            ].filter(Boolean);
-            if (statusParts.length > 0) {
-                updateConversation(active.id, (c) => {
-                    const updatedMessages = [...c.messages];
-                    for (let i = updatedMessages.length - 1; i >= 0; i--) {
-                        const m = updatedMessages[i];
-                        if (m.role !== "assistant") continue;
-                        if (!m.uiV1) continue;
-                        updatedMessages[i] = {
-                            ...m,
-                            content: [m.content ?? "", statusParts.join(" ")].filter(Boolean).join("\n"),
-                        };
-                        return { ...c, messages: updatedMessages, updatedAt: Date.now() };
-                    }
-
-                    const fallbackMsg: Message = {
-                        id: uidStr(),
-                        role: "assistant",
-                        content: statusParts.join(" "),
-                        createdAt: Date.now(),
-                    };
-                    return { ...c, messages: [...c.messages, fallbackMsg], updatedAt: Date.now() };
-                });
-            }
-        }
-    }
-
-    function applyPatchFromRealtime(patch: any) {
-        if (!active) return;
-        applyPatchToConversation(active.id, patch);
-    }
-
-    function applyPatchToConversation(conversationId: string, patch: any) {
-        updateConversation(conversationId, (c) => {
-            const baseUi = c.uiV1 ?? createUiFromPatchSeed(patch);
-            if (!baseUi) return c;
-
-            const nextUi = applyUiPatch(baseUi, patch);
-            const updatedMessages = [...c.messages];
-            for (let i = updatedMessages.length - 1; i >= 0; i--) {
-                if (updatedMessages[i].role === "assistant" && updatedMessages[i].uiV1) {
-                    updatedMessages[i] = { ...updatedMessages[i], uiV1: nextUi };
-                    break;
-                }
-            }
-            return { ...c, uiV1: nextUi, messages: updatedMessages, updatedAt: Date.now() };
-        });
-    }
-
-    function createUiFromPatchSeed(patch: any) {
-        const seed: any = {
-            schema: "ui.v1",
-            root: null,
-            data: {},
-            bindings: [],
-            subscriptions: [],
-        };
-
-        for (const op of patch?.ops ?? []) {
-            if (op?.path === "/root" && (op.op === "set" || op.op === "replace")) seed.root = op.value;
-            if (op?.path === "/data" && (op.op === "set" || op.op === "replace")) seed.data = op.value ?? {};
-            if (op?.path === "/bindings" && (op.op === "set" || op.op === "replace")) seed.bindings = op.value ?? [];
-            if (op?.path === "/subscriptions" && (op.op === "set" || op.op === "replace")) seed.subscriptions = op.value ?? [];
-        }
-
-        return seed.root ? seed : null;
-    }
-
-    function applyUiPatch(ui: any, patch: any) {
-        const next = structuredClone(ui);
-
-        for (const op of patch?.ops ?? []) {
-            const path = String(op.path ?? "");
-            const parts = path.split("/").filter(Boolean);
-            if (parts.length === 0) continue;
-
-            let cur: any = next;
-            for (let i = 0; i < parts.length - 1; i++) {
-                const p = parts[i];
-                cur[p] ??= {};
-                cur = cur[p];
-                if (cur == null) break;
-            }
-            if (cur == null) continue;
-
-            const key = parts[parts.length - 1];
-
-            if (op.op === "set" || op.op === "replace") cur[key] = op.value;
-            else if (op.op === "merge") cur[key] = { ...(cur[key] ?? {}), ...(op.value ?? {}) };
-            else if (op.op === "remove") delete cur[key];
-        }
-
-        return next;
-    }
+    }, [active, isTyping, newChat, updateConversation, userId]);
 
     return {
         conversations,
@@ -874,16 +821,12 @@ export function useChat() {
         setModel,
         isTyping,
         listRef,
-
         newChat,
         selectConversation,
         renameConversation,
         deleteConversation,
-
         send,
-        stop,
-
         sendAction,
-        applyPatchFromRealtime,
+        stop,
     };
 }

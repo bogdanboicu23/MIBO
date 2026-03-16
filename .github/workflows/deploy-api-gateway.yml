@@ -118,6 +118,17 @@ jobs:
             --namespace=${{ env.NAMESPACE }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Create api-gateway secrets
+        run: |
+          JWT_KEY="$(kubectl get secret identity-secrets -n ${{ env.NAMESPACE }} -o jsonpath='{.data.jwt-key}' | base64 --decode)"
+          kubectl create secret generic api-gateway-secrets \
+            --namespace=${{ env.NAMESPACE }} \
+            --from-literal=Jwt__Key="${JWT_KEY}" \
+            --from-literal=Jwt__Issuer='MIBO.IdentityService' \
+            --from-literal=Jwt__Audience='MIBO.Services' \
+            --from-literal=IdentityService__Authority='http://identity-service:8080' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy with Helm
         run: |
           helm upgrade --install ${{ env.SERVICE_NAME }} deploy/helm/${{ env.SERVICE_NAME }} \

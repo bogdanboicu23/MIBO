@@ -25,6 +25,9 @@ spec:
           dotnet MIBO.IdentityService.dll migrate
         env:
         - name: ConnectionStrings__DefaultConnection
-          value: "Host=postgres.test.svc.cluster.local;Port=5432;Database=mibo_identity_test;Username=postgres;Password=your-test-password-here"
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: connection-string
         - name: ASPNETCORE_ENVIRONMENT
           value: "Development"

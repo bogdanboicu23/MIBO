@@ -40,6 +40,12 @@ export function useUiHub(params: {
             onPatchRef.current(patch);
         });
 
+        conn.onreconnected(async () => {
+            if (conversationId) {
+                await conn.invoke("JoinConversation", conversationId);
+            }
+        });
+
         const start = async () => {
             try {
                 await conn.start();

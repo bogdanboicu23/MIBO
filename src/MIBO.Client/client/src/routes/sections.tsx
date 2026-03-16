@@ -7,7 +7,6 @@ import { GuestGuard } from "../auth/guard/guest-guard";
 import { LoadingOverlay } from "@/components/ui";
 import ChatPage from "@/pages/ChatPage.tsx";
 import AppLayout from "@/layouts/AppLayout.tsx";
-import { AuthGuard } from "@/auth/guard/auth-guard.tsx";
 import { Outlet } from "react-router-dom";
 
 
@@ -21,11 +20,9 @@ const renderFallback = () => (
 export const routesSection: RouteObject[] = [
     {
         element: (
-            <AuthGuard>
-                <Suspense fallback={renderFallback()}>
-                    <AppLayout />
-                </Suspense>
-            </AuthGuard>
+            <Suspense fallback={renderFallback()}>
+                <AppLayout />
+            </Suspense>
         ),
         children: [
             { index: true, element: <LandingPage/> },

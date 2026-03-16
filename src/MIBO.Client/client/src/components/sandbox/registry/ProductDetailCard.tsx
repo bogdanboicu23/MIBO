@@ -16,29 +16,47 @@ type Product = {
     stock?: number;
 };
 
-function resolveProduct(props: any, data: any): Product | null {
+type GenericEntity = Record<string, unknown>;
+
+function isRenderableProduct(value: unknown): value is Product {
+    if (!value || typeof value !== "object") return false;
+    const product = value as Product;
+    return Boolean(
+        (typeof product.title === "string" && product.title.trim()) ||
+        typeof product.price === "number" ||
+        (Array.isArray(product.images) && product.images.length > 0) ||
+        (typeof product.thumbnail === "string" && product.thumbnail.trim())
+    );
+}
+
+function resolveEntity(props: any, data: any): GenericEntity | null {
     const direct = props?.product ?? props?.data;
-    if (direct && typeof direct === "object") return direct as Product;
+    if (direct && typeof direct === "object") return direct as GenericEntity;
 
     const dataKey = typeof props?.dataKey === "string" ? props.dataKey.trim() : "";
     if (dataKey) {
         const resolved = resolveFromDataKey((data ?? {}) as Record<string, any>, dataKey);
         if (Array.isArray(resolved) && resolved.length && typeof resolved[0] === "object") {
-            return resolved[0] as Product;
+            return resolved[0] as GenericEntity;
         }
         const fromObject = extractObject(resolved, ["product", "item"]);
-        if (fromObject) return fromObject as Product;
+        if (fromObject) return fromObject as GenericEntity;
     }
 
     // tool result often is { ...product fields } under some key:
     for (const key of Object.keys(data ?? {})) {
         const val = data?.[key];
-        if (val && typeof val === "object" && (val as any).id != null && ((val as any).title || (val as any).price != null)) {
-            return val as Product;
+        if (val && typeof val === "object" && (val as any).id != null) {
+            return val as GenericEntity;
         }
     }
 
     return null;
+}
+
+function resolveProduct(props: any, data: any): Product | null {
+    const entity = resolveEntity(props, data);
+    return isRenderableProduct(entity) ? entity : null;
 }
 
 function pickImage(p: Product, idx: number): string | null {
@@ -47,13 +65,45 @@ function pickImage(p: Product, idx: number): string | null {
 }
 
 export function ProductDetailCard({ props, data, onAction }: UiComponentProps) {
+    const addToCartActionId = String((props as any)?.addToCartActionId ?? "").trim();
     const actionTypeFromLegacy = String((props as any)?.addToCartActionType ?? "").trim();
-    const addToCartActionType = resolveActionType((props as any) ?? { actionType: actionTypeFromLegacy }, "shop.add_to_cart");
+    const addToCartActionType = resolveActionType(
+        (props as any) ?? { actionType: actionTypeFromLegacy },
+        addToCartActionId ? "ui.action.execute" : "shop.add_to_cart"
+    );
     const userId = Number((props as any)?.userId ?? 1);
 
+    const entity = useMemo(() => resolveEntity(props as any, data as any), [props, data]);
     const product = useMemo(() => resolveProduct(props as any, data as any), [props, data]);
     const [qty, setQty] = useState(1);
     const [imgIdx, setImgIdx] = useState(0);
+
+    if (!product && entity) {
+        const title =
+            String(
+                (entity as any).accountName ??
+                (entity as any).name ??
+                (entity as any).title ??
+                "Details"
+            );
+        const fields = Object.entries(entity)
+            .filter(([key]) => !["images", "thumbnail", "description"].includes(key))
+            .slice(0, 8);
+
+        return (
+            <div className="rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950">
+                <div className="text-sm font-semibold">{title}</div>
+                <div className="mt-3 grid gap-2">
+                    {fields.map(([key, value]) => (
+                        <div key={key} className="flex items-start justify-between gap-4 rounded-xl border border-zinc-200/70 px-3 py-2 text-sm dark:border-zinc-800/70">
+                            <span className="text-zinc-500 dark:text-zinc-400">{key}</span>
+                            <span className="text-right text-zinc-900 dark:text-zinc-100">{String(value ?? "—")}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     if (!product) {
         return (
@@ -71,6 +121,7 @@ export function ProductDetailCard({ props, data, onAction }: UiComponentProps) {
 
     const addToCart = () => {
         const fallbackPayload = {
+            actionId: addToCartActionId || undefined,
             userId,
             products: [{ id: product.id, quantity: Math.max(1, qty) }],
         };

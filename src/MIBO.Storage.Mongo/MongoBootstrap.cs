@@ -1,3 +1,7 @@
+using MIBO.Storage.Mongo.Conversations;
+using MIBO.Storage.Mongo.Store.Conversation;
+using MIBO.Storage.Mongo.Store.Ui;
+using MIBO.Storage.Mongo.Store.UiSubscription;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -27,6 +31,10 @@ public static class MongoBootstrap
             return client.GetDatabase(opt.Database);
         });
 
+        services.AddSingleton<IConversationRepository, ConversationRepository>();
+        services.AddSingleton<IConversationStore, MongoConversationStore>();
+        services.AddSingleton<IUiInstanceStore, MongoUiInstanceStore>();
+        services.AddSingleton<IUiSubscriptionStore, MongoUiSubscriptionStore>();
         services.AddHostedService<MongoIndexHostedService>();
 
         return services;

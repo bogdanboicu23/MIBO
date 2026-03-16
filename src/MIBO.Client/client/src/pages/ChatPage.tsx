@@ -6,22 +6,12 @@ import { Composer } from "../components/chat/Composer";
 import { useChat } from "../hooks/useChat";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { EmptyState } from "../sections/chat/EmptyState";
-import { useUiHub } from "@/realtime/useUiHub.ts";
-// import { applyBindings } from "@/components/sandbox/uiRuntime/applyBindings.ts";
-
-// UI runtime
 
 export default function ChatPage() {
     const isDesktop = useMediaQuery("(min-width: 768px)");
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const chat = useChat();
-
-    // Realtime UI patches (SignalR UiHub -> "UiPatch")
-    useUiHub({
-        conversationId: chat.activeId,
-        onPatch: (patch) => chat.applyPatchFromRealtime(patch),
-    });
 
     useEffect(() => {
         if (isDesktop) setSidebarOpen(false);
@@ -37,19 +27,6 @@ export default function ChatPage() {
     const activeTitle = chat.active?.title ?? "Chat";
     const activeMessages = chat.active?.messages ?? [];
 
-    //TODO: Check this part
-    // // Apply bindings (optional, but recommended) before render
-    // const activeUi = useMemo(() => {
-    //     const ui = (chat.active as any)?.uiV1 ?? null;
-    //     if (!ui) return null;
-    //     try {
-    //         return applyBindings(ui);
-    //     } catch {
-    //         // if bindings are malformed, render raw UI
-    //         return ui;
-    //     }
-    // }, [chat.active?.uiV1]);
-
     return (
         <div className="flex h-screen w-screen overflow-hidden">
             {/* Desktop sidebar */}
@@ -57,10 +34,16 @@ export default function ChatPage() {
                 <Sidebar
                     conversations={chat.conversations}
                     activeId={chat.activeId}
-                    onNewChat={chat.newChat}
+                    onNewChat={() => {
+                        void chat.newChat().catch(() => undefined);
+                    }}
                     onSelect={chat.selectConversation}
-                    onRename={chat.renameConversation}
-                    onDelete={chat.deleteConversation}
+                    onRename={(id, title) => {
+                        void chat.renameConversation(id, title).catch(() => undefined);
+                    }}
+                    onDelete={(id) => {
+                        void chat.deleteConversation(id).catch(() => undefined);
+                    }}
                 />
             </aside>
 
@@ -76,15 +59,19 @@ export default function ChatPage() {
                             conversations={chat.conversations}
                             activeId={chat.activeId}
                             onNewChat={() => {
-                                chat.newChat();
+                                void chat.newChat().catch(() => undefined);
                                 setSidebarOpen(false);
                             }}
                             onSelect={(id) => {
                                 chat.selectConversation(id);
                                 setSidebarOpen(false);
                             }}
-                            onRename={chat.renameConversation}
-                            onDelete={chat.deleteConversation}
+                            onRename={(id, title) => {
+                                void chat.renameConversation(id, title).catch(() => undefined);
+                            }}
+                            onDelete={(id) => {
+                                void chat.deleteConversation(id).catch(() => undefined);
+                            }}
                             mobile
                             onClose={() => setSidebarOpen(false)}
                         />
@@ -98,7 +85,9 @@ export default function ChatPage() {
                     title={activeTitle}
                     model={chat.model}
                     onModelChange={chat.setModel}
-                    onNewChat={chat.newChat}
+                    onNewChat={() => {
+                        void chat.newChat().catch(() => undefined);
+                    }}
                     onOpenSidebarMobile={() => setSidebarOpen(true)}
                 />
 

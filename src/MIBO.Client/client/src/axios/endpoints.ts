@@ -1,17 +1,23 @@
 export const endpoints = {
     auth: {
-        login: '/auth/login',
-        signup: '/auth/register',
-        refresh: '/auth/refresh-token',
+        login: '/api/auth/login',
+        signup: '/api/auth/register',
+        refresh: '/api/auth/refresh-token',
+    },
+    agent: {
+        chat: "/api/chat",
+    },
+    actions: {
+        query: "/api/actions/query",
+        execute: "/api/actions/execute",
     },
     conversations: {
-        stream: "/v1/chat/stream",
+        stream: "/api/v1/chat/stream",
 
-        // NEW (backend .NET)
-        chat: "/v1/chat",
-        action: "/v1/action",
-        list: "/v1/conversations",
-        detail: (conversationId: string) => `/v1/conversations/${conversationId}`,
+        chat: "/api/v1/chat",
+        action: "/api/v1/action",
+        list: "/api/v1/conversations",
+        detail: (conversationId: string) => `/api/v1/conversations/${conversationId}`,
     },
     hubs: {
         ui: "/hubs/ui",

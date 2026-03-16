@@ -22,7 +22,14 @@ function normalizeOptions(raw: unknown): Opt[] {
 }
 
 export function SortDropdown({ props, data, onAction }: UiComponentProps) {
-    const actionType = resolveActionType((props as any) ?? {}, "shop.sort");
+    const dataSourceId = String((props as any)?.dataSourceId ?? (props as any)?.data_source ?? "").trim();
+    const actionId = String((props as any)?.actionId ?? "").trim();
+    const sourceKey = String((props as any)?.sourceKey ?? "").trim();
+    const actionType = actionId
+        ? resolveActionType((props as any) ?? {}, "ui.action.execute")
+        : dataSourceId
+            ? "data.query"
+            : resolveActionType((props as any) ?? {}, "data.query");
     const dataKey = String((props as any)?.dataKey ?? "").trim();
     const selected = useMemo(() => {
         if ((props as any)?.selected) return String((props as any).selected);
@@ -56,9 +63,17 @@ export function SortDropdown({ props, data, onAction }: UiComponentProps) {
                     value={selected}
                     onChange={(e) => {
                         const nextSort = e.target.value;
+                        const [sortBy, order] = nextSort.includes(":")
+                            ? nextSort.split(":", 2)
+                            : [nextSort, "asc"];
+                        const fallbackPayload = actionId
+                            ? { actionId, dataSourceId, sourceKey, sort: nextSort, sortBy, order, skip: 0 }
+                            : dataSourceId
+                                ? { dataSourceId, sourceKey, sort: nextSort, sortBy, order, skip: 0 }
+                                : { sort: nextSort, sortBy, order };
                         const payload = resolveActionPayload(
                             (props as any) ?? {},
-                            { sort: nextSort },
+                            fallbackPayload,
                             { data: (data ?? {}) as Record<string, any>, value: nextSort, extra: { sort: nextSort } }
                         );
                         onAction?.(actionType, payload);

@@ -336,6 +336,8 @@ deploy-to-do.sh
 # DigitalOcean specific
 .do/
 do-env.sh
-deploy/environments/test/database-secret.yaml
-.env.*
-!.env.example
+deploy/environments/**/database-secret.yaml
+**/.env
+**/.env.*
+!**/.env.example
+Chat/
