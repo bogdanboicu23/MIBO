@@ -4,7 +4,7 @@ import { MessageBubble } from "./MessageBubble";
 export function MessageList(props: {
     messages: Message[];
     isTyping: boolean;
-    listRef: React.RefObject<HTMLDivElement>;
+    listRef: React.RefObject<HTMLDivElement | null>;
     empty?: React.ReactNode;
     onUiAction?: (type: string, payload: Record<string, unknown>) => void;
 }) {

@@ -1,6 +1,15 @@
 import { useState } from "react";
 import type { UiComponentProps } from "@/components/sandbox/uiRuntime/UiRenderer.tsx";
 import { extractArray, resolveFromDataKey } from "@/components/sandbox/registry/dataResolver";
+import { ColorCustomizer } from "@/components/sandbox/registry/ColorCustomizer";
+import {
+    DEFAULT_PALETTE,
+    getComponentPalette,
+    getValueColorMap,
+    normalizeColorKey,
+    resolveMappedColor,
+    resolvePaletteColor,
+} from "@/components/sandbox/registry/colorPalette";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 type TrendDirection = "up" | "down" | "neutral";
@@ -15,20 +24,6 @@ type SummaryItem = {
     color?: string;       // accent color hex
     sparkline?: number[]; // mini chart values
 };
-
-// ── palette – same as PieChartCard / LineChartCard / BarChartCard ─────────────
-const PALETTE = [
-    "#6366f1",
-    "#f59e0b",
-    "#10b981",
-    "#f43f5e",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#14b8a6",
-    "#f97316",
-    "#a3e635",
-];
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function trendDir(trend?: number): TrendDirection {
@@ -253,6 +248,9 @@ export function SummaryPanel({ props, data }: UiComponentProps) {
     const layout: "grid" | "list" = props?.layout === "list" ? "list" : "grid";
     const columns: number = Number(props?.columns ?? 0);
     const positiveIsGood: boolean = props?.positiveIsGood !== false;
+    const palette = getComponentPalette(props, DEFAULT_PALETTE);
+    const valueColors = getValueColorMap(props);
+    const [customValueColors, setCustomValueColors] = useState<Record<string, string>>({});
 
     const rawSource =
         (props?.items as any) ??
@@ -296,13 +294,37 @@ export function SummaryPanel({ props, data }: UiComponentProps) {
 
     return (
         <div className="rounded-2xl border border-zinc-200/70 bg-white p-5 shadow-sm dark:border-zinc-800/70 dark:bg-zinc-950 select-none">
-            {title && (
-                <div className="mb-4">
-          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-            {title}
-          </span>
-                </div>
-            )}
+            <div className="mb-4 flex items-start justify-between gap-3">
+                {title ? (
+                    <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+                        {title}
+                    </span>
+                ) : (
+                    <span />
+                )}
+                <ColorCustomizer
+                    sections={[
+                        {
+                            title: "Values",
+                            items: items.map((item, index) => ({
+                                key: item.label,
+                                label: item.label,
+                                color: resolveMappedColor(customValueColors, item.label)
+                                    ?? item.color
+                                    ?? resolveMappedColor(valueColors, item.label)
+                                    ?? resolvePaletteColor(palette, index),
+                            })),
+                            onChange: (label, color) => {
+                                setCustomValueColors((current) => ({
+                                    ...current,
+                                    [normalizeColorKey(label)]: color,
+                                }));
+                            },
+                        },
+                    ]}
+                    onReset={() => setCustomValueColors({})}
+                />
+            </div>
 
             {items.length === 0 ? (
                 <div className="py-8 text-center text-sm text-zinc-400 dark:text-zinc-600">
@@ -315,7 +337,10 @@ export function SummaryPanel({ props, data }: UiComponentProps) {
                         <MetricCard
                             key={i}
                             item={item}
-                            color={item.color ?? PALETTE[i % PALETTE.length]}
+                            color={resolveMappedColor(customValueColors, item.label)
+                                ?? item.color
+                                ?? resolveMappedColor(valueColors, item.label)
+                                ?? resolvePaletteColor(palette, i)}
                             layout={layout}
                             positiveIsGood={positiveIsGood}
                         />

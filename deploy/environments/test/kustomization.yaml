@@ -8,26 +8,22 @@ resources:
 
 helmCharts:
   - name: api-gateway
-    path: ../../helm/api-gateway
+    repo: file://../../helm
     valuesFile: values-api-gateway.yaml
     namespace: test
-  - name: app-host
-    path: ../../helm/app-host
-    valuesFile: values-app-host.yaml
-    namespace: test
-  - name: calendar-agent
-    path: ../../helm/calendar-agent
-    valuesFile: values-calendar-agent.yaml
-    namespace: test
   - name: conversation-service
-    path: ../../helm/conversation-service
+    repo: file://../../helm
     valuesFile: values-conversation-service.yaml
     namespace: test
-  - name: visualisation-service
-    path: ../../helm/visualisation-service
-    valuesFile: values-visualisation-service.yaml
+  - name: action-service
+    repo: file://../../helm
+    valuesFile: values-action-service.yaml
+    namespace: test
+  - name: langchain-service
+    repo: file://../../helm
+    valuesFile: values-langchain-service.yaml
     namespace: test
   - name: identity-service
-    path: ../../helm/identity-service
+    repo: file://../../helm
     valuesFile: values-identity-service.yaml
     namespace: test

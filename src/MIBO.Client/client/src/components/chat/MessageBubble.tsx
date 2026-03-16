@@ -37,6 +37,19 @@ function TypingDots() {
     );
 }
 
+function StatusLabel({ content }: { content: string }) {
+    return (
+        <span className="inline-flex flex-col items-start gap-2 text-zinc-600 dark:text-zinc-300">
+            <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.2s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.1s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-zinc-400" />
+            </span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">{content}</span>
+        </span>
+    );
+}
+
 function AssistantText({ content }: { content: string }) {
     return (
         <div className="[&>p]:my-1 [&>p:first-child]:mt-0 [&>p:last-child]:mb-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_h1]:my-1 [&_h2]:my-1 [&_h3]:my-1 [&_pre]:my-1 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-zinc-200/60 [&_pre]:p-2 [&_code]:rounded [&_code]:bg-zinc-200/60 [&_code]:px-1 [&_code]:py-0.5 dark:[&_pre]:bg-zinc-800/80 dark:[&_code]:bg-zinc-800/80">
@@ -73,6 +86,13 @@ export function MessageBubble({ msg, showTypingDots = false, onUiAction, }: {
             }
         })()
         : null;
+    const status = !isUser ? (msg.status ?? "").trim() : "";
+    const renderTextBubbleFromUi = ui?.meta?.renderTextBubble;
+    const shouldRenderTextBubble =
+        isUser
+        || Boolean(status)
+        || showTypingDots
+        || renderTextBubbleFromUi !== false && (((msg.content ?? "").trim().length > 0) || !ui);
 
     return (
         <div className="w-full">
@@ -84,15 +104,19 @@ export function MessageBubble({ msg, showTypingDots = false, onUiAction, }: {
 
                 {/* Center bubble */}
                 <div className="min-w-0 w-full">
-                    <div className={bubbleClass}>
-                        {!isUser && showTypingDots ? (
-                            <TypingDots />
-                        ) : isUser ? (
-                            <>{msg.content}</>
-                        ) : (
-                            <AssistantText content={msg.content ?? ""} />
-                        )}
-                    </div>
+                    {shouldRenderTextBubble ? (
+                        <div className={bubbleClass}>
+                            {!isUser && status ? (
+                                <StatusLabel content={status} />
+                            ) : !isUser && showTypingDots ? (
+                                <TypingDots />
+                            ) : isUser ? (
+                                <>{msg.content}</>
+                            ) : (
+                                <AssistantText content={msg.content ?? ""} />
+                            )}
+                        </div>
+                    ) : null}
 
                     {/* ✅ Generative UI INSIDE assistant message bubble (persistent in history) */}
                     {!isUser && ui ? (

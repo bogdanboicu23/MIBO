@@ -21,7 +21,14 @@ function resolveCategories(props: any, data: any): string[] {
 }
 
 export function CategoryChips({ props, data, onAction }: UiComponentProps) {
-    const actionType = resolveActionType((props as any) ?? {}, "shop.select_category");
+    const dataSourceId = String((props as any)?.dataSourceId ?? (props as any)?.data_source ?? "").trim();
+    const actionId = String((props as any)?.actionId ?? "").trim();
+    const sourceKey = String((props as any)?.sourceKey ?? "").trim();
+    const actionType = actionId
+        ? resolveActionType((props as any) ?? {}, "ui.action.execute")
+        : dataSourceId
+            ? "data.query"
+            : resolveActionType((props as any) ?? {}, "data.query");
     const selectedKey = String((props as any)?.selectedKey ?? "").trim();
 
     const categories = useMemo(() => resolveCategories(props as any, data as any), [props, data]);
@@ -41,9 +48,14 @@ export function CategoryChips({ props, data, onAction }: UiComponentProps) {
                                 key={c}
                                 type="button"
                                 onClick={() => {
+                                    const fallbackPayload = actionId
+                                        ? { actionId, dataSourceId, sourceKey, category: c, skip: 0 }
+                                        : dataSourceId
+                                            ? { dataSourceId, sourceKey, category: c, skip: 0 }
+                                            : { category: c };
                                     const payload = resolveActionPayload(
                                         (props as any) ?? {},
-                                        { category: c },
+                                        fallbackPayload,
                                         { data: (data ?? {}) as Record<string, any>, value: c, extra: { category: c } }
                                     );
                                     onAction?.(actionType, payload);

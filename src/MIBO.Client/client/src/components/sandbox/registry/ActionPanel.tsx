@@ -3,6 +3,7 @@ import { resolveActionPayload, resolveActionType } from "@/components/sandbox/re
 
 type ActionItem = {
     label: string;
+    actionId?: string;
     actionType?: string;
     payloadTemplate?: Record<string, unknown>;
     variant?: "primary" | "secondary" | "ghost";
@@ -14,9 +15,10 @@ function normalizeActions(raw: unknown): ActionItem[] {
     return raw
         .map((x: any) => {
             if (!x) return null;
-            if (typeof x === "string") return { label: x, actionType: x } as ActionItem;
+            if (typeof x === "string") return { label: x, actionId: x, actionType: "ui.action.execute" } as ActionItem;
             return {
                 label: String(x.label ?? x.title ?? "Action"),
+                actionId: typeof x.actionId === "string" ? x.actionId : undefined,
                 actionType: typeof x.actionType === "string" ? x.actionType : undefined,
                 payloadTemplate: x.payloadTemplate && typeof x.payloadTemplate === "object" ? x.payloadTemplate : undefined,
                 variant: x.variant,
@@ -39,7 +41,7 @@ function classForVariant(variant?: ActionItem["variant"]): string {
 export function ActionPanel({ props, data, onAction }: UiComponentProps) {
     const title = String((props as any)?.title ?? "Actions");
     const subtitle = String((props as any)?.subtitle ?? "");
-    const defaultActionType = resolveActionType((props as any) ?? {}, "ui.action");
+    const defaultActionType = resolveActionType((props as any) ?? {}, "ui.action.execute");
     const actions = normalizeActions((props as any)?.actions);
 
     if (!actions.length) {
@@ -60,7 +62,11 @@ export function ActionPanel({ props, data, onAction }: UiComponentProps) {
             <div className="mt-3 flex flex-wrap gap-2">
                 {actions.map((action, idx) => {
                     const actionType = resolveActionType({ actionType: action.actionType }, defaultActionType);
-                    const fallbackPayload = { source: "actionPanel", index: idx } as Record<string, unknown>;
+                    const fallbackPayload = {
+                        actionId: action.actionId,
+                        source: "actionPanel",
+                        index: idx,
+                    } as Record<string, unknown>;
                     return (
                         <button
                             key={`${action.label}-${idx}`}

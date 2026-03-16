@@ -33,11 +33,14 @@ function clamp(n: number, min: number, max: number): number {
 export function ProductCarouselCard({ props, data, onAction }: UiComponentProps) {
     const title = String((props as any)?.title ?? "Products");
     const dataKey = String((props as any)?.dataKey ?? "").trim();
+    const dataSourceId = String((props as any)?.dataSourceId ?? (props as any)?.data_source ?? "").trim();
+    const actionId = String((props as any)?.actionId ?? "").trim();
 
     // click on card
-    const actionType = resolveActionType((props as any) ?? {}, "shop.open_product");
+    const actionType = resolveActionType((props as any) ?? {}, actionId ? "ui.action.execute" : "data.query");
 
     // optional button action inside card
+    const secondaryActionId = String((props as any)?.secondaryActionId ?? "").trim();
     const secondaryActionType = String((props as any)?.secondaryActionType ?? "").trim();
     const userId = Number((props as any)?.userId ?? 1);
 
@@ -104,20 +107,29 @@ export function ProductCarouselCard({ props, data, onAction }: UiComponentProps)
     };
 
     const firePrimary = (p: Product) => {
+        const fallbackPayload = actionId
+            ? { actionId, dataSourceId, id: p.id, productId: p.id }
+            : dataSourceId
+                ? { dataSourceId, id: p.id, productId: p.id }
+                : { productId: p.id };
         const payload = resolveActionPayload(
             (props as any) ?? {},
-            { productId: p.id },
+            fallbackPayload,
             { data: (data ?? {}) as Record<string, any>, item: p as any, extra: { productId: p.id } }
         );
         onAction?.(actionType, payload);
     };
 
     const fireSecondary = (p: Product) => {
-        if (!secondaryActionType) return;
-        const secondaryType = resolveActionType({ actionType: secondaryActionType }, secondaryActionType);
+        if (!secondaryActionType && !secondaryActionId) return;
+        const secondaryType = resolveActionType(
+            { actionType: secondaryActionType },
+            secondaryActionId ? "ui.action.execute" : secondaryActionType
+        );
 
-        if (secondaryActionType === "shop.add_to_cart") {
+        if (secondaryActionType === "shop.add_to_cart" || secondaryActionId) {
             const fallbackPayload = {
+                actionId: secondaryActionId || undefined,
                 userId,
                 products: [{ id: p.id, quantity: 1 }],
             };
@@ -132,7 +144,7 @@ export function ProductCarouselCard({ props, data, onAction }: UiComponentProps)
             return;
         }
 
-        const genericPayload = { productId: p.id, quantity: 1 };
+        const genericPayload = { actionId: secondaryActionId || undefined, productId: p.id, quantity: 1 };
         onAction?.(
             secondaryType,
             resolveActionPayload(
@@ -228,7 +240,7 @@ export function ProductCarouselCard({ props, data, onAction }: UiComponentProps)
                                             </div>
                                         </button>
 
-                                        {secondaryActionType ? (
+                                        {secondaryActionType || secondaryActionId ? (
                                             <div className="px-3 pb-3">
                                                 <button
                                                     type="button"

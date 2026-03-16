@@ -1,5 +1,7 @@
 ﻿**/.dockerignore
 **/.env
+**/.env.*
+!**/.env.example
 **/.git
 **/.gitignore
 **/.project
@@ -16,6 +18,9 @@
 **/charts
 **/docker-compose*
 **/Dockerfile*
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.Example.json
 **/node_modules
 **/npm-debug.log
 **/obj

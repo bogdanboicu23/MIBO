@@ -1,46 +1,397 @@
-using MIBO.ConversationService.DTOs.Contracts;
-using MIBO.ConversationService.Services.Chat;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using MIBO.Storage.Mongo.Store.Conversation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MIBO.ConversationService.Controllers;
 
 [ApiController]
-[Route("api/v1/chat")]
-[Route("v1/chat")]
-public sealed class ChatController : ControllerBase
+[Route("api")]
+public sealed class ChatController(
+    IHttpClientFactory httpClientFactory,
+    IConversationStore conversationStore,
+    ILogger<ChatController> logger) : ControllerBase
 {
-    private readonly IChatOrchestrator _chat;
+    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
-    public ChatController(IChatOrchestrator chat) => _chat = chat;
-
-    [HttpPost]
-    public async Task<IActionResult> Post([FromBody] ChatRequest req, CancellationToken ct)
+    [HttpGet("v1/conversations")]
+    public async Task<ActionResult<IReadOnlyList<ConversationSummary>>> ListConversations(
+        [FromQuery] int skip = 0,
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(req.ConversationId))
-            return BadRequest(new { error = "conversationId is required" });
-        if (string.IsNullOrWhiteSpace(req.UserId))
-            return BadRequest(new { error = "userId is required" });
-        if (string.IsNullOrWhiteSpace(req.Prompt))
-            return BadRequest(new { error = "prompt is required" });
-
-        var res = await _chat.HandleAsync(req, ct);
-        return Ok(res);
+        var userId = ResolveUserId();
+        var conversations = await conversationStore.ListConversationsAsync(userId, skip, limit, cancellationToken);
+        return Ok(conversations);
     }
 
-    [HttpPost("stream")]
-    public async Task Stream([FromBody] ChatRequest req, CancellationToken ct)
+    [HttpPost("v1/conversations")]
+    public async Task<ActionResult<ConversationSummary>> CreateConversation(
+        [FromBody] CreateConversationRequest? request,
+        CancellationToken cancellationToken)
     {
+        var userId = ResolveUserId(request?.UserId);
+        var conversation = await conversationStore.CreateConversationAsync(userId, request?.Title, cancellationToken);
+        return Ok(conversation);
+    }
+
+    [HttpGet("v1/conversations/{conversationId}")]
+    public async Task<ActionResult<ConversationDetails>> GetConversation(
+        [FromRoute] string conversationId,
+        [FromQuery] int messagesLimit = 200,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = ResolveUserId();
+        var conversation = await conversationStore.GetConversationAsync(conversationId, userId, messagesLimit, cancellationToken);
+
+        if (conversation is null)
+        {
+            return NotFound(new { error = "Conversation not found." });
+        }
+
+        return Ok(conversation);
+    }
+
+    [HttpPatch("v1/conversations/{conversationId}")]
+    public async Task<IActionResult> RenameConversation(
+        [FromRoute] string conversationId,
+        [FromBody] RenameConversationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest(new { error = "title is required." });
+        }
+
+        var userId = ResolveUserId(request.UserId);
+        var renamed = await conversationStore.RenameConversationAsync(conversationId, userId, request.Title, cancellationToken);
+        return renamed ? Ok(new { ok = true }) : NotFound(new { error = "Conversation not found." });
+    }
+
+    [HttpDelete("v1/conversations/{conversationId}")]
+    public async Task<IActionResult> DeleteConversation(
+        [FromRoute] string conversationId,
+        [FromQuery] string? userId,
+        CancellationToken cancellationToken)
+    {
+        var resolvedUserId = ResolveUserId(userId);
+        var deleted = await conversationStore.DeleteConversationAsync(conversationId, resolvedUserId, cancellationToken);
+        return deleted ? Ok(new { ok = true }) : NotFound(new { error = "Conversation not found." });
+    }
+
+    [HttpPost("chat")]
+    public Task PostLegacyChat([FromBody] LegacyChatRequest request, CancellationToken cancellationToken)
+        => StreamChatAsync(
+            conversationId: request.SessionId,
+            userId: ResolveUserId(),
+            prompt: request.Message,
+            emitSyntheticSessionEvent: string.IsNullOrWhiteSpace(request.SessionId),
+            cancellationToken);
+
+    [HttpPost("v1/chat")]
+    public Task PostChat([FromBody] ChatRequestV1 request, CancellationToken cancellationToken)
+        => StreamChatAsync(
+            conversationId: request.ConversationId,
+            userId: ResolveUserId(request.UserId),
+            prompt: string.IsNullOrWhiteSpace(request.Prompt) ? request.Message : request.Prompt,
+            emitSyntheticSessionEvent: string.IsNullOrWhiteSpace(request.ConversationId),
+            cancellationToken);
+
+    private async Task StreamChatAsync(
+        string? conversationId,
+        string userId,
+        string? prompt,
+        bool emitSyntheticSessionEvent,
+        CancellationToken cancellationToken)
+    {
+        var trimmedPrompt = prompt?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedPrompt))
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            await Response.WriteAsJsonAsync(new { error = "Message is required." }, cancellationToken);
+            return;
+        }
+
+        var effectiveConversationId = conversationId?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(effectiveConversationId))
+        {
+            var createdConversation = await conversationStore.CreateConversationAsync(userId, null, cancellationToken);
+            effectiveConversationId = createdConversation.ConversationId;
+        }
+
+        var correlationId = Guid.NewGuid().ToString("N");
+        try
+        {
+            await conversationStore.AppendUserMessageAsync(effectiveConversationId, userId, trimmedPrompt, correlationId, cancellationToken);
+        }
+        catch (ConversationOwnershipException)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            await Response.WriteAsJsonAsync(new { error = "Conversation not found." }, cancellationToken);
+            return;
+        }
+
+        using var upstreamRequest = new HttpRequestMessage(HttpMethod.Post, "/chat")
+        {
+            Content = JsonContent.Create(new AgentChatRequest(effectiveConversationId, trimmedPrompt))
+        };
+
+        var client = httpClientFactory.CreateClient("agent");
+        using var upstreamResponse = await client.SendAsync(
+            upstreamRequest,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+
+        if (!upstreamResponse.IsSuccessStatusCode)
+        {
+            Response.StatusCode = (int)upstreamResponse.StatusCode;
+            var errorBody = await upstreamResponse.Content.ReadAsStringAsync(cancellationToken);
+            await Response.WriteAsync(errorBody, cancellationToken);
+            return;
+        }
+
+        Response.StatusCode = StatusCodes.Status200OK;
         Response.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
-        Response.Headers.Connection = "keep-alive";
+        Response.Headers.Append("X-Accel-Buffering", "no");
+        Response.Headers.Append("X-Conversation-Id", effectiveConversationId);
 
-        await foreach (var evt in _chat.HandleStreamAsync(req, ct))
+        await Response.StartAsync(cancellationToken);
+
+        if (emitSyntheticSessionEvent)
         {
-            if (evt.EventType is not null)
-                await Response.WriteAsync($"event: {evt.EventType}\n", ct);
+            var sessionPayload = JsonSerializer.Serialize(new
+            {
+                type = "session",
+                session_id = effectiveConversationId
+            }, JsonOpts);
 
-            await Response.WriteAsync($"data: {evt.Data}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+            await Response.WriteAsync($"data: {sessionPayload}\n\n", cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
+        }
+
+        await using var upstreamStream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
+        var decoder = Encoding.UTF8;
+        var buffer = new byte[8192];
+        var rawBuffer = new StringBuilder();
+
+        object? assistantPayload = null;
+        string assistantText = string.Empty;
+
+        try
+        {
+            while (true)
+            {
+                var bytesRead = await upstreamStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                rawBuffer.Append(decoder.GetString(buffer, 0, bytesRead));
+
+                while (true)
+                {
+                    var current = rawBuffer.ToString();
+                    var boundaryIndex = current.IndexOf("\n\n", StringComparison.Ordinal);
+                    if (boundaryIndex < 0)
+                    {
+                        break;
+                    }
+
+                    var rawEvent = current[..boundaryIndex];
+                    rawBuffer.Remove(0, boundaryIndex + 2);
+
+                    if (TryReadSseEnvelope(rawEvent, out var eventType, out var content)
+                        && string.Equals(eventType, "done", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (TryParseAssistantPayload(content, out var parsedPayload, out var parsedText))
+                        {
+                            assistantPayload = parsedPayload;
+                            assistantText = parsedText;
+                        }
+                        else
+                        {
+                            assistantPayload = null;
+                            assistantText = content;
+                        }
+                    }
+
+                    await Response.WriteAsync(rawEvent, cancellationToken);
+                    await Response.WriteAsync("\n\n", cancellationToken);
+                    await Response.Body.FlushAsync(cancellationToken);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Chat streaming failed for conversation {ConversationId}", effectiveConversationId);
+            throw;
+        }
+
+        if (assistantPayload is not null || !string.IsNullOrWhiteSpace(assistantText))
+        {
+            await conversationStore.AppendAssistantMessageAsync(
+                effectiveConversationId,
+                userId,
+                assistantText,
+                assistantPayload,
+                correlationId,
+                cancellationToken);
+        }
+    }
+
+    private string ResolveUserId(string? explicitUserId = null)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitUserId))
+        {
+            return explicitUserId.Trim();
+        }
+
+        if (Request.Headers.TryGetValue("X-User-Id", out var headerUserId))
+        {
+            var headerValue = headerUserId.ToString();
+            if (!string.IsNullOrWhiteSpace(headerValue))
+            {
+                return headerValue.Trim();
+            }
+        }
+
+        if (Request.Query.TryGetValue("userId", out var queryUserId))
+        {
+            var queryValue = queryUserId.ToString();
+            if (!string.IsNullOrWhiteSpace(queryValue))
+            {
+                return queryValue.Trim();
+            }
+        }
+
+        return "anonymous";
+    }
+
+    private static bool TryReadSseEnvelope(string rawEvent, out string eventType, out string content)
+    {
+        eventType = string.Empty;
+        content = string.Empty;
+
+        var dataLines = rawEvent
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => line.StartsWith("data:", StringComparison.Ordinal))
+            .Select(line => line.StartsWith("data: ", StringComparison.Ordinal) ? line[6..] : line[5..])
+            .ToArray();
+
+        if (dataLines.Length == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(string.Join("\n", dataLines));
+            if (!document.RootElement.TryGetProperty("type", out var typeNode) || typeNode.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            eventType = typeNode.GetString() ?? string.Empty;
+            if (document.RootElement.TryGetProperty("content", out var contentNode))
+            {
+                content = contentNode.ValueKind == JsonValueKind.String
+                    ? contentNode.GetString() ?? string.Empty
+                    : contentNode.GetRawText();
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryParseAssistantPayload(string rawContent, out object? payload, out string text)
+    {
+        payload = null;
+        text = rawContent;
+
+        if (string.IsNullOrWhiteSpace(rawContent))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(rawContent);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            payload = JsonSerializer.Deserialize<object>(rawContent, JsonOpts);
+            if (document.RootElement.TryGetProperty("text", out var textNode) && textNode.ValueKind == JsonValueKind.String)
+            {
+                text = textNode.GetString() ?? string.Empty;
+            }
+            else
+            {
+                text = string.Empty;
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 }
+
+public sealed class CreateConversationRequest
+{
+    [JsonPropertyName("title")]
+    public string? Title { get; init; }
+
+    [JsonPropertyName("userId")]
+    public string? UserId { get; init; }
+}
+
+public sealed class RenameConversationRequest
+{
+    [JsonPropertyName("title")]
+    public string Title { get; init; } = string.Empty;
+
+    [JsonPropertyName("userId")]
+    public string? UserId { get; init; }
+}
+
+public sealed class ChatRequestV1
+{
+    [JsonPropertyName("conversationId")]
+    public string? ConversationId { get; init; }
+
+    [JsonPropertyName("userId")]
+    public string? UserId { get; init; }
+
+    [JsonPropertyName("prompt")]
+    public string? Prompt { get; init; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; init; }
+}
+
+public sealed class LegacyChatRequest
+{
+    [JsonPropertyName("session_id")]
+    public string SessionId { get; init; } = string.Empty;
+
+    [JsonPropertyName("message")]
+    public string Message { get; init; } = string.Empty;
+}
+
+public sealed record AgentChatRequest(
+    [property: JsonPropertyName("session_id")] string SessionId,
+    [property: JsonPropertyName("message")] string Message);

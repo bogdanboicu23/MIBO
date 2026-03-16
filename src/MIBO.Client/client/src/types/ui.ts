@@ -1,9 +1,11 @@
 export type UiV1 = {
     schema: "ui.v1";
+    uiInstanceId?: string;
     root: UiNode;
     data?: Record<string, unknown>;
     bindings?: UiBinding[];
     subscriptions?: UiSubscription[];
+    meta?: UiMeta;
 };
 
 export type UiNode =
@@ -30,11 +32,98 @@ export type UiBinding = {
 
 export type UiSubscription = {
     event: string; // e.g. "finance.expense_created"
-    refresh: Array<{
-        tool: string;
-        args: Record<string, unknown>;
-        patchPath: string; // where refreshed tool result should be written in ui.data
+    refresh: Array<
+        | {
+            dataSourceId: string;
+            args?: Record<string, unknown>;
+        }
+        | {
+            tool: string;
+            args: Record<string, unknown>;
+            patchPath: string; // where refreshed tool result should be written in ui.data
+        }
+    >;
+};
+
+export type UiMeta = {
+    conversationId?: string;
+    userId?: string;
+    responseMode?: string | null;
+    dataSources?: Record<string, UiDataSourceState>;
+    actionRegistry?: Record<string, UiActionState>;
+    sourceRegistry?: Record<string, UiDataSourceState>;
+    runtime?: Record<string, unknown>;
+    [key: string]: unknown;
+};
+
+export type UiFieldHints = {
+    entityType?: string | null;
+    collectionPath?: string | null;
+    labelField?: string | null;
+    valueField?: string | null;
+    titleField?: string | null;
+    imageField?: string | null;
+    categoryField?: string | null;
+    searchField?: string | null;
+    defaultTableFields?: string[];
+    textFields?: string[];
+    numericFields?: string[];
+    fields?: Array<{
+        name: string;
+        kind: string;
     }>;
+};
+
+export type UiTransformField = {
+    key: string;
+    label?: string | null;
+    sourceField?: string | null;
+    value?: unknown;
+    expression?: Record<string, unknown> | null;
+    kind?: string | null;
+};
+
+export type UiDataTransform = {
+    id?: string | null;
+    type: string;
+    inputPath?: string | null;
+    outputPath?: string | null;
+    fields?: UiTransformField[];
+    fieldHints?: UiFieldHints | null;
+};
+
+export type UiDataSourceState = {
+    id: string;
+    handler?: string;
+    tool: string;
+    resultKey?: string;
+    patchPath?: string;
+    mirrorPatchPaths?: string[];
+    defaultArgs?: Record<string, unknown>;
+    lastArgs?: Record<string, unknown>;
+    activeTool?: string | null;
+    refreshOnLoad?: boolean;
+    refreshOnConversationOpen?: boolean;
+    staleAfterMs?: number | null;
+    lastFetchedAt?: number | null;
+    params?: Record<string, unknown>;
+    fieldHints?: UiFieldHints | null;
+    transforms?: UiDataTransform[];
+    variants?: Array<{
+        tool: string;
+        whenPayloadHasAny?: string[];
+        whenPayloadHasAll?: string[];
+        whenPayloadEquals?: Record<string, string>;
+    }>;
+};
+
+export type UiActionState = {
+    id: string;
+    actionType: string;
+    handler?: string;
+    dataSourceId?: string | null;
+    defaultArgs?: Record<string, unknown>;
+    refreshDataSourceIds?: string[];
 };
 
 export type UiPatchV1 = {

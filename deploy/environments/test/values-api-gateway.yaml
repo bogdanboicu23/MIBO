@@ -1,2 +1,38 @@
 image:
+  repository: registry.digitalocean.com/mibo/api-gateway
   tag: staging
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: do-registry-secret
+
+secrets:
+  name: api-gateway-secrets
+
+env:
+  ASPNETCORE_ENVIRONMENT: test
+  ASPNETCORE_URLS: http://+:8080
+
+probes:
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
+  hosts:
+    - host: api.mibo.monster
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - api.mibo.monster

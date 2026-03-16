@@ -1,2 +1,27 @@
 image:
+  repository: registry.digitalocean.com/mibo/conversation-service
   tag: staging
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: do-registry-secret
+
+secrets:
+  name: conversation-service-secrets
+
+env:
+  ASPNETCORE_URLS: "http://+:8080"
+  ASPNETCORE_ENVIRONMENT: "Production"
+  AGENT_SERVICE_URL: "http://langchain-service:8088"
+  ACTION_SERVICE_URL: "http://action-service:8080"
+  Planner__BaseUrl: "http://langchain-service:8088"
+
+probes:
+  path: /api/health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+ingress:
+  enabled: false

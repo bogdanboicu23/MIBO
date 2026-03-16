@@ -45,7 +45,8 @@ function toInitialValues(fields: Field[], source: Record<string, any>): Record<s
 export function FormCard({ props, data, onAction }: UiComponentProps) {
     const title = String((props as any)?.title ?? "Form");
     const subtitle = String((props as any)?.subtitle ?? "");
-    const actionType = resolveActionType((props as any) ?? {}, "ui.form.submit");
+    const actionId = String((props as any)?.actionId ?? "").trim();
+    const actionType = resolveActionType((props as any) ?? {}, actionId ? "ui.action.execute" : "ui.form.submit");
 
     const fields = useMemo(() => normalizeFields((props as any)?.fields), [props]);
 
@@ -80,7 +81,7 @@ export function FormCard({ props, data, onAction }: UiComponentProps) {
         const missing = fields.filter((f) => f.required && !String(form[f.key] ?? "").trim());
         if (missing.length) return;
 
-        const fallbackPayload = { values: form, source: "formCard" } as Record<string, unknown>;
+        const fallbackPayload = { actionId, values: form, source: "formCard" } as Record<string, unknown>;
         const payload = resolveActionPayload(
             (props as any) ?? {},
             fallbackPayload,

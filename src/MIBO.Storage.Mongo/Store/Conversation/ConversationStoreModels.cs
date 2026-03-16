@@ -18,6 +18,7 @@ public sealed record ConversationMessage(
     string Role,
     string Text,
     object? UiV1,
+    object? AssistantPayload,
     string CorrelationId,
     DateTime CreatedAt
 );

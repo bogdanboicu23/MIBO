@@ -24,6 +24,14 @@
       "RouteIsCaseSensitive": false
     },
     {
+      "DownstreamPathTemplate": "/api/chat",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/chat",
+      "UpstreamHttpMethod": ["POST", "OPTIONS"],
+      "RouteIsCaseSensitive": false
+    },
+    {
       "DownstreamPathTemplate": "/api/v1/chat",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
@@ -32,36 +40,35 @@
       "RouteIsCaseSensitive": false
     },
     {
-      "DownstreamPathTemplate": "/api/v1/{everything}",
+      "DownstreamPathTemplate": "/api/v1/conversations",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
-      "UpstreamPathTemplate": "/api/v1/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
-      "RouteIsCaseSensitive": false
-    },
-    {
-      "DownstreamPathTemplate": "/api/conversations/{everything}",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
-      "UpstreamPathTemplate": "/api/conversations/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
-      "RouteIsCaseSensitive": false
-    },
-
-    {
-      "DownstreamPathTemplate": "/hubs/ui",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
-      "UpstreamPathTemplate": "/hubs/ui",
+      "UpstreamPathTemplate": "/api/v1/conversations",
       "UpstreamHttpMethod": ["GET", "POST", "OPTIONS"],
       "RouteIsCaseSensitive": false
     },
     {
-      "DownstreamPathTemplate": "/hubs/ui/{everything}",
+      "DownstreamPathTemplate": "/api/v1/conversations/{conversationId}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
-      "UpstreamPathTemplate": "/hubs/ui/{everything}",
-      "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "UpstreamPathTemplate": "/api/v1/conversations/{conversationId}",
+      "UpstreamHttpMethod": ["GET", "PATCH", "DELETE", "OPTIONS"],
+      "RouteIsCaseSensitive": false
+    },
+    {
+      "DownstreamPathTemplate": "/api/health",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/health",
+      "UpstreamHttpMethod": [ "GET", "OPTIONS" ],
+      "RouteIsCaseSensitive": false
+    },
+    {
+      "DownstreamPathTemplate": "/api/actions/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "action-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/actions/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
       "RouteIsCaseSensitive": false
     }
   ]

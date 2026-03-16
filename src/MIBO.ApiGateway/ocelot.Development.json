@@ -36,23 +36,19 @@
     },
 
     // -------------------------
-    // CONVERSATION SERVICE (REST passthrough)
+    // CONVERSATION SERVICE
     // -------------------------
     {
-      "DownstreamPathTemplate": "/api/conversations/{everything}",
+      "DownstreamPathTemplate": "/api/chat",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         { "Host": "localhost", "Port": 7251 }
       ],
-      "UpstreamPathTemplate": "/api/conversations/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
+      "UpstreamPathTemplate": "/api/chat",
+      "UpstreamHttpMethod": [ "POST", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
       "RouteIsCaseSensitive": false
     },
-
-    // -------------------------
-    // v1/chat explicit
-    // -------------------------
     {
       "DownstreamPathTemplate": "/api/v1/chat",
       "DownstreamScheme": "https",
@@ -64,45 +60,51 @@
       "DangerousAcceptAnyServerCertificateValidator": true,
       "RouteIsCaseSensitive": false
     },
-
-    // -------------------------
-    // v1 passthrough general
-    // -------------------------
     {
-      "DownstreamPathTemplate": "/api/v1/{everything}",
+      "DownstreamPathTemplate": "/api/v1/conversations",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         { "Host": "localhost", "Port": 7251 }
       ],
-      "UpstreamPathTemplate": "/api/v1/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
-      "DangerousAcceptAnyServerCertificateValidator": true,
-      "RouteIsCaseSensitive": false
-    },
-
-    // -------------------------
-    // SIGNALR (UiHub)
-    // -------------------------
-    {
-      "DownstreamPathTemplate": "/hubs/ui",
-      "DownstreamScheme": "https",
-      "DownstreamHostAndPorts": [
-        { "Host": "localhost", "Port": 7251 }
-      ],
-      "UpstreamPathTemplate": "/hubs/ui",
+      "UpstreamPathTemplate": "/api/v1/conversations",
       "UpstreamHttpMethod": [ "GET", "POST", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
       "RouteIsCaseSensitive": false
     },
     {
-      "DownstreamPathTemplate": "/hubs/ui/{everything}",
+      "DownstreamPathTemplate": "/api/v1/conversations/{conversationId}",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         { "Host": "localhost", "Port": 7251 }
       ],
-      "UpstreamPathTemplate": "/hubs/ui/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "UpstreamPathTemplate": "/api/v1/conversations/{conversationId}",
+      "UpstreamHttpMethod": [ "GET", "PATCH", "DELETE", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
+      "RouteIsCaseSensitive": false
+    },
+    {
+      "DownstreamPathTemplate": "/api/health",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 7251 }
+      ],
+      "UpstreamPathTemplate": "/api/health",
+      "UpstreamHttpMethod": [ "GET", "OPTIONS" ],
+      "DangerousAcceptAnyServerCertificateValidator": true,
+      "RouteIsCaseSensitive": false
+    },
+
+    // -------------------------
+    // ACTION SERVICE
+    // -------------------------
+    {
+      "DownstreamPathTemplate": "/api/actions/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5288 }
+      ],
+      "UpstreamPathTemplate": "/api/actions/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
       "RouteIsCaseSensitive": false
     },
 

@@ -1,0 +1,39 @@
+replicaCount: 1
+
+image:
+  repository: registry.digitalocean.com/mibo/action-service
+  tag: test-latest
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: do-registry-secret
+
+service:
+  type: ClusterIP
+  port: 8080
+
+env:
+  ASPNETCORE_URLS: http://+:8080
+  ASPNETCORE_ENVIRONMENT: Production
+  DUMMYJSON_BASE_URL: https://dummyjson.com
+
+probes:
+  path: /api/health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
