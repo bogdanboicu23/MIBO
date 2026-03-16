@@ -16,6 +16,7 @@ spec:
       containers:
         - name: mibo-client
           image: registry.digitalocean.com/mibo/client:test-latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           resources:

@@ -39,12 +39,13 @@ jobs:
 
       - name: Build & Push image (tag = commit SHA)
         run: |
+          IMAGE_TAG="test-${{ github.run_id }}-${{ github.run_attempt }}"
           docker buildx build --platform linux/amd64 \
             --build-arg VITE_API_SERVER_URL="${{ secrets.VITE_API_SERVER_URL }}" \
             --build-arg VITE_HUB_SERVER_URL="${{ secrets.VITE_HUB_SERVER_URL }}" \
             --build-arg VITE_DATA_SERVICE_URL="${{ secrets.VITE_API_SERVER_URL }}" \
             --build-arg VITE_TURNSTILE_SITE_KEY="${{ secrets.VITE_TURNSTILE_SITE_KEY }}" \
-            -t "${{ env.IMAGE }}:test-${{ github.sha }}" \
+            -t "${{ env.IMAGE }}:${IMAGE_TAG}" \
             -t "${{ env.IMAGE }}:test-latest" \
             --push \
             ./src/MIBO.Client/client
@@ -62,8 +63,9 @@ jobs:
 
       - name: Update deployment image (SHA tag)
         run: |
+          IMAGE_TAG="test-${{ github.run_id }}-${{ github.run_attempt }}"
           kubectl -n "${{ env.NAMESPACE }}" set image deployment/"${{ env.DEPLOYMENT }}" \
-            "${{ env.CONTAINER }}"="${{ env.IMAGE }}:test-${{ github.sha }}"
+            "${{ env.CONTAINER }}"="${{ env.IMAGE }}:${IMAGE_TAG}"
 
       - name: Wait for rollout
         run: |
