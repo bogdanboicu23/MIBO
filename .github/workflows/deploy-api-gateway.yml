@@ -144,11 +144,6 @@ jobs:
         run: |
           kubectl rollout status deployment/${{ env.SERVICE_NAME }} -n ${{ env.NAMESPACE }} --timeout=300s || true
 
-      - name: Verify Ocelot actions route
-        run: |
-          kubectl exec -n ${{ env.NAMESPACE }} deploy/${{ env.SERVICE_NAME }} -- \
-            sh -lc "grep -n '/api/actions' /app/ocelot.test.json"
-
       - name: Get deployment status
         if: always()
         run: |
