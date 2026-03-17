@@ -65,9 +65,6 @@ builder.Services.AddCors(options =>
 builder.Services.AddOcelot()
     .AddKubernetes();
 
-// Add health checks
-builder.Services.AddHealthChecks();
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -82,8 +79,6 @@ app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapHealthChecks("/health");
 
 // Add Ocelot middleware
 app.UseWebSockets();

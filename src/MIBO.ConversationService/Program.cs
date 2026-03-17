@@ -57,6 +57,5 @@ var app = builder.Build();
 
 app.UseCors();
 app.MapControllers();
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();

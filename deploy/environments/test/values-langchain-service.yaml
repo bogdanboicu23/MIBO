@@ -12,10 +12,3 @@ secrets:
 env:
   ACTION_SERVICE_URL: http://action-service:8080
   CONTEXT_CONFIG_DIR: /app/config
-
-probes:
-  path: /health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 6

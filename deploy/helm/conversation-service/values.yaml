@@ -19,13 +19,6 @@ env:
   ASPNETCORE_URLS: "http://+:8080"
   ASPNETCORE_ENVIRONMENT: "Production"
 
-probes:
-  path: /api/health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 6
-
 resources:
   requests:
     cpu: 50m

@@ -38,21 +38,5 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.secrets.name }}
-          readinessProbe:
-            httpGet:
-              path: {{ .Values.probes.path }}
-              port: http
-            initialDelaySeconds: {{ .Values.probes.initialDelaySeconds }}
-            periodSeconds: {{ .Values.probes.periodSeconds }}
-            timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
-            failureThreshold: {{ .Values.probes.failureThreshold }}
-          livenessProbe:
-            httpGet:
-              path: {{ .Values.probes.path }}
-              port: http
-            initialDelaySeconds: {{ add .Values.probes.initialDelaySeconds 5 }}
-            periodSeconds: {{ .Values.probes.periodSeconds }}
-            timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
-            failureThreshold: {{ .Values.probes.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

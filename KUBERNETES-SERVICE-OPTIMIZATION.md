@@ -244,18 +244,6 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "2000m"
-        livenessProbe:
-          httpGet:
-            path: /langchain/healthz
-            port: 8088
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /langchain/ready
-            port: 8088
-          initialDelaySeconds: 5
-          periodSeconds: 5
 ```
 
 ### 4. Infrastructure Optimizations

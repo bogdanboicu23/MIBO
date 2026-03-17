@@ -57,14 +57,6 @@
       "RouteIsCaseSensitive": false
     },
     {
-      "DownstreamPathTemplate": "/api/health",
-      "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
-      "UpstreamPathTemplate": "/api/health",
-      "UpstreamHttpMethod": [ "GET", "OPTIONS" ],
-      "RouteIsCaseSensitive": false
-    },
-    {
       "DownstreamPathTemplate": "/api/actions/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [{ "Host": "action-service", "Port": 8080 }],

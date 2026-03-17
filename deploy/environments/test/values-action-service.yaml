@@ -10,10 +10,3 @@ env:
   ASPNETCORE_URLS: http://+:8080
   ASPNETCORE_ENVIRONMENT: Production
   DUMMYJSON_BASE_URL: https://dummyjson.com
-
-probes:
-  path: /api/health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 6

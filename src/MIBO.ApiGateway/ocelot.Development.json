@@ -82,18 +82,6 @@
       "DangerousAcceptAnyServerCertificateValidator": true,
       "RouteIsCaseSensitive": false
     },
-    {
-      "DownstreamPathTemplate": "/api/health",
-      "DownstreamScheme": "https",
-      "DownstreamHostAndPorts": [
-        { "Host": "localhost", "Port": 7251 }
-      ],
-      "UpstreamPathTemplate": "/api/health",
-      "UpstreamHttpMethod": [ "GET", "OPTIONS" ],
-      "DangerousAcceptAnyServerCertificateValidator": true,
-      "RouteIsCaseSensitive": false
-    },
-
     // -------------------------
     // ACTION SERVICE
     // -------------------------

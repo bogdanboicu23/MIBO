@@ -123,26 +123,6 @@ secrets:
   JWT keys and database connection strings are injected via Kubernetes Secrets. Never hardcode these values in the values files committed to version control.
 </Callout>
 
-### Langchain Service
-
-The Langchain service uses custom health probe paths:
-
-```yaml
-image:
-  repository: registry.digitalocean.com/mibo/langchain-service
-  pullPolicy: Always
-service:
-  port: 8088
-healthProbe:
-  path: /langchain/healthz
-  initialDelaySeconds: 5
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 6
-```
-
-<SectionDivider />
-
 <SectionHeader title="Environment Overrides" description="Per-environment value files that override chart defaults." />
 
 The `deploy/environments/test/` directory contains per-service value files that override defaults:

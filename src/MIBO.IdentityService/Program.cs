@@ -159,10 +159,6 @@ builder.Services.AddResponseCompression(options =>
     options.EnableForHttps = true;
 });
 
-// Add health checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -178,7 +174,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
 
 // Seed roles on startup
 _ = Task.Run(async () =>

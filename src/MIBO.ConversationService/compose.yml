@@ -28,11 +28,6 @@ services:
       - nats_data:/data
     networks:
       - mibo
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/varz >/dev/null 2>&1 || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
 
   # -----------------------------
   # Redis
@@ -47,10 +42,5 @@ services:
       - redis_data:/data
     networks:
       - mibo
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
 
 #  

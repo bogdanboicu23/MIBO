@@ -40,7 +40,7 @@ spec:
           args: ["-js", "-sd", "/data", "-m", "8222"]
           ports:
             - containerPort: 4222   # Client connections
-            - containerPort: 8222   # Monitoring/health
+            - containerPort: 8222   # Monitoring
 ```
 
 | Property | Value |
@@ -50,7 +50,7 @@ spec:
 | Monitoring Port | 8222 |
 | Storage | 5Gi PersistentVolume |
 | JetStream | Enabled with persistent storage |
-| Health Check | HTTP GET on `:8222/healthz` |
+| Monitoring Endpoint | HTTP GET on `:8222/varz` |
 | DNS | `nats.test.svc.cluster.local:4222` |
 
 <Callout type="info" title="JetStream Persistence">

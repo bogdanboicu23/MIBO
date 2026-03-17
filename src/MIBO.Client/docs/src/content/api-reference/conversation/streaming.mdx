@@ -97,19 +97,6 @@ async function streamChat(message: string) {
 
 <SectionDivider />
 
-<SectionHeader title="Health Check" description="Verify the Conversation Service is running" />
-
-<ApiEndpoint
-    method="GET"
-    path="/api/conversations/health"
-    description="Health check for the Conversation Service."
-    response={`{
-    "status": "Conversation Service is healthy"
-}`}
-/>
-
-<SectionDivider />
-
 <LinkCardGrid>
   <LinkCard title="Chat API" description="Non-streaming chat endpoint" href="/api-reference/conversation/chat" icon="💬" />
   <LinkCard title="Actions API" description="Execute generative UI actions" href="/api-reference/conversation/actions" icon="⚡" />

@@ -16,12 +16,5 @@ env:
   ACTION_SERVICE_URL: "http://action-service:8080"
   Planner__BaseUrl: "http://langchain-service:8088"
 
-probes:
-  path: /api/health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 6
-
 ingress:
   enabled: false

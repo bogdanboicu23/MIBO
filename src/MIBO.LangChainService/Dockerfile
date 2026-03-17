@@ -10,10 +10,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# system deps (wget doar pentru HEALTHCHECK)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    wget \
   && rm -rf /var/lib/apt/lists/*
 
 # deps first (cache layer)

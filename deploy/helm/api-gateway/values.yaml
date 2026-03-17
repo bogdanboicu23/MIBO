@@ -26,13 +26,6 @@ ingress:
           pathType: Prefix
   tls: []
 
-probes:
-  path: /health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 6
-
 resources:
   limits:
     cpu: "500m"

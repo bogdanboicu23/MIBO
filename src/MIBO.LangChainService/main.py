@@ -26,11 +26,6 @@ app.add_middleware(
 workflow = build_graph()
 
 
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
 @app.post("/chat")
 async def chat(request: ChatRequest) -> StreamingResponse:
     if not request.message.strip():

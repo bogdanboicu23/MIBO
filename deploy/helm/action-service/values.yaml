@@ -17,13 +17,6 @@ env:
   ASPNETCORE_ENVIRONMENT: Production
   DUMMYJSON_BASE_URL: https://dummyjson.com
 
-probes:
-  path: /api/health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 6
-
 resources:
   requests:
     cpu: 50m
