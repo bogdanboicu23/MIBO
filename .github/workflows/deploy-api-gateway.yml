@@ -33,6 +33,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tags.outputs.TAG }}
 
     steps:
       - name: Checkout code
@@ -59,7 +61,7 @@ jobs:
             echo "TAG=pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
             echo "PUSH=false" >> $GITHUB_OUTPUT
           else
-            echo "TAG=test-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "TAG=test-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_OUTPUT
             echo "PUSH=true" >> $GITHUB_OUTPUT
           fi
 
@@ -86,7 +88,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
 
     steps:
       - name: Checkout code
@@ -135,12 +137,17 @@ jobs:
             --namespace ${{ env.NAMESPACE }} \
             --history-max 5 \
             --values deploy/environments/test/values-${{ env.SERVICE_NAME }}.yaml \
-            --set image.tag=test-${{ github.sha }} \
+            --set-string image.tag=${{ needs.build-and-push.outputs.image_tag }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ env.SERVICE_NAME }}
 
       - name: Wait for deployment
         run: |
           kubectl rollout status deployment/${{ env.SERVICE_NAME }} -n ${{ env.NAMESPACE }} --timeout=300s || true
+
+      - name: Verify Ocelot actions route
+        run: |
+          kubectl exec -n ${{ env.NAMESPACE }} deploy/${{ env.SERVICE_NAME }} -- \
+            sh -lc "grep -n '/api/actions' /app/ocelot.test.json"
 
       - name: Get deployment status
         if: always()
