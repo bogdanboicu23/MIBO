@@ -7,7 +7,7 @@ order: 11
 
 # Service Descriptions
 
-MIBO is composed of four backend services and a shared library. Each service is a standalone ASP.NET Core application with its own responsibilities, data store, and deployment lifecycle.
+MIBO is composed of five backend services and a shared library. Each service is a standalone application with its own responsibilities, data sources, and deployment lifecycle.
 
 <SectionDivider />
 
@@ -78,6 +78,49 @@ The Conversation Service orchestrates chat interactions between users and the AI
 
 <Callout type="info" title="Tech Stack">
   ASP.NET Core, SignalR, AI/LLM Integration, NATS
+</Callout>
+
+<SectionDivider />
+
+<SectionHeader title="Action Service" description="Reusable external data orchestration for live generative UI" />
+
+The Action Service is the reusable external-data layer used by the generative UI runtime. It exposes normalized handlers that the AI agent and the frontend can call through the API Gateway for live data queries, refreshes, filters, and post-render interactions.
+
+<FeatureGrid columns={3}>
+  <FeatureCard
+    title="Unified Query Contract"
+    description="Exposes external integrations behind stable handler names such as products.catalog.query or crypto.coins.markets."
+    icon="🧩"
+  />
+  <FeatureCard
+    title="DummyJSON + CoinGecko"
+    description="Aggregates product catalog data and crypto market data behind the same JSON contract."
+    icon="🌐"
+  />
+  <FeatureCard
+    title="Field Hints"
+    description="Returns semantic metadata so generic tables, KPIs, charts, and detail cards can render deterministically."
+    icon="🗂️"
+  />
+  <FeatureCard
+    title="Transform Pipeline"
+    description="Supports reusable row projections and computed fields before data reaches the frontend."
+    icon="🧮"
+  />
+  <FeatureCard
+    title="Refresh-Friendly"
+    description="Designed for live reloads, search, pagination, sorting, and reopening conversations without regenerating the entire answer."
+    icon="🔄"
+  />
+  <FeatureCard
+    title="Service Decoupling"
+    description="Keeps service-specific APIs out of the client and out of UI components."
+    icon="🪢"
+  />
+</FeatureGrid>
+
+<Callout type="info" title="Tech Stack">
+  ASP.NET Core, HttpClient, CoinGecko Demo API v3, DummyJSON
 </Callout>
 
 <SectionDivider />

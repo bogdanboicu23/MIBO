@@ -21,6 +21,7 @@ import { ActionPanel } from "@/components/sandbox/registry/ActionPanel.tsx";
 import { FormCard } from "@/components/sandbox/registry/FormCard.tsx";
 import { TimelineCard } from "@/components/sandbox/registry/TimelineCard.tsx";
 import { JsonViewerCard } from "@/components/sandbox/registry/JsonViewerCard.tsx";
+import { EmailComposerCard } from "@/components/sandbox/registry/EmailComposerCard.tsx";
 
 // fallback sigur
 export function Unknown(props: UiComponentProps) {
@@ -54,6 +55,7 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     markdown: Markdown,
     actionPanel: ActionPanel,
     formCard: FormCard,
+    emailComposer: EmailComposerCard,
     timelineCard: TimelineCard,
     jsonViewer: JsonViewerCard,
     text: Markdown,
@@ -79,6 +81,10 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     "page-title": PageTitle,
     timeline: TimelineCard,
     form: FormCard,
+    emailcomposer: EmailComposerCard,
+    "email-composer": EmailComposerCard,
+    gmailcomposer: EmailComposerCard,
+    "gmail-composer": EmailComposerCard,
     actions: ActionPanel,
     json: JsonViewerCard,
     "json-viewer": JsonViewerCard,

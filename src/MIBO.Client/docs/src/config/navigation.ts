@@ -202,6 +202,13 @@ export const navItems: NavItem[] = [
             "order": 75
           },
           {
+            "title": "EmailComposer",
+            "slug": "/components/sandbox-registry/email-composer",
+            "description": "Gmail-oriented email draft composer with editable recipients, subject and body",
+            "category": "components",
+            "order": 76
+          },
+          {
             "title": "DataTableCard",
             "slug": "/components/sandbox-registry/data-table-card",
             "description": "Configurable table with search, sorting, and actions",
@@ -594,6 +601,12 @@ export const searchIndex: Array<{
     "title": "CategoryChips",
     "description": "Interactive category selector for filtering flows",
     "slug": "/components/sandbox-registry/category-chips",
+    "category": "components"
+  },
+  {
+    "title": "EmailComposer",
+    "description": "Gmail-oriented email draft composer with editable recipients, subject and body",
+    "slug": "/components/sandbox-registry/email-composer",
     "category": "components"
   },
   {
