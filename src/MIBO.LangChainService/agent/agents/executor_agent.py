@@ -1,27 +1,11 @@
 from __future__ import annotations
 
 from agent.state import PipelineState
+from agent.tool_registry import TOOL_REGISTRY
 from agent.token_utils import truncate_to_tokens
-from agent.tools import (
-    calculate_affordability,
-    get_categories,
-    get_product,
-    get_user_finances,
-    list_products,
-    search_products,
-)
 
 
 async def executor_node(state: PipelineState) -> PipelineState:
-    tool_registry = {
-        "search_products": search_products,
-        "get_product": get_product,
-        "list_products": list_products,
-        "get_categories": get_categories,
-        "get_user_finances": get_user_finances,
-        "calculate_affordability": calculate_affordability,
-    }
-
     results: list[dict] = []
     tool_calls = state.get("plan", {}).get("tool_calls", [])
 
@@ -29,7 +13,7 @@ async def executor_node(state: PipelineState) -> PipelineState:
         tool_name = call.get("tool", "")
         tool_args = call.get("args", {})
         result_key = call.get("result_key", tool_name or "result")
-        tool_fn = tool_registry.get(tool_name)
+        tool_fn = TOOL_REGISTRY.get(tool_name)
 
         if tool_fn is None:
             results.append({"key": result_key, "data": truncate_to_tokens({"error": f"Unknown tool '{tool_name}'"}, 300)})
