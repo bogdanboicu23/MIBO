@@ -27,23 +27,30 @@ public sealed class SpotifyActionHandler(
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "user_id");
-        if (string.IsNullOrWhiteSpace(userId))
-            return ErrorResult("No user context available. Please log in to use Spotify features.");
-
-        var accessToken = await tokenRefresher.GetValidAccessTokenAsync(userId, cancellationToken);
-        if (string.IsNullOrWhiteSpace(accessToken))
-            return ErrorResult("Spotify is not connected. Please connect your Spotify account in Settings.");
-
-        return handler switch
+        try
         {
-            "spotify.search" => await SearchAsync(accessToken, args, cancellationToken),
-            "spotify.now_playing" => await NowPlayingAsync(accessToken, cancellationToken),
-            "spotify.playlists" => await PlaylistsAsync(accessToken, args, cancellationToken),
-            "spotify.top_tracks" => await TopItemsAsync(accessToken, "tracks", args, cancellationToken),
-            "spotify.top_artists" => await TopItemsAsync(accessToken, "artists", args, cancellationToken),
-            _ => throw new InvalidOperationException($"Unsupported Spotify handler '{handler}'."),
-        };
+            var userId = GetString(args, "user_id");
+            if (string.IsNullOrWhiteSpace(userId))
+                return ErrorResult("No user context available. Please log in to use Spotify features.");
+
+            var accessToken = await tokenRefresher.GetValidAccessTokenAsync(userId, cancellationToken);
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return ErrorResult("Spotify is not connected. Please connect your Spotify account in Settings.");
+
+            return handler switch
+            {
+                "spotify.search" => await SearchAsync(accessToken, args, cancellationToken),
+                "spotify.now_playing" => await NowPlayingAsync(accessToken, cancellationToken),
+                "spotify.playlists" => await PlaylistsAsync(accessToken, args, cancellationToken),
+                "spotify.top_tracks" => await TopItemsAsync(accessToken, "tracks", args, cancellationToken),
+                "spotify.top_artists" => await TopItemsAsync(accessToken, "artists", args, cancellationToken),
+                _ => throw new InvalidOperationException($"Unsupported Spotify handler '{handler}'."),
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return ErrorResult($"Spotify request failed: {ex.Message}");
+        }
     }
 
     public DataFieldHints GetFieldHints(string handler)

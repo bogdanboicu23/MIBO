@@ -7,6 +7,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 COPY ["MIBO.ActionService/MIBO.ActionService.csproj", "MIBO.ActionService/"]
+COPY ["MIBO.Cache.Redis/MIBO.Cache.Redis.csproj", "MIBO.Cache.Redis/"]
 RUN dotnet restore "MIBO.ActionService/MIBO.ActionService.csproj"
 
 COPY . .
