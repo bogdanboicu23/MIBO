@@ -28,7 +28,6 @@ var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MIBO.Services";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = builder.Configuration["IdentityService:Authority"];
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
