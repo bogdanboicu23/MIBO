@@ -45,6 +45,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
 
             initial_state = {
                 "session_id": session_id,
+                "user_id": request.user_id or "",
                 "user_message": request.message,
                 "conversation_history": [],
                 "intent": {},

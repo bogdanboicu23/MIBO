@@ -1,5 +1,7 @@
 using MIBO.ActionService.ExternalServices;
 using MIBO.ActionService.Services;
+using MIBO.Cache.Redis.Spotify;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,15 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
+// Redis + Spotify token infrastructure
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddOptions<SpotifyClientOptions>()
+    .Bind(builder.Configuration.GetSection(SpotifyClientOptions.SectionName));
+builder.Services.AddSingleton<ISpotifyTokenStore, RedisSpotifyTokenStore>();
+builder.Services.AddSingleton<ISpotifyTokenRefresher, SpotifyTokenRefresher>();
+builder.Services.AddHttpClient("spotify");
 
 builder.Services.AddExternalServices(builder.Configuration);
 builder.Services.AddSingleton<IActionRouter, ActionRouter>();

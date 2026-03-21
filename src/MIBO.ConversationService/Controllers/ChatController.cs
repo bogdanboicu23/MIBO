@@ -134,7 +134,7 @@ public sealed class ChatController(
 
         using var upstreamRequest = new HttpRequestMessage(HttpMethod.Post, "/chat")
         {
-            Content = JsonContent.Create(new AgentChatRequest(effectiveConversationId, trimmedPrompt))
+            Content = JsonContent.Create(new AgentChatRequest(effectiveConversationId, trimmedPrompt, userId))
         };
 
         var client = httpClientFactory.CreateClient("agent");
@@ -394,4 +394,5 @@ public sealed class LegacyChatRequest
 
 public sealed record AgentChatRequest(
     [property: JsonPropertyName("session_id")] string SessionId,
-    [property: JsonPropertyName("message")] string Message);
+    [property: JsonPropertyName("message")] string Message,
+    [property: JsonPropertyName("user_id")] string UserId);
