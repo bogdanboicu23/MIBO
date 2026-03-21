@@ -177,6 +177,7 @@ If the user specifies column order or a formula such as "budget 10000 - price", 
 Example: for "show all laptops with columns name, price, and remaining budget = 10000 - price", create a live products data_source for category=laptops, add a project_rows transform that outputs rows with title, price, remaining_budget, and make the dataTable point to that source with rowsKey="rows" and explicit columns in the requested order.
 If the user is asking for code, architecture guidance, debugging help, or markdown content, keep tool_calls empty unless external data is actually required and make response_text_instruction explicitly ask the composer to answer with full GitHub-flavored markdown, using fenced code blocks when code is included.
 If the user asks for specific colors or brand styling, preserve them in component props using palette, valueColors, seriesColors, lineColor, or explicit item.color fields instead of relying on default palette order.
+When the user asks about current weather, use get_current_weather and render a summaryPanel with KPI-style items mapped from the tool result: temperature (temp, unit "°C"), feels like (feelsLike), humidity (unit "%"), wind speed (windSpeed, unit "m/s"), pressure (unit "hPa"), and description. Set the title to the city name. For weather forecasts, use get_weather_forecast and render a lineChart with temperature over time (x=date, y=temp) plus a dataTable showing date, temp, description, humidity, and windSpeed columns from the items array.
 Respond ONLY with the JSON object. No explanation.
 """.strip()
 
@@ -262,6 +263,7 @@ Rules:
 - If the user asks for custom computed columns, make the component bind to transformed output instead of returning empty rows.
 - Example: if a table needs title, price, and remaining_budget from a product list, preserve the live data_source, keep rowsKey="rows", and set columns to those three fields in the user-requested order.
 - For product collections, prefer title as the item label and choose the value field that best matches the user request, such as price, rating, stock, or discountPercentage.
+- For current weather results, build a summaryPanel with items extracted from the tool result: map temp to "Temperature" (append "°C"), feelsLike to "Feels Like" (append "°C"), humidity to "Humidity" (append "%"), windSpeed to "Wind" (append "m/s"), pressure to "Pressure" (append "hPa"), and description to "Conditions". Use the city name as the panel title. For forecast results, build a lineChart from items (x=date, y=temp) and a dataTable with columns for date, temp, description, humidity, windSpeed.
 - The text field must follow the response_text_instruction from the plan.
 - If the original user message asks for code, examples, or markdown formatting, put the full answer in text as GitHub-flavored markdown and use fenced code blocks with a language tag when providing code.
 - If the user asked for specific colors, preserve them in component props using palette, valueColors, seriesColors, lineColor, or explicit item.color fields.
