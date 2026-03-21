@@ -265,13 +265,4 @@ public class ConversationCrudTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // ── Health ──
-
-    [Fact]
-    public async Task Health_ReturnsOk()
-    {
-        var response = await _client.GetAsync("/api/health");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
 }

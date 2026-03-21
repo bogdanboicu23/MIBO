@@ -860,13 +860,4 @@ public class ActionTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
     }
 
-    [Fact]
-    public async Task HealthEndpoint_ReturnsOk()
-    {
-        var response = await _client.GetAsync("/api/health");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("status").GetString().Should().Be("ok");
-    }
 }

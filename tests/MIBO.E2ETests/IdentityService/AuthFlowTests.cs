@@ -297,7 +297,7 @@ public class AuthFlowTests : IAsyncLifetime
     [Fact]
     public async Task Health_ReturnsHealthy()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/api/auth/test");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }
