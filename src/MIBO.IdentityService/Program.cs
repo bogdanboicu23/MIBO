@@ -211,3 +211,5 @@ _ = Task.Run(async () =>
 });
 
 app.Run();
+
+public partial class Program { }
