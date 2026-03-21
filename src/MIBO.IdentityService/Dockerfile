@@ -8,8 +8,10 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["MIBO.IdentityService/MIBO.IdentityService.csproj", "MIBO.IdentityService/"]
+COPY ["MIBO.Cache.Redis/MIBO.Cache.Redis.csproj", "MIBO.Cache.Redis/"]
 RUN dotnet restore "MIBO.IdentityService/MIBO.IdentityService.csproj"
 COPY MIBO.IdentityService/ MIBO.IdentityService/
+COPY MIBO.Cache.Redis/ MIBO.Cache.Redis/
 WORKDIR "/src/MIBO.IdentityService"
 RUN dotnet build "./MIBO.IdentityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
