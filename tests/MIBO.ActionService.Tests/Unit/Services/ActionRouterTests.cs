@@ -2,6 +2,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using MIBO.ActionService.ExternalServices.Abstractions;
+using MIBO.ActionService.ExternalServices.DummyJson;
 using MIBO.ActionService.Services;
 using Moq;
 
@@ -15,12 +17,11 @@ public class ActionRouterTests
     public ActionRouterTests()
     {
         _handler = new RichMockHttpMessageHandler();
-        var httpClient = new HttpClient(_handler) { BaseAddress = new Uri("https://dummyjson.com") };
+        var httpClient = new HttpClient(_handler) { BaseAddress = new Uri("https://dummyjson.com/") };
+        var dummyJsonClient = new DummyJsonClient(httpClient);
+        var dummyJsonHandler = new DummyJsonActionHandler(dummyJsonClient);
 
-        var factoryMock = new Mock<IHttpClientFactory>();
-        factoryMock.Setup(x => x.CreateClient("dummyjson")).Returns(httpClient);
-
-        _sut = new ActionRouter(factoryMock.Object);
+        _sut = new ActionRouter(new IExternalDataSourceHandler[] { dummyJsonHandler });
     }
 
     // ════════════════════════════════════════════
