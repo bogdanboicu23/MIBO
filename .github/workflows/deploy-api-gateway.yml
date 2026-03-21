@@ -31,7 +31,13 @@ env:
   SERVICE_NAME: api-gateway
 
 jobs:
+  test:
+    uses: ./.github/workflows/tests.yml
+    permissions:
+      contents: read
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.tags.outputs.TAG }}
