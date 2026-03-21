@@ -132,7 +132,9 @@ builder.Services.AddOptions<SpotifyOptions>()
 builder.Services.AddOptions<SpotifyClientOptions>()
     .Bind(builder.Configuration.GetSection(SpotifyClientOptions.SectionName));
 
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379,abortConnect=false";
+if (!redisConnectionString.Contains("abortConnect", StringComparison.OrdinalIgnoreCase))
+    redisConnectionString += ",abortConnect=false";
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
 builder.Services.AddSingleton<ISpotifyTokenStore, RedisSpotifyTokenStore>();
 builder.Services.AddHttpClient("spotify");
