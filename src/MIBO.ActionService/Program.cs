@@ -17,7 +17,9 @@ builder.Services.AddCors(options =>
 });
 
 // Redis + Spotify token infrastructure
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379,abortConnect=false";
+if (!redisConnectionString.Contains("abortConnect", StringComparison.OrdinalIgnoreCase))
+    redisConnectionString += ",abortConnect=false";
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
 builder.Services.AddOptions<SpotifyClientOptions>()
     .Bind(builder.Configuration.GetSection(SpotifyClientOptions.SectionName));
