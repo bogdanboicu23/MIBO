@@ -24,4 +24,8 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\MIBO.Cache.Redis\MIBO.Cache.Redis.csproj" />
+    </ItemGroup>
+
 </Project>

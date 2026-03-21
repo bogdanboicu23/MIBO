@@ -8,6 +8,7 @@ StreamCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
 class PipelineState(TypedDict):
     session_id: str
+    user_id: str
     user_message: str
     conversation_history: list[dict[str, Any]]
     intent: dict[str, Any]

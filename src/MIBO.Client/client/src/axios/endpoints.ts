@@ -22,4 +22,9 @@ export const endpoints = {
     hubs: {
         ui: "/hubs/ui",
     },
+    spotify: {
+        authorize: "/api/auth/spotify/authorize",
+        status: "/api/auth/spotify/status",
+        disconnect: "/api/auth/spotify/disconnect",
+    },
 }

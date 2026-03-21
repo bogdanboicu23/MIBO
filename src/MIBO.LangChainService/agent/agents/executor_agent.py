@@ -8,12 +8,16 @@ from agent.token_utils import truncate_to_tokens
 async def executor_node(state: PipelineState) -> PipelineState:
     results: list[dict] = []
     tool_calls = state.get("plan", {}).get("tool_calls", [])
+    user_id = state.get("user_id", "")
 
     for call in tool_calls:
         tool_name = call.get("tool", "")
         tool_args = call.get("args", {})
         result_key = call.get("result_key", tool_name or "result")
         tool_fn = TOOL_REGISTRY.get(tool_name)
+
+        if tool_name.startswith("spotify_") and user_id:
+            tool_args["user_id"] = user_id
 
         if tool_fn is None:
             results.append({"key": result_key, "data": truncate_to_tokens({"error": f"Unknown tool '{tool_name}'"}, 300)})

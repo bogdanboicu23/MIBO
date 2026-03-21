@@ -2,6 +2,7 @@ using MIBO.ActionService.ExternalServices.Abstractions;
 using MIBO.ActionService.ExternalServices.DummyJson;
 using MIBO.ActionService.ExternalServices.OpenWeatherMap;
 using MIBO.ActionService.ExternalServices.Pomodoro;
+using MIBO.ActionService.ExternalServices.Spotify;
 using Microsoft.Extensions.Options;
 
 namespace MIBO.ActionService.ExternalServices;
@@ -53,6 +54,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IExternalDataSourceHandler, OpenWeatherMapActionHandler>();
 
         services.AddSingleton<IExternalDataSourceHandler, PomodoroActionHandler>();
+
+        services.AddHttpClient<ISpotifyApiClient, SpotifyApiClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.spotify.com/v1/");
+        });
+        services.AddSingleton<IExternalDataSourceHandler, SpotifyActionHandler>();
 
         return services;
     }

@@ -680,10 +680,11 @@ public class ChatControllerTests
     [Fact]
     public void AgentChatRequest_SetsFields()
     {
-        var request = new AgentChatRequest("session-123", "Hello world");
+        var request = new AgentChatRequest("session-123", "Hello world", "user-42");
 
         request.SessionId.Should().Be("session-123");
         request.Message.Should().Be("Hello world");
+        request.UserId.Should().Be("user-42");
     }
 
     #endregion

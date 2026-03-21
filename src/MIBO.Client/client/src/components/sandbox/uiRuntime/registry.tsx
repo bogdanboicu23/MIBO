@@ -23,6 +23,8 @@ import { TimelineCard } from "@/components/sandbox/registry/TimelineCard.tsx";
 import { JsonViewerCard } from "@/components/sandbox/registry/JsonViewerCard.tsx";
 import { EmailComposerCard } from "@/components/sandbox/registry/EmailComposerCard.tsx";
 import { PomodoroTimer } from "@/components/sandbox/registry/PomodoroTimer.tsx";
+import { SpotifyPlayer } from "@/components/sandbox/registry/SpotifyPlayer.tsx";
+import { SpotifyTrackList } from "@/components/sandbox/registry/SpotifyTrackList.tsx";
 
 // fallback sigur
 export function Unknown(props: UiComponentProps) {
@@ -94,6 +96,13 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     pomodoro: PomodoroTimer,
     "pomodoro-timer": PomodoroTimer,
     pomodoro_timer: PomodoroTimer,
+
+    spotifyPlayer: SpotifyPlayer,
+    "spotify-player": SpotifyPlayer,
+    spotify_player: SpotifyPlayer,
+    spotifyTrackList: SpotifyTrackList,
+    "spotify-track-list": SpotifyTrackList,
+    spotify_track_list: SpotifyTrackList,
 
     // legacy aliases normalized to native sandbox components
     product_card: ProductDetailCard,

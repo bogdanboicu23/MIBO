@@ -6,6 +6,7 @@ import { lazy, Suspense } from 'react';
 import { GuestGuard } from "../auth/guard/guest-guard";
 import { LoadingOverlay } from "@/components/ui";
 import ChatPage from "@/pages/ChatPage.tsx";
+import SettingsPage from "@/pages/SettingsPage.tsx";
 import AppLayout from "@/layouts/AppLayout.tsx";
 import { Outlet } from "react-router-dom";
 
@@ -26,7 +27,8 @@ export const routesSection: RouteObject[] = [
         ),
         children: [
             { index: true, element: <LandingPage/> },
-            { path: "/chat", element: <ChatPage/> }
+            { path: "/chat", element: <ChatPage/> },
+            { path: "/settings", element: <SettingsPage/> }
         ],
     },
     {

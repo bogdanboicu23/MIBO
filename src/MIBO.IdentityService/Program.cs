@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MIBO.Cache.Redis.Spotify;
 using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
 using MIBO.IdentityService.Services;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -123,6 +125,17 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 
 // Add Authentication Service
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Spotify OAuth
+builder.Services.AddOptions<SpotifyOptions>()
+    .Bind(builder.Configuration.GetSection(SpotifyOptions.SectionName));
+builder.Services.AddOptions<SpotifyClientOptions>()
+    .Bind(builder.Configuration.GetSection(SpotifyClientOptions.SectionName));
+
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddSingleton<ISpotifyTokenStore, RedisSpotifyTokenStore>();
+builder.Services.AddHttpClient("spotify");
 
 // Add CORS
 // TODO - add appsettings config for CORS

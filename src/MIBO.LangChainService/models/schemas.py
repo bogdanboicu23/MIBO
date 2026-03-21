@@ -147,6 +147,7 @@ class IntentResult(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str = ""
     message: str
+    user_id: str = ""
 
 
 class StoredMessage(BaseModel):
