@@ -1,5 +1,6 @@
 using MIBO.ActionService.ExternalServices.Abstractions;
 using MIBO.ActionService.ExternalServices.DummyJson;
+using MIBO.ActionService.ExternalServices.OpenWeatherMap;
 using Microsoft.Extensions.Options;
 
 namespace MIBO.ActionService.ExternalServices;
@@ -29,6 +30,26 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IExternalDataSourceHandler, DummyJsonActionHandler>();
+
+        services.AddOptions<OpenWeatherMapOptions>()
+            .Bind(configuration.GetSection(OpenWeatherMapOptions.SectionName));
+
+        services.PostConfigure<OpenWeatherMapOptions>(options =>
+        {
+            var apiKeyOverride = configuration["OPENWEATHERMAP_API_KEY"];
+            if (!string.IsNullOrWhiteSpace(apiKeyOverride))
+            {
+                options.ApiKey = apiKeyOverride;
+            }
+        });
+
+        services.AddHttpClient<IOpenWeatherMapClient, OpenWeatherMapClient>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<OpenWeatherMapOptions>>().Value;
+            client.BaseAddress = options.GetBaseUri();
+        });
+
+        services.AddSingleton<IExternalDataSourceHandler, OpenWeatherMapActionHandler>();
 
         return services;
     }

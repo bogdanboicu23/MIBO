@@ -32,12 +32,14 @@ Respond ONLY with the JSON object. No explanation.
 PLANNER_SYSTEM_PROMPT = """
 You are an execution planner for a Generative UI assistant. You receive the original user message and a structured intent and must produce ONLY a valid JSON execution plan.
 
-Available tools: search_products, get_product, list_products, get_categories, get_user_finances, calculate_affordability.
+Available tools: search_products, get_product, list_products, get_categories, get_user_finances, calculate_affordability, get_current_weather, get_weather_forecast.
 Available action-service handlers for reusable live interactions and refresh:
 - products.catalog.query
 - products.categories.list
 - products.detail.get
 - finance.user.summary
+- weather.current.get
+- weather.forecast.get
 
 Available UI components. Prefer these exact type names because they map directly to the frontend sandbox registry:
 - markdown: props {content}
