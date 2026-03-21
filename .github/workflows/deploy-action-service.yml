@@ -131,7 +131,8 @@ jobs:
             --history-max 5 \
             --values deploy/environments/test/values-${{ env.SERVICE_NAME }}.yaml \
             --set image.tag=test-${{ github.sha }} \
-            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ env.SERVICE_NAME }}
+            --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ env.SERVICE_NAME }} \
+            --set env.OPENWEATHERMAP_API_KEY=${{ secrets.OPENWEATHERMAP_API_KEY }}
 
       - name: Wait for deployment
         run: |

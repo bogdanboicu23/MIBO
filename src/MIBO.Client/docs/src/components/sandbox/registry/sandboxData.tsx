@@ -6,6 +6,7 @@ import {
     CartSummaryCard,
     CategoryChips,
     DataTableCard,
+    EmailComposerCard,
     FormCard,
     JsonViewerCard,
     KpiCard,
@@ -41,6 +42,7 @@ export const sandboxRegistry: Record<string, ComponentType<UiComponentProps>> = 
     categoryChips: CategoryChips,
     dataTableCard: DataTableCard,
     dataTable: DataTableCard,
+    emailComposer: EmailComposerCard,
     formCard: FormCard,
     form: FormCard,
     jsonViewerCard: JsonViewerCard,
@@ -171,6 +173,26 @@ export const sandboxData = {
             email: "alex@example.com",
             segment: "pro",
             newsletter: true,
+        },
+    },
+    emailDrafts: {
+        partnerIntro: {
+            to: "partnerships@example.com",
+            cc: ["sales@example.com", "ops@example.com"],
+            subject: "Proposal for Q2 AI assistant rollout",
+            body: `Hello team,
+
+I prepared a draft proposal for the Q2 rollout of the MIBO AI assistant.
+
+Key points:
+- generative UI support for dashboards and workflows
+- Gmail-based outreach for sales and onboarding scenarios
+- faster iteration for new component templates
+
+If this direction looks good, I can send the full implementation plan and milestones.
+
+Best regards,
+MIBO Team`,
         },
     },
     markdown: {

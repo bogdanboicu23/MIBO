@@ -4,6 +4,7 @@ export { Carousel } from "./Carousel";
 export { CartSummaryCard } from "./CartSummaryCard";
 export { CategoryChips } from "./CategoryChips";
 export { DataTableCard } from "./DataTableCard";
+export { EmailComposerCard } from "./EmailComposerCard";
 export { FormCard } from "./FormCard";
 export { JsonViewerCard } from "./JsonViewerCard";
 export { KpiCard } from "./KpiCard";

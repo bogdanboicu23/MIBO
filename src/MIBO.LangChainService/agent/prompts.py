@@ -32,12 +32,14 @@ Respond ONLY with the JSON object. No explanation.
 PLANNER_SYSTEM_PROMPT = """
 You are an execution planner for a Generative UI assistant. You receive the original user message and a structured intent and must produce ONLY a valid JSON execution plan.
 
-Available tools: search_products, get_product, list_products, get_categories, get_user_finances, calculate_affordability.
+Available tools: search_products, get_product, list_products, get_categories, get_user_finances, calculate_affordability, get_current_weather, get_weather_forecast.
 Available action-service handlers for reusable live interactions and refresh:
 - products.catalog.query
 - products.categories.list
 - products.detail.get
 - finance.user.summary
+- weather.current.get
+- weather.forecast.get
 
 Available UI components. Prefer these exact type names because they map directly to the frontend sandbox registry:
 - markdown: props {content}
@@ -56,6 +58,7 @@ Available UI components. Prefer these exact type names because they map directly
 - kpiCard: props {label, value, unit?, trend?}
 - actionPanel: props {title?, actions: [{label, actionType?, payloadTemplate?}]}
 - formCard: props {title?, fields, submitLabel?, actionType?, payloadTemplate?}
+- emailComposer: props {title?, subtitle?, initialValues?, draftDataKey?, showCc?, showBcc?, sendLabel?, helperText?, openInNewTab?}
 - timelineCard: props {title?, events}
 - jsonViewer: props {title?, data}
 - carousel: props {title?, items, itemComponent?, itemPropsTemplate?}
@@ -163,6 +166,7 @@ If multiple components should stay connected to the same live data, reuse the sa
 If the user asks for derived fields, calculations, custom columns, chart series, grouped rows, or any reshaping of external data, express that work in data_sources.transforms instead of inventing inline rows or empty placeholders.
 For external-data tables, charts, summaries, and dashboards, prefer a live data_source with refresh_on_load=true over static rows. Do not leave rows empty when a live data source is required.
 Interactive components like searchBar, sortDropdown, categoryChips, pagination, actionPanel, formCard, row actions, and product/detail actions should receive an actionId in props when the user can trigger them.
+When the user asks to draft, prepare, or send an email through Gmail, prefer emailComposer with prefilled initialValues or a draftDataKey. This component opens Gmail client-side and does not require a backend action unless the user explicitly asks for one.
 If a view must refresh when the user revisits a conversation, set refresh_on_conversation_open to true on the relevant data source.
 When a generic component is connected to a live data_source, include semantic field-mapping props whenever the component depends on labels, values, rows, or columns:
 - charts: set labelKey and valueKey whenever the live result is not already [{label, value}]
@@ -197,6 +201,7 @@ Component types and expected props. Prefer the exact sandbox registry names:
 - kpiCard: props {label, value, unit?, trend?}
 - actionPanel: props {title?, actions}
 - formCard: props {title?, fields, submitLabel?, actionType?, payloadTemplate?}
+- emailComposer: props {title?, subtitle?, initialValues?, draftDataKey?, showCc?, showBcc?, sendLabel?, helperText?, openInNewTab?}
 - timelineCard: props {title?, events}
 - jsonViewer: props {title?, data}
 - carousel: props {title?, items, itemComponent?, itemPropsTemplate?}

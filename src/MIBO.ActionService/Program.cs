@@ -1,3 +1,4 @@
+using MIBO.ActionService.ExternalServices;
 using MIBO.ActionService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,13 +14,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddHttpClient("dummyjson", (serviceProvider, client) =>
-{
-    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-    var baseUrl = configuration["DUMMYJSON_BASE_URL"] ?? "https://dummyjson.com";
-    client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
-});
-
+builder.Services.AddExternalServices(builder.Configuration);
 builder.Services.AddSingleton<IActionRouter, ActionRouter>();
 
 var app = builder.Build();
