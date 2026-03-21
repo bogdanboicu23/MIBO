@@ -22,6 +22,7 @@ import { FormCard } from "@/components/sandbox/registry/FormCard.tsx";
 import { TimelineCard } from "@/components/sandbox/registry/TimelineCard.tsx";
 import { JsonViewerCard } from "@/components/sandbox/registry/JsonViewerCard.tsx";
 import { EmailComposerCard } from "@/components/sandbox/registry/EmailComposerCard.tsx";
+import { PomodoroTimer } from "@/components/sandbox/registry/PomodoroTimer.tsx";
 
 // fallback sigur
 export function Unknown(props: UiComponentProps) {
@@ -59,6 +60,7 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     timelineCard: TimelineCard,
     jsonViewer: JsonViewerCard,
     text: Markdown,
+    pomodoroTimer: PomodoroTimer,
 
     // aliases for planner/backend naming variance
     piechart: PieChartCard,
@@ -88,6 +90,10 @@ export const registry: Record<string, ComponentType<UiComponentProps>> = {
     actions: ActionPanel,
     json: JsonViewerCard,
     "json-viewer": JsonViewerCard,
+
+    pomodoro: PomodoroTimer,
+    "pomodoro-timer": PomodoroTimer,
+    pomodoro_timer: PomodoroTimer,
 
     // legacy aliases normalized to native sandbox components
     product_card: ProductDetailCard,
