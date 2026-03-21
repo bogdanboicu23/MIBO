@@ -1,6 +1,7 @@
 using MIBO.ActionService.ExternalServices.Abstractions;
 using MIBO.ActionService.ExternalServices.DummyJson;
 using MIBO.ActionService.ExternalServices.OpenWeatherMap;
+using MIBO.ActionService.ExternalServices.Pomodoro;
 using Microsoft.Extensions.Options;
 
 namespace MIBO.ActionService.ExternalServices;
@@ -50,6 +51,8 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IExternalDataSourceHandler, OpenWeatherMapActionHandler>();
+
+        services.AddSingleton<IExternalDataSourceHandler, PomodoroActionHandler>();
 
         return services;
     }
