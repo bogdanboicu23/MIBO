@@ -52,6 +52,16 @@ env:
         key: turnstile-secret
   - name: Turnstile__Enabled
     value: "true"
+  - name: Spotify__ClientId
+    valueFrom:
+      secretKeyRef:
+        name: spotify-secrets
+        key: client-id
+  - name: Spotify__ClientSecret
+    valueFrom:
+      secretKeyRef:
+        name: spotify-secrets
+        key: client-secret
 
 resources:
   requests:
