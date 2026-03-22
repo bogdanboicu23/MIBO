@@ -30,6 +30,10 @@
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
       "UpstreamPathTemplate": "/api/chat",
       "UpstreamHttpMethod": ["POST", "OPTIONS"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -38,6 +42,10 @@
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
       "UpstreamPathTemplate": "/api/v1/chat",
       "UpstreamHttpMethod": ["POST", "OPTIONS"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -46,6 +54,10 @@
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
       "UpstreamPathTemplate": "/api/v1/conversations",
       "UpstreamHttpMethod": ["GET", "POST", "OPTIONS"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -54,6 +66,10 @@
       "DownstreamHostAndPorts": [{ "Host": "conversation-service", "Port": 8080 }],
       "UpstreamPathTemplate": "/api/v1/conversations/{conversationId}",
       "UpstreamHttpMethod": ["GET", "PATCH", "DELETE", "OPTIONS"],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -62,6 +78,10 @@
       "DownstreamHostAndPorts": [{ "Host": "action-service", "Port": 8080 }],
       "UpstreamPathTemplate": "/api/actions/{everything}",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     }
   ]

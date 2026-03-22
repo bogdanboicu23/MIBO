@@ -1,3 +1,4 @@
+import { getJwt } from "@/auth/context/jwt";
 import { CONFIG } from "@/global-config";
 import type {
     UiActionState,
@@ -743,10 +744,12 @@ export function joinUrl(baseUrl: string, path: string): string {
 }
 
 async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
+    const token = getJwt();
     const response = await fetch(joinUrl(CONFIG.apiServerUrl, path), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(body),
     });
