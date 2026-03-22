@@ -52,6 +52,8 @@ env:
         key: turnstile-secret
   - name: Turnstile__Enabled
     value: "true"
+  - name: ConnectionStrings__Redis
+    value: "redis.test.svc.cluster.local:6379,abortConnect=false"
   - name: Spotify__ClientId
     valueFrom:
       secretKeyRef:
