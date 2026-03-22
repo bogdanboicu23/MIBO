@@ -25,12 +25,3 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
     return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
-
-export const i18n_keys = {
-    toast: {
-        maintenanceWarning: "toast.maintenanceWarning",
-        permissionDenied: "toast.permissionDenied",
-        sessionExpired: "toast.sessionExpired",
-        requestError: "toast.requestError"
-    }
-}

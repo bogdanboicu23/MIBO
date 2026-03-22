@@ -45,11 +45,6 @@ public class ChatControllerTests
         _sut.ControllerContext.HttpContext.Request.Headers["X-User-Id"] = userId;
     }
 
-    private void SetQueryUserId(string userId)
-    {
-        _sut.ControllerContext.HttpContext.Request.QueryString = new QueryString($"?userId={userId}");
-    }
-
     private void SetupStreamingContext()
     {
         // Replace DefaultHttpContext with one that has a writable response body
@@ -152,18 +147,19 @@ public class ChatControllerTests
     }
 
     [Fact]
-    public async Task CreateConversation_UsesBodyUserId()
+    public async Task CreateConversation_UsesHeaderUserId()
     {
+        SetHeaderUserId("header-user");
         var summary = CreateSummary();
         _storeMock
-            .Setup(x => x.CreateConversationAsync("body-user", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.CreateConversationAsync("header-user", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(summary);
 
-        var request = new CreateConversationRequest { UserId = "body-user", Title = "Chat" };
+        var request = new CreateConversationRequest { Title = "Chat" };
         await _sut.CreateConversation(request, CancellationToken.None);
 
         _storeMock.Verify(
-            x => x.CreateConversationAsync("body-user", It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            x => x.CreateConversationAsync("header-user", It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -263,17 +259,18 @@ public class ChatControllerTests
     }
 
     [Fact]
-    public async Task RenameConversation_UsesRequestUserId()
+    public async Task RenameConversation_UsesHeaderUserId()
     {
+        SetHeaderUserId("header-user");
         _storeMock
-            .Setup(x => x.RenameConversationAsync("c1", "explicit-user", "T", It.IsAny<CancellationToken>()))
+            .Setup(x => x.RenameConversationAsync("c1", "header-user", "T", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var request = new RenameConversationRequest { Title = "T", UserId = "explicit-user" };
+        var request = new RenameConversationRequest { Title = "T" };
         await _sut.RenameConversation("c1", request, CancellationToken.None);
 
         _storeMock.Verify(
-            x => x.RenameConversationAsync("c1", "explicit-user", "T", It.IsAny<CancellationToken>()),
+            x => x.RenameConversationAsync("c1", "header-user", "T", It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -292,7 +289,7 @@ public class ChatControllerTests
             .Setup(x => x.DeleteConversationAsync("c1", "anonymous", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var result = await _sut.DeleteConversation("c1", null, CancellationToken.None);
+        var result = await _sut.DeleteConversation("c1", CancellationToken.None);
 
         result.Should().BeOfType<OkObjectResult>();
     }
@@ -304,19 +301,20 @@ public class ChatControllerTests
             .Setup(x => x.DeleteConversationAsync("c99", "anonymous", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
-        var result = await _sut.DeleteConversation("c99", null, CancellationToken.None);
+        var result = await _sut.DeleteConversation("c99", CancellationToken.None);
 
         result.Should().BeOfType<NotFoundObjectResult>();
     }
 
     [Fact]
-    public async Task DeleteConversation_UsesExplicitUserId()
+    public async Task DeleteConversation_UsesHeaderUserId()
     {
+        SetHeaderUserId("user-99");
         _storeMock
             .Setup(x => x.DeleteConversationAsync("c1", "user-99", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        await _sut.DeleteConversation("c1", "user-99", CancellationToken.None);
+        await _sut.DeleteConversation("c1", CancellationToken.None);
 
         _storeMock.Verify(
             x => x.DeleteConversationAsync("c1", "user-99", It.IsAny<CancellationToken>()),
@@ -567,26 +565,7 @@ public class ChatControllerTests
     #region ResolveUserId
 
     [Fact]
-    public async Task ResolveUserId_ExplicitUserId_HasHighestPriority()
-    {
-        SetHeaderUserId("header-user");
-        SetQueryUserId("query-user");
-
-        var summary = CreateSummary();
-        _storeMock
-            .Setup(x => x.CreateConversationAsync("body-user", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(summary);
-
-        var request = new CreateConversationRequest { UserId = "body-user" };
-        await _sut.CreateConversation(request, CancellationToken.None);
-
-        _storeMock.Verify(
-            x => x.CreateConversationAsync("body-user", It.IsAny<string?>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ResolveUserId_HeaderFallback_WhenNoExplicitId()
+    public async Task ResolveUserId_HeaderUserId_IsUsed()
     {
         SetHeaderUserId("header-user");
 
@@ -602,23 +581,7 @@ public class ChatControllerTests
     }
 
     [Fact]
-    public async Task ResolveUserId_QueryFallback_WhenNoHeaderOrExplicit()
-    {
-        SetQueryUserId("query-user");
-
-        _storeMock
-            .Setup(x => x.ListConversationsAsync("query-user", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ConversationSummary>());
-
-        await _sut.ListConversations();
-
-        _storeMock.Verify(
-            x => x.ListConversationsAsync("query-user", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ResolveUserId_NoIdAnywhere_ReturnsAnonymous()
+    public async Task ResolveUserId_NoHeader_ReturnsAnonymous()
     {
         _storeMock
             .Setup(x => x.ListConversationsAsync("anonymous", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -645,7 +608,6 @@ public class ChatControllerTests
         var request = new ChatRequestV1();
 
         request.ConversationId.Should().BeNull();
-        request.UserId.Should().BeNull();
         request.Prompt.Should().BeNull();
         request.Message.Should().BeNull();
     }
@@ -665,7 +627,6 @@ public class ChatControllerTests
         var request = new CreateConversationRequest();
 
         request.Title.Should().BeNull();
-        request.UserId.Should().BeNull();
     }
 
     [Fact]
@@ -674,7 +635,6 @@ public class ChatControllerTests
         var request = new RenameConversationRequest();
 
         request.Title.Should().BeEmpty();
-        request.UserId.Should().BeNull();
     }
 
     [Fact]

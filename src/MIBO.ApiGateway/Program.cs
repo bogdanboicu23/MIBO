@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using MIBO.ApiGateway.Handlers;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Ocelot.Provider.Kubernetes;
@@ -68,7 +69,9 @@ builder.Services.AddCors(options =>
 });
 
 // Add Ocelot with Kubernetes provider
+builder.Services.AddTransient<ClaimsToHeadersHandler>();
 builder.Services.AddOcelot()
+    .AddDelegatingHandler<ClaimsToHeadersHandler>(global: true)
     .AddKubernetes();
 
 var app = builder.Build();

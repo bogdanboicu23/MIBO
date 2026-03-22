@@ -18,6 +18,8 @@ public sealed class ActionsController(IActionRouter actionRouter) : ControllerBa
             return BadRequest(new { error = "dataSource is required." });
         }
 
+        InjectUserId(request.Args);
+
         var result = await actionRouter.QueryAsync(
             request.DataSource,
             request.Args,
@@ -36,6 +38,8 @@ public sealed class ActionsController(IActionRouter actionRouter) : ControllerBa
             return BadRequest(new { error = "action is required." });
         }
 
+        InjectUserId(request.Payload);
+
         var result = await actionRouter.ExecuteAsync(
             request.Action,
             request.DataSource,
@@ -44,6 +48,19 @@ public sealed class ActionsController(IActionRouter actionRouter) : ControllerBa
             cancellationToken);
 
         return Ok(result);
+    }
+
+    private void InjectUserId(Dictionary<string, object?> dict)
+    {
+        if (HttpContext is not null
+            && Request.Headers.TryGetValue("X-User-Id", out var headerUserId))
+        {
+            var userId = headerUserId.ToString();
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                dict["user_id"] = userId.Trim();
+            }
+        }
     }
 }
 

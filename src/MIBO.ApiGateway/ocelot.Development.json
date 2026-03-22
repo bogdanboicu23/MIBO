@@ -47,6 +47,10 @@
       "UpstreamPathTemplate": "/api/chat",
       "UpstreamHttpMethod": [ "POST", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -58,6 +62,10 @@
       "UpstreamPathTemplate": "/api/v1/chat",
       "UpstreamHttpMethod": [ "POST", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -69,6 +77,10 @@
       "UpstreamPathTemplate": "/api/v1/conversations",
       "UpstreamHttpMethod": [ "GET", "POST", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     {
@@ -80,6 +92,10 @@
       "UpstreamPathTemplate": "/api/v1/conversations/{conversationId}",
       "UpstreamHttpMethod": [ "GET", "PATCH", "DELETE", "OPTIONS" ],
       "DangerousAcceptAnyServerCertificateValidator": true,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
     // -------------------------
@@ -93,6 +109,10 @@
       ],
       "UpstreamPathTemplate": "/api/actions/{everything}",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
       "RouteIsCaseSensitive": false
     },
 

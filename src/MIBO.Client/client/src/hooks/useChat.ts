@@ -5,7 +5,6 @@ import { endpoints } from "@/axios/endpoints.ts";
 import { uidStr } from "@/_mock/conversations.ts";
 import { CONFIG } from "@/global-config";
 import { useAxios } from "@/axios/hooks";
-import { useAuthContext } from "@/auth/hooks";
 import {
     buildUiFromAgentResponse,
     type AgentFinalResponse,
@@ -13,8 +12,6 @@ import {
     joinUrl,
     querySandboxDataSource,
 } from "@/utils/agent-chat";
-
-const ANONYMOUS_USER_ID_KEY = "mibo.chat.anonymous-user-id.v1";
 
 type ChatModel = "AI Agent" | "AI Agent Pro";
 
@@ -54,7 +51,6 @@ type ConversationDetailsDto = {
 
 type CreateConversationDto = {
     title?: string;
-    userId?: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -131,25 +127,6 @@ function parseTimestamp(value: string | number | null | undefined): number {
     }
 
     return Date.now();
-}
-
-function getAnonymousUserId(): string {
-    if (typeof window === "undefined") {
-        return "anonymous";
-    }
-
-    const existing = window.localStorage.getItem(ANONYMOUS_USER_ID_KEY);
-    if (existing) {
-        return existing;
-    }
-
-    const nextId =
-        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-            ? crypto.randomUUID()
-            : `anon_${uidStr()}`;
-
-    window.localStorage.setItem(ANONYMOUS_USER_ID_KEY, nextId);
-    return nextId;
 }
 
 function parseSseEvent(rawEvent: string): AgentStreamEvent | null {
@@ -238,10 +215,8 @@ function mergeConversationSummaries(summaries: ConversationSummaryDto[], current
 }
 
 export function useChat() {
-    const { api } = useAxios();
-    const { user } = useAuthContext();
+    const { api, jwt } = useAxios();
 
-    const userId = useMemo(() => user?.id ?? getAnonymousUserId(), [user?.id]);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeId, setActiveId] = useState("");
     const [model, setModel] = useState<ChatModel>("AI Agent");
@@ -256,15 +231,6 @@ export function useChat() {
     const active = useMemo(
         () => conversations.find((conversation) => conversation.id === activeId),
         [conversations, activeId]
-    );
-
-    const requestOptions = useMemo(
-        () => ({
-            headers: {
-                "X-User-Id": userId,
-            },
-        }),
-        [userId]
     );
 
     const updateConversation = useCallback(
@@ -296,8 +262,7 @@ export function useChat() {
 
             try {
                 const details = await api.get<ConversationDetailsDto>(
-                    endpoints.conversations.detail(conversationId),
-                    requestOptions
+                    endpoints.conversations.detail(conversationId)
                 );
 
                 if (loadedConversationIdsRef.current.has(conversationId)) {
@@ -322,7 +287,7 @@ export function useChat() {
                 loadingConversationIdsRef.current.delete(conversationId);
             }
         },
-        [api, requestOptions]
+        [api]
     );
 
     useEffect(() => {
@@ -336,8 +301,7 @@ export function useChat() {
         void (async () => {
             try {
                 const summaries = await api.get<ConversationSummaryDto[]>(
-                    endpoints.conversations.list,
-                    requestOptions
+                    endpoints.conversations.list
                 );
 
                 if (cancelled) {
@@ -355,7 +319,7 @@ export function useChat() {
         return () => {
             cancelled = true;
         };
-    }, [api, requestOptions]);
+    }, [api, jwt]);
 
     useEffect(() => {
         if (activeId && conversations.some((conversation) => conversation.id === activeId)) {
@@ -376,8 +340,7 @@ export function useChat() {
     const newChat = useCallback(async () => {
         const created = await api.post<ConversationSummaryDto>(
             endpoints.conversations.list,
-            { userId } satisfies CreateConversationDto,
-            requestOptions
+            {} satisfies CreateConversationDto
         );
 
         const conversation = mapSummaryToConversation(created);
@@ -389,7 +352,7 @@ export function useChat() {
         ]);
         setActiveId(conversation.id);
         return conversation;
-    }, [api, requestOptions, userId]);
+    }, [api]);
 
     const selectConversation = useCallback((conversationId: string) => {
         setActiveId(conversationId);
@@ -399,8 +362,7 @@ export function useChat() {
         const nextTitle = title.trim() || "Untitled";
         await api.patch(
             endpoints.conversations.detail(conversationId),
-            { title: nextTitle, userId },
-            requestOptions
+            { title: nextTitle }
         );
 
         updateConversation(conversationId, (conversation) => ({
@@ -408,17 +370,17 @@ export function useChat() {
             title: nextTitle,
             updatedAt: Date.now(),
         }));
-    }, [api, requestOptions, updateConversation, userId]);
+    }, [api, updateConversation]);
 
     const deleteConversation = useCallback(async (conversationId: string) => {
-        await api.delete(endpoints.conversations.detail(conversationId), requestOptions);
+        await api.delete(endpoints.conversations.detail(conversationId));
 
         loadedConversationIdsRef.current.delete(conversationId);
         loadingConversationIdsRef.current.delete(conversationId);
 
         setConversations((previous) => previous.filter((conversation) => conversation.id !== conversationId));
         setActiveId((previous) => (previous === conversationId ? "" : previous));
-    }, [api, requestOptions]);
+    }, [api]);
 
     const stop = useCallback(() => {
         abortRef.current?.abort();
@@ -689,11 +651,10 @@ export function useChat() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-User-Id": userId,
+                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
                 },
                 body: JSON.stringify({
                     conversationId,
-                    userId,
                     prompt: text,
                 }),
                 signal: controller.signal,
@@ -811,7 +772,7 @@ export function useChat() {
             setIsTyping(false);
             abortRef.current = null;
         }
-    }, [active, isTyping, newChat, updateConversation, userId]);
+    }, [active, isTyping, jwt, newChat, updateConversation]);
 
     return {
         conversations,
