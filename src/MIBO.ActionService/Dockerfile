@@ -8,6 +8,7 @@ WORKDIR /src
 
 COPY ["MIBO.ActionService/MIBO.ActionService.csproj", "MIBO.ActionService/"]
 COPY ["MIBO.Cache.Redis/MIBO.Cache.Redis.csproj", "MIBO.Cache.Redis/"]
+COPY ["MIBO.Storage.Mongo/MIBO.Storage.Mongo.csproj", "MIBO.Storage.Mongo/"]
 RUN dotnet restore "MIBO.ActionService/MIBO.ActionService.csproj"
 
 COPY . .

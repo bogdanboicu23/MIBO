@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using FluentAssertions;
 using MIBO.ConversationService.Controllers;
+using MIBO.ConversationService.Monitoring;
 using MIBO.Storage.Mongo.Store.Conversation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,16 +17,19 @@ public class ChatControllerTests
 {
     private readonly Mock<IConversationStore> _storeMock;
     private readonly Mock<IHttpClientFactory> _httpFactoryMock;
+    private readonly Mock<IPlatformActivityMonitor> _activityMonitorMock;
     private readonly ChatController _sut;
 
     public ChatControllerTests()
     {
         _storeMock = new Mock<IConversationStore>();
         _httpFactoryMock = new Mock<IHttpClientFactory>();
+        _activityMonitorMock = new Mock<IPlatformActivityMonitor>();
 
         _sut = new ChatController(
             _httpFactoryMock.Object,
             _storeMock.Object,
+            _activityMonitorMock.Object,
             Mock.Of<ILogger<ChatController>>());
 
         // Every controller needs an HttpContext

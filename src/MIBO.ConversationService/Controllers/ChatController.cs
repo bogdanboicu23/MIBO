@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MIBO.ConversationService.Monitoring;
 using MIBO.Storage.Mongo.Store.Conversation;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,8 +13,11 @@ namespace MIBO.ConversationService.Controllers;
 public sealed class ChatController(
     IHttpClientFactory httpClientFactory,
     IConversationStore conversationStore,
+    IPlatformActivityMonitor activityMonitor,
     ILogger<ChatController> logger) : ControllerBase
 {
+    private const string PlatformHandler = "platform.chat.request";
+    private const string AiAgentHandler = "agent.chat.request";
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
     [HttpGet("v1/conversations")]
@@ -104,6 +109,7 @@ public sealed class ChatController(
         bool emitSyntheticSessionEvent,
         CancellationToken cancellationToken)
     {
+        var requestTimer = Stopwatch.StartNew();
         var trimmedPrompt = prompt?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(trimmedPrompt))
         {
@@ -120,6 +126,72 @@ public sealed class ChatController(
         }
 
         var correlationId = Guid.NewGuid().ToString("N");
+        var aiRecorded = false;
+        var platformRecorded = false;
+        var upstreamAccepted = false;
+
+        Task RecordAiSuccessAsync()
+        {
+            if (aiRecorded)
+            {
+                return Task.CompletedTask;
+            }
+
+            aiRecorded = true;
+            return activityMonitor.RecordAiAgentSuccessAsync(
+                correlationId,
+                AiAgentHandler,
+                requestTimer.ElapsedMilliseconds,
+                CancellationToken.None);
+        }
+
+        Task RecordAiFailureAsync(string? errorMessage)
+        {
+            if (aiRecorded)
+            {
+                return Task.CompletedTask;
+            }
+
+            aiRecorded = true;
+            return activityMonitor.RecordAiAgentFailureAsync(
+                correlationId,
+                AiAgentHandler,
+                requestTimer.ElapsedMilliseconds,
+                errorMessage,
+                CancellationToken.None);
+        }
+
+        Task RecordPlatformSuccessAsync()
+        {
+            if (platformRecorded)
+            {
+                return Task.CompletedTask;
+            }
+
+            platformRecorded = true;
+            return activityMonitor.RecordPlatformSuccessAsync(
+                correlationId,
+                PlatformHandler,
+                requestTimer.ElapsedMilliseconds,
+                CancellationToken.None);
+        }
+
+        Task RecordPlatformFailureAsync(string? errorMessage)
+        {
+            if (platformRecorded)
+            {
+                return Task.CompletedTask;
+            }
+
+            platformRecorded = true;
+            return activityMonitor.RecordPlatformFailureAsync(
+                correlationId,
+                PlatformHandler,
+                requestTimer.ElapsedMilliseconds,
+                errorMessage,
+                CancellationToken.None);
+        }
+
         try
         {
             await conversationStore.AppendUserMessageAsync(effectiveConversationId, userId, trimmedPrompt, correlationId, cancellationToken);
@@ -137,110 +209,157 @@ public sealed class ChatController(
         };
 
         var client = httpClientFactory.CreateClient("agent");
-        using var upstreamResponse = await client.SendAsync(
-            upstreamRequest,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken);
-
-        if (!upstreamResponse.IsSuccessStatusCode)
-        {
-            Response.StatusCode = (int)upstreamResponse.StatusCode;
-            var errorBody = await upstreamResponse.Content.ReadAsStringAsync(cancellationToken);
-            await Response.WriteAsync(errorBody, cancellationToken);
-            return;
-        }
-
-        Response.StatusCode = StatusCodes.Status200OK;
-        Response.ContentType = "text/event-stream";
-        Response.Headers.CacheControl = "no-cache";
-        Response.Headers.Append("X-Accel-Buffering", "no");
-        Response.Headers.Append("X-Conversation-Id", effectiveConversationId);
-
-        await Response.StartAsync(cancellationToken);
-
-        if (emitSyntheticSessionEvent)
-        {
-            var sessionPayload = JsonSerializer.Serialize(new
-            {
-                type = "session",
-                session_id = effectiveConversationId
-            }, JsonOpts);
-
-            await Response.WriteAsync($"data: {sessionPayload}\n\n", cancellationToken);
-            await Response.Body.FlushAsync(cancellationToken);
-        }
-
-        await using var upstreamStream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
-        var decoder = Encoding.UTF8;
-        var buffer = new byte[8192];
-        var rawBuffer = new StringBuilder();
-
-        object? assistantPayload = null;
-        string assistantText = string.Empty;
+        HttpResponseMessage upstreamResponse;
 
         try
         {
-            while (true)
+            upstreamResponse = await client.SendAsync(
+                upstreamRequest,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await RecordAiFailureAsync(ex.Message);
+            await RecordPlatformFailureAsync(ex.Message);
+            logger.LogError(ex, "Agent request failed before streaming for conversation {ConversationId}", effectiveConversationId);
+            throw;
+        }
+
+        using (upstreamResponse)
+        {
+            if (!upstreamResponse.IsSuccessStatusCode)
             {
-                var bytesRead = await upstreamStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-                if (bytesRead == 0)
+                var errorBody = await upstreamResponse.Content.ReadAsStringAsync(cancellationToken);
+                var errorMessage = CreateUpstreamErrorMessage(upstreamResponse.StatusCode, errorBody);
+
+                await RecordAiFailureAsync(errorMessage);
+                await RecordPlatformFailureAsync(errorMessage);
+
+                Response.StatusCode = (int)upstreamResponse.StatusCode;
+                await Response.WriteAsync(errorBody, cancellationToken);
+                return;
+            }
+
+            upstreamAccepted = true;
+            Response.StatusCode = StatusCodes.Status200OK;
+            Response.ContentType = "text/event-stream";
+            Response.Headers.CacheControl = "no-cache";
+            Response.Headers.Append("X-Accel-Buffering", "no");
+            Response.Headers.Append("X-Conversation-Id", effectiveConversationId);
+
+            await Response.StartAsync(cancellationToken);
+
+            if (emitSyntheticSessionEvent)
+            {
+                var sessionPayload = JsonSerializer.Serialize(new
                 {
-                    break;
-                }
+                    type = "session",
+                    session_id = effectiveConversationId
+                }, JsonOpts);
 
-                rawBuffer.Append(decoder.GetString(buffer, 0, bytesRead));
+                await Response.WriteAsync($"data: {sessionPayload}\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
 
+            await using var upstreamStream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
+            var decoder = Encoding.UTF8;
+            var buffer = new byte[8192];
+            var rawBuffer = new StringBuilder();
+
+            object? assistantPayload = null;
+            string assistantText = string.Empty;
+
+            try
+            {
                 while (true)
                 {
-                    var current = rawBuffer.ToString();
-                    var boundaryIndex = current.IndexOf("\n\n", StringComparison.Ordinal);
-                    if (boundaryIndex < 0)
+                    var bytesRead = await upstreamStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+                    if (bytesRead == 0)
                     {
                         break;
                     }
 
-                    var rawEvent = current[..boundaryIndex];
-                    rawBuffer.Remove(0, boundaryIndex + 2);
+                    rawBuffer.Append(decoder.GetString(buffer, 0, bytesRead));
 
-                    if (TryReadSseEnvelope(rawEvent, out var eventType, out var content)
-                        && string.Equals(eventType, "done", StringComparison.OrdinalIgnoreCase))
+                    while (true)
                     {
-                        if (TryParseAssistantPayload(content, out var parsedPayload, out var parsedText))
+                        var current = rawBuffer.ToString();
+                        var boundaryIndex = current.IndexOf("\n\n", StringComparison.Ordinal);
+                        if (boundaryIndex < 0)
                         {
-                            assistantPayload = parsedPayload;
-                            assistantText = parsedText;
+                            break;
                         }
-                        else
-                        {
-                            assistantPayload = null;
-                            assistantText = content;
-                        }
-                    }
 
-                    await Response.WriteAsync(rawEvent, cancellationToken);
-                    await Response.WriteAsync("\n\n", cancellationToken);
-                    await Response.Body.FlushAsync(cancellationToken);
+                        var rawEvent = current[..boundaryIndex];
+                        rawBuffer.Remove(0, boundaryIndex + 2);
+
+                        if (TryReadSseEnvelope(rawEvent, out var eventType, out var content)
+                            && string.Equals(eventType, "done", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (TryParseAssistantPayload(content, out var parsedPayload, out var parsedText))
+                            {
+                                assistantPayload = parsedPayload;
+                                assistantText = parsedText;
+                            }
+                            else
+                            {
+                                assistantPayload = null;
+                                assistantText = content;
+                            }
+                        }
+
+                        await Response.WriteAsync(rawEvent, cancellationToken);
+                        await Response.WriteAsync("\n\n", cancellationToken);
+                        await Response.Body.FlushAsync(cancellationToken);
+                    }
                 }
             }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Chat streaming failed for conversation {ConversationId}", effectiveConversationId);
-            throw;
-        }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                if (upstreamAccepted)
+                {
+                    await RecordAiSuccessAsync();
+                    await RecordPlatformSuccessAsync();
+                }
 
-        if (assistantPayload is not null || !string.IsNullOrWhiteSpace(assistantText))
-        {
-            await conversationStore.AppendAssistantMessageAsync(
-                effectiveConversationId,
-                userId,
-                assistantText,
-                assistantPayload,
-                correlationId,
-                cancellationToken);
+                return;
+            }
+            catch (Exception ex)
+            {
+                await RecordAiFailureAsync(ex.Message);
+                await RecordPlatformFailureAsync(ex.Message);
+                logger.LogError(ex, "Chat streaming failed for conversation {ConversationId}", effectiveConversationId);
+                throw;
+            }
+
+            await RecordAiSuccessAsync();
+
+            if (assistantPayload is not null || !string.IsNullOrWhiteSpace(assistantText))
+            {
+                try
+                {
+                    await conversationStore.AppendAssistantMessageAsync(
+                        effectiveConversationId,
+                        userId,
+                        assistantText,
+                        assistantPayload,
+                        correlationId,
+                        cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    await RecordPlatformFailureAsync(ex.Message);
+                    logger.LogError(ex, "Failed to persist assistant message for conversation {ConversationId}", effectiveConversationId);
+                    throw;
+                }
+            }
+
+            await RecordPlatformSuccessAsync();
         }
     }
 
@@ -332,6 +451,23 @@ public sealed class ChatController(
         {
             return false;
         }
+    }
+
+    private static string CreateUpstreamErrorMessage(System.Net.HttpStatusCode statusCode, string? responseBody)
+    {
+        var statusMessage = $"AI agent returned {(int)statusCode} {statusCode}.";
+        if (string.IsNullOrWhiteSpace(responseBody))
+        {
+            return statusMessage;
+        }
+
+        var trimmedBody = responseBody.Trim();
+        if (trimmedBody.Length > 240)
+        {
+            trimmedBody = trimmedBody[..240];
+        }
+
+        return $"{statusMessage} {trimmedBody}";
     }
 }
 

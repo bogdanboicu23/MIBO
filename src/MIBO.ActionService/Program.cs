@@ -1,4 +1,5 @@
 using MIBO.ActionService.ExternalServices;
+using MIBO.ActionService.RetryPolicy;
 using MIBO.ActionService.Services;
 using MIBO.Cache.Redis.Spotify;
 using StackExchange.Redis;
@@ -28,6 +29,7 @@ builder.Services.AddSingleton<ISpotifyTokenRefresher, SpotifyTokenRefresher>();
 builder.Services.AddHttpClient("spotify");
 
 builder.Services.AddExternalServices(builder.Configuration);
+builder.Services.AddExternalServiceMonitoring(builder.Configuration);
 builder.Services.AddSingleton<IActionRouter, ActionRouter>();
 
 var app = builder.Build();

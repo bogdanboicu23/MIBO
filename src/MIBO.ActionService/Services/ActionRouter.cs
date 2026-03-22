@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using MIBO.ActionService.ExternalServices.Abstractions;
+using MIBO.ActionService.RetryPolicy;
 
 namespace MIBO.ActionService.Services;
 
@@ -21,9 +22,23 @@ public interface IActionRouter
         CancellationToken cancellationToken);
 }
 
-public sealed class ActionRouter(IEnumerable<IExternalDataSourceHandler> externalDataSourceHandlers) : IActionRouter
+public sealed class ActionRouter : IActionRouter
 {
-    private readonly IReadOnlyList<IExternalDataSourceHandler> registeredExternalHandlers = externalDataSourceHandlers.ToList();
+    private readonly IReadOnlyList<IExternalDataSourceHandler> registeredExternalHandlers;
+    private readonly IExternalServiceExecutor externalServiceExecutor;
+
+    public ActionRouter(IEnumerable<IExternalDataSourceHandler> externalDataSourceHandlers)
+        : this(externalDataSourceHandlers, new NoOpExternalServiceExecutor())
+    {
+    }
+
+    public ActionRouter(
+        IEnumerable<IExternalDataSourceHandler> externalDataSourceHandlers,
+        IExternalServiceExecutor externalServiceExecutor)
+    {
+        registeredExternalHandlers = externalDataSourceHandlers.ToList();
+        this.externalServiceExecutor = externalServiceExecutor;
+    }
 
     public async Task<QueryResponse> QueryAsync(
         DataSourceDefinition dataSource,
@@ -112,7 +127,11 @@ public sealed class ActionRouter(IEnumerable<IExternalDataSourceHandler> externa
         var externalHandler = ResolveExternalDataSourceHandler(handler);
         if (externalHandler is not null)
         {
-            return await externalHandler.QueryAsync(handler, args, cancellationToken);
+            return await externalServiceExecutor.ExecuteAsync(
+                handler,
+                args,
+                token => externalHandler.QueryAsync(handler, args, token),
+                cancellationToken);
         }
 
         return handler switch
