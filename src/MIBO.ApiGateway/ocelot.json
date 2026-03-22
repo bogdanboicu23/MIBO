@@ -72,6 +72,14 @@
       "RouteIsCaseSensitive": false
     },
     {
+      "DownstreamPathTemplate": "/api/actions/status/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [{ "Host": "action-service", "Port": 8080 }],
+      "UpstreamPathTemplate": "/api/actions/status/{everything}",
+      "UpstreamHttpMethod": [ "GET", "OPTIONS" ],
+      "RouteIsCaseSensitive": false
+    },
+    {
       "DownstreamPathTemplate": "/api/actions/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [{ "Host": "action-service", "Port": 8080 }],
