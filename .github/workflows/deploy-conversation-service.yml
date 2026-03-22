@@ -11,7 +11,7 @@ on:
       - 'deploy/environments/**/values-conversation-service.yaml'
       - '.github/workflows/deploy-conversation-service.yml'
   push:
-    branches: [main]
+    branches: [main, "SCRUM-*", test, develop]
     paths:
       - 'src/MIBO.ConversationService/**'
       - 'deploy/helm/conversation-service/**'
@@ -92,7 +92,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - name: Checkout code

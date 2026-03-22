@@ -11,7 +11,7 @@ on:
       - 'deploy/environments/**/values-api-gateway.yaml'
       - '.github/workflows/deploy-api-gateway.yml'
   push:
-    branches: [main]
+    branches: [main, "SCRUM-*", test, develop]
     paths:
       - 'src/MIBO.ApiGateway/**'
       - 'deploy/helm/api-gateway/**'
@@ -94,7 +94,7 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
 
     steps:
       - name: Checkout code

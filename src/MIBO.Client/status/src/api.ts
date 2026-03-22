@@ -56,9 +56,9 @@ export type ExternalServiceStatusSummary = {
     audits: ExternalServiceAuditItem[];
 };
 
-const defaultBaseUrl = "http://localhost:8080";
+const defaultBaseUrl = import.meta.env.PROD ? "https://api.mibo.monster" : "http://localhost:8080";
 const configuredBaseUrl = import.meta.env.VITE_API_SERVER_URL || defaultBaseUrl;
-const apiBaseUrl = configuredBaseUrl.replace(/\/+$/, "");
+const apiBaseUrl = configuredBaseUrl.replace(/\/+$/, "").replace(/\/api$/i, "");
 
 export async function fetchStatusSummary(signal?: AbortSignal): Promise<ExternalServiceStatusSummary> {
     const response = await fetch(`${apiBaseUrl}/api/actions/status/summary?auditLimit=1000`, {

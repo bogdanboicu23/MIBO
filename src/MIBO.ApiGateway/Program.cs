@@ -58,7 +58,8 @@ builder.Services.AddCors(options =>
                     || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
                     || uri.Host.Equals("mibo.monster", StringComparison.OrdinalIgnoreCase)
                     || uri.Host.Equals("www.mibo.monster", StringComparison.OrdinalIgnoreCase)
-                    || uri.Host.Equals("api.mibo.monster", StringComparison.OrdinalIgnoreCase);
+                    || uri.Host.Equals("api.mibo.monster", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("status.mibo.monster", StringComparison.OrdinalIgnoreCase);
             })
             .AllowAnyHeader()
             .AllowAnyMethod()
