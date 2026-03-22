@@ -52,7 +52,8 @@ public sealed class ActionsController(IActionRouter actionRouter) : ControllerBa
 
     private void InjectUserId(Dictionary<string, object?> dict)
     {
-        if (Request.Headers.TryGetValue("X-User-Id", out var headerUserId))
+        if (HttpContext is not null
+            && Request.Headers.TryGetValue("X-User-Id", out var headerUserId))
         {
             var userId = headerUserId.ToString();
             if (!string.IsNullOrWhiteSpace(userId))
