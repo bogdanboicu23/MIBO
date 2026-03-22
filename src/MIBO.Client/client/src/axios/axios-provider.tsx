@@ -10,7 +10,6 @@ import type {
 
 import axios from "axios";
 import { toast } from "react-toastify";
-import { useTranslation } from "react-i18next";
 import { useRef, useMemo, useState, useEffect, useCallback } from "react";
 
 import { paths } from "src/routes/paths";
@@ -21,7 +20,6 @@ import { CONFIG } from "src/global-config";
 import { endpoints } from "./endpoints";
 import { AxiosContext } from "./context/axios-context";
 import { getJwt, JWT_STORAGE_KEY } from "@/auth/context/jwt";
-import { i18n_keys } from "@/app/providers/I18nProvider.tsx";
 
 type RefreshResponse = { jwtToken: string };
 
@@ -44,7 +42,6 @@ type ApiErrorBody = { message?: string };
 
 export const AxiosProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
-    const { t } = useTranslation();
 
     // Keep a state for UI / context consumers
     const [jwt, setJwtState] = useState<string | undefined>(getJwt());
@@ -80,9 +77,9 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
 
     const logoutAndRedirect = useCallback(() => {
         setJwt(undefined);
-        toast.error(t(i18n_keys.toast.sessionExpired));
+        toast.error("Your session has expired. Please log in again.");
         if (router?.push) router.push(paths.auth.login);
-    }, [router, setJwt, t]);
+    }, [router, setJwt]);
 
     const refreshJwt = useCallback(async (): Promise<string> => {
         if (refreshPromiseRef.current) return refreshPromiseRef.current;
@@ -304,7 +301,7 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
 
                 if (error.code === "ERR_NETWORK") {
                     if (!originalRequest._skipToast) {
-                        toast.warning(t(i18n_keys.toast.maintenanceWarning));
+                        toast.warning("Server is temporarily unavailable. Please try again later.");
                     }
                     return Promise.reject(error);
                 }
@@ -313,7 +310,7 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
 
                 if (status === 403) {
                     if (!originalRequest._skipToast) {
-                        toast.error(t(i18n_keys.toast.permissionDenied))
+                        toast.error("You don't have permission to perform this action.")
                     }
                     return Promise.reject(error);
                 }
@@ -348,7 +345,7 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
             axiosInstance.interceptors.request.eject(reqId);
             axiosInstance.interceptors.response.eject(resId);
         };
-    }, [axiosInstance, refreshJwt, logoutAndRedirect, t]);
+    }, [axiosInstance, refreshJwt, logoutAndRedirect]);
 
     const requestHandler = useCallback(
         async <T = any, >(request: () => Promise<AxiosResponse<T>>): Promise<T> => {
@@ -361,17 +358,17 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
                     const data = error.response?.data as ApiErrorKeyResponse;
 
                     if (status === 401 || status === 403) {
-                        toast.error(t(i18n_keys.toast.permissionDenied));
+                        toast.error("You don't have permission to perform this action.");
                     } else if (status === 400 && data?.translationKey) {
-                        toast.error(t(data.translationKey));
+                        toast.error(data.translationKey);
                         throw error;
                     }
-                    toast.error(t(i18n_keys.toast.requestError));
+                    toast.error("Something went wrong. Please try again.");
                 }
                 throw error;
             }
         },
-        [t]
+        []
     );
 
     const api = useMemo(
