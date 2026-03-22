@@ -31,7 +31,7 @@ public sealed class ChatController(
         [FromBody] CreateConversationRequest? request,
         CancellationToken cancellationToken)
     {
-        var userId = ResolveUserId(request?.UserId);
+        var userId = ResolveUserId();
         var conversation = await conversationStore.CreateConversationAsync(userId, request?.Title, cancellationToken);
         return Ok(conversation);
     }
@@ -64,7 +64,7 @@ public sealed class ChatController(
             return BadRequest(new { error = "title is required." });
         }
 
-        var userId = ResolveUserId(request.UserId);
+        var userId = ResolveUserId();
         var renamed = await conversationStore.RenameConversationAsync(conversationId, userId, request.Title, cancellationToken);
         return renamed ? Ok(new { ok = true }) : NotFound(new { error = "Conversation not found." });
     }
@@ -72,10 +72,9 @@ public sealed class ChatController(
     [HttpDelete("v1/conversations/{conversationId}")]
     public async Task<IActionResult> DeleteConversation(
         [FromRoute] string conversationId,
-        [FromQuery] string? userId,
         CancellationToken cancellationToken)
     {
-        var resolvedUserId = ResolveUserId(userId);
+        var resolvedUserId = ResolveUserId();
         var deleted = await conversationStore.DeleteConversationAsync(conversationId, resolvedUserId, cancellationToken);
         return deleted ? Ok(new { ok = true }) : NotFound(new { error = "Conversation not found." });
     }
@@ -93,7 +92,7 @@ public sealed class ChatController(
     public Task PostChat([FromBody] ChatRequestV1 request, CancellationToken cancellationToken)
         => StreamChatAsync(
             conversationId: request.ConversationId,
-            userId: ResolveUserId(request.UserId),
+            userId: ResolveUserId(),
             prompt: string.IsNullOrWhiteSpace(request.Prompt) ? request.Message : request.Prompt,
             emitSyntheticSessionEvent: string.IsNullOrWhiteSpace(request.ConversationId),
             cancellationToken);
@@ -245,28 +244,14 @@ public sealed class ChatController(
         }
     }
 
-    private string ResolveUserId(string? explicitUserId = null)
+    private string ResolveUserId()
     {
-        if (!string.IsNullOrWhiteSpace(explicitUserId))
-        {
-            return explicitUserId.Trim();
-        }
-
         if (Request.Headers.TryGetValue("X-User-Id", out var headerUserId))
         {
             var headerValue = headerUserId.ToString();
             if (!string.IsNullOrWhiteSpace(headerValue))
             {
                 return headerValue.Trim();
-            }
-        }
-
-        if (Request.Query.TryGetValue("userId", out var queryUserId))
-        {
-            var queryValue = queryUserId.ToString();
-            if (!string.IsNullOrWhiteSpace(queryValue))
-            {
-                return queryValue.Trim();
             }
         }
 
@@ -354,27 +339,18 @@ public sealed class CreateConversationRequest
 {
     [JsonPropertyName("title")]
     public string? Title { get; init; }
-
-    [JsonPropertyName("userId")]
-    public string? UserId { get; init; }
 }
 
 public sealed class RenameConversationRequest
 {
     [JsonPropertyName("title")]
     public string Title { get; init; } = string.Empty;
-
-    [JsonPropertyName("userId")]
-    public string? UserId { get; init; }
 }
 
 public sealed class ChatRequestV1
 {
     [JsonPropertyName("conversationId")]
     public string? ConversationId { get; init; }
-
-    [JsonPropertyName("userId")]
-    public string? UserId { get; init; }
 
     [JsonPropertyName("prompt")]
     public string? Prompt { get; init; }
