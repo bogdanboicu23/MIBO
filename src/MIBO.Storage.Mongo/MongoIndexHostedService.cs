@@ -1,4 +1,5 @@
 using MIBO.Storage.Mongo.Conversations;
+using MIBO.Storage.Mongo.Integrations;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
@@ -21,6 +22,7 @@ public sealed class MongoIndexHostedService : IHostedService
         var conv = _db.GetCollection<ConversationDoc>(_opt.ConversationsCollection);
         var msg = _db.GetCollection<MessageDoc>(_opt.MessagesCollection);
         var ui = _db.GetCollection<UiInstanceDoc>(_opt.UiInstancesCollection);
+        var audits = _db.GetCollection<ExternalServiceAuditDoc>(_opt.ExternalServiceAuditsCollection);
 
         await CreateOrReplaceNamedIndexAsync(
             conv,
@@ -93,6 +95,27 @@ public sealed class MongoIndexHostedService : IHostedService
             ),
             cancellationToken
         );
+
+        await CreateOrReplaceNamedIndexAsync(
+            audits,
+            new CreateIndexModel<ExternalServiceAuditDoc>(
+                Builders<ExternalServiceAuditDoc>.IndexKeys
+                    .Ascending(x => x.ServiceKey)
+                    .Descending(x => x.CreatedAtUtc),
+                new CreateIndexOptions { Name = "ix_external_audit_service_createdAt" }
+            ),
+            cancellationToken
+        );
+
+        await CreateOrReplaceNamedIndexAsync(
+            audits,
+            new CreateIndexModel<ExternalServiceAuditDoc>(
+                Builders<ExternalServiceAuditDoc>.IndexKeys.Ascending(x => x.CorrelationId),
+                new CreateIndexOptions { Name = "ix_external_audit_correlationId" }
+            ),
+            cancellationToken
+        );
+
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

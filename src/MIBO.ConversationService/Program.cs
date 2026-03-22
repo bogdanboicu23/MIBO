@@ -1,3 +1,4 @@
+using MIBO.ConversationService.Monitoring;
 using MIBO.Storage.Mongo;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +29,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddMongo(builder.Configuration);
+builder.Services.AddSingleton<IPlatformActivityMonitor, PlatformActivityMonitor>();
 
 builder.Services.AddHttpClient("agent", (serviceProvider, client) =>
 {

@@ -13,6 +13,8 @@ public class MongoOptionsTests
         options.ConversationsCollection.Should().Be("conversations");
         options.MessagesCollection.Should().Be("messages");
         options.UiInstancesCollection.Should().Be("ui_instances");
+        options.ExternalServiceAuditsCollection.Should().Be("external_service_audits");
+        options.ExternalServiceStatusesCollection.Should().Be("external_service_statuses");
         options.PlannerContextMessages.Should().Be(12);
     }
 
@@ -26,6 +28,8 @@ public class MongoOptionsTests
             ConversationsCollection = "custom_conv",
             MessagesCollection = "custom_msg",
             UiInstancesCollection = "custom_ui",
+            ExternalServiceAuditsCollection = "custom_audits",
+            ExternalServiceStatusesCollection = "custom_statuses",
             PlannerContextMessages = 20
         };
 
@@ -34,6 +38,8 @@ public class MongoOptionsTests
         options.ConversationsCollection.Should().Be("custom_conv");
         options.MessagesCollection.Should().Be("custom_msg");
         options.UiInstancesCollection.Should().Be("custom_ui");
+        options.ExternalServiceAuditsCollection.Should().Be("custom_audits");
+        options.ExternalServiceStatusesCollection.Should().Be("custom_statuses");
         options.PlannerContextMessages.Should().Be(20);
     }
 }

@@ -47,13 +47,19 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
     {
         policy
-            .WithOrigins(
-                "https://localhost:5173",
-                "http://localhost:5173",
-                "https://mibo.monster",
-                "https://www.mibo.monster",
-                "https://api.mibo.monster"
-            )
+            .SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("mibo.monster", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("www.mibo.monster", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("api.mibo.monster", StringComparison.OrdinalIgnoreCase);
+            })
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

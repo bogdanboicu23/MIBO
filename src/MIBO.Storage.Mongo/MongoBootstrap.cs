@@ -1,4 +1,5 @@
 using MIBO.Storage.Mongo.Conversations;
+using MIBO.Storage.Mongo.Integrations;
 using MIBO.Storage.Mongo.Store.Conversation;
 using MIBO.Storage.Mongo.Store.Ui;
 using MIBO.Storage.Mongo.Store.UiSubscription;
@@ -32,6 +33,7 @@ public static class MongoBootstrap
         });
 
         services.AddSingleton<IConversationRepository, ConversationRepository>();
+        services.AddSingleton<IExternalServiceMonitorStore, MongoExternalServiceMonitorStore>();
         services.AddSingleton<IConversationStore, MongoConversationStore>();
         services.AddSingleton<IUiInstanceStore, MongoUiInstanceStore>();
         services.AddSingleton<IUiSubscriptionStore, MongoUiSubscriptionStore>();

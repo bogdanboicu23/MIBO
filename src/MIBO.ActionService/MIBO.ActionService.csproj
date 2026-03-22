@@ -8,10 +8,17 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.13"/>
+        <PackageReference Include="Polly" Version="7.2.4" />
+        <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\MIBO.Cache.Redis\MIBO.Cache.Redis.csproj" />
+        <ProjectReference Include="..\MIBO.Storage.Mongo\MIBO.Storage.Mongo.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="ExternalServices\Templates\external-service.template.json" />
     </ItemGroup>
 
 </Project>
