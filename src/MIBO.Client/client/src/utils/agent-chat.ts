@@ -520,8 +520,8 @@ function inferLegacyDataSourceDefinition(dataSourceId: string, params: Record<st
     if (normalized.includes("finance") || normalized.includes("finances")) {
         return {
             id: dataSourceId,
-            handler: "finance.user.summary",
-            default_args: { userId: toNumber(params.userId, 1) || 1 },
+            handler: "finance.summary.get",
+            default_args: { userId: params.userId || "" },
             refresh_on_conversation_open: true,
             stale_after_ms: 0,
         };

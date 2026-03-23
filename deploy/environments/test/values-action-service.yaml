@@ -10,3 +10,8 @@ env:
   ASPNETCORE_URLS: http://+:8080
   ASPNETCORE_ENVIRONMENT: Production
   DUMMYJSON_BASE_URL: https://dummyjson.com
+  BANKSERVICE_BASE_URL: https://financial.mibo.monster
+  RetryPolicy__MigratedServices__0: OpenWeatherMap
+  RetryPolicy__MigratedServices__1: DummyJson
+  RetryPolicy__MigratedServices__2: Spotify
+  RetryPolicy__MigratedServices__3: BankService

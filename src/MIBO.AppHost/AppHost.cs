@@ -52,7 +52,7 @@ actionService
     .WithEnvironment("RetryPolicy__AuditEnabled", "true")
     .WithEnvironment("RetryPolicy__StatusPageEnabled", "true")
     .WithEnvironment("RabbitMq__ConnectionString", rabbitMq)
-    .WithEnvironment("BANKSERVICE_BASE_URL", "http://localhost:5148")
+    .WithEnvironment("BANKSERVICE_BASE_URL", "http://localhost:5286")
     .WithEnvironment("RetryPolicy__MigratedServices__0", "OpenWeatherMap")
     .WithEnvironment("RetryPolicy__MigratedServices__1", "DummyJson")
     .WithEnvironment("RetryPolicy__MigratedServices__2", "Spotify")
