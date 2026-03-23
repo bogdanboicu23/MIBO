@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MIBO.Storage.Mongo.Conversations;
+using MIBO.Storage.Mongo.Integrations;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Moq;
@@ -12,6 +13,7 @@ public class MongoIndexHostedServiceTests
     private readonly Mock<IMongoIndexManager<ConversationDoc>> _convIndexMock;
     private readonly Mock<IMongoIndexManager<MessageDoc>> _msgIndexMock;
     private readonly Mock<IMongoIndexManager<UiInstanceDoc>> _uiIndexMock;
+    private readonly Mock<IMongoIndexManager<ExternalServiceAuditDoc>> _auditIndexMock;
     private readonly MongoIndexHostedService _sut;
 
     public MongoIndexHostedServiceTests()
@@ -21,14 +23,17 @@ public class MongoIndexHostedServiceTests
         var convCollectionMock = new Mock<IMongoCollection<ConversationDoc>>();
         var msgCollectionMock = new Mock<IMongoCollection<MessageDoc>>();
         var uiCollectionMock = new Mock<IMongoCollection<UiInstanceDoc>>();
+        var auditCollectionMock = new Mock<IMongoCollection<ExternalServiceAuditDoc>>();
 
         _convIndexMock = new Mock<IMongoIndexManager<ConversationDoc>>();
         _msgIndexMock = new Mock<IMongoIndexManager<MessageDoc>>();
         _uiIndexMock = new Mock<IMongoIndexManager<UiInstanceDoc>>();
+        _auditIndexMock = new Mock<IMongoIndexManager<ExternalServiceAuditDoc>>();
 
         convCollectionMock.Setup(c => c.Indexes).Returns(_convIndexMock.Object);
         msgCollectionMock.Setup(c => c.Indexes).Returns(_msgIndexMock.Object);
         uiCollectionMock.Setup(c => c.Indexes).Returns(_uiIndexMock.Object);
+        auditCollectionMock.Setup(c => c.Indexes).Returns(_auditIndexMock.Object);
 
         _dbMock.Setup(db => db.GetCollection<ConversationDoc>(It.IsAny<string>(), null))
             .Returns(convCollectionMock.Object);
@@ -36,12 +41,15 @@ public class MongoIndexHostedServiceTests
             .Returns(msgCollectionMock.Object);
         _dbMock.Setup(db => db.GetCollection<UiInstanceDoc>(It.IsAny<string>(), null))
             .Returns(uiCollectionMock.Object);
+        _dbMock.Setup(db => db.GetCollection<ExternalServiceAuditDoc>(It.IsAny<string>(), null))
+            .Returns(auditCollectionMock.Object);
 
         var options = Options.Create(new MongoOptions
         {
             ConversationsCollection = "conversations",
             MessagesCollection = "messages",
-            UiInstancesCollection = "ui_instances"
+            UiInstancesCollection = "ui_instances",
+            ExternalServiceAuditsCollection = "external_service_audits"
         });
 
         _sut = new MongoIndexHostedService(_dbMock.Object, options);
@@ -71,6 +79,13 @@ public class MongoIndexHostedServiceTests
         _uiIndexMock
             .Setup(i => i.CreateOneAsync(
                 It.IsAny<CreateIndexModel<UiInstanceDoc>>(),
+                It.IsAny<CreateOneIndexOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("idx");
+
+        _auditIndexMock
+            .Setup(i => i.CreateOneAsync(
+                It.IsAny<CreateIndexModel<ExternalServiceAuditDoc>>(),
                 It.IsAny<CreateOneIndexOptions>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync("idx");
@@ -109,6 +124,13 @@ public class MongoIndexHostedServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync("idx");
 
+        _auditIndexMock
+            .Setup(i => i.CreateOneAsync(
+                It.IsAny<CreateIndexModel<ExternalServiceAuditDoc>>(),
+                It.IsAny<CreateOneIndexOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("idx");
+
         await _sut.StartAsync(CancellationToken.None);
 
         _msgIndexMock.Verify(
@@ -139,6 +161,13 @@ public class MongoIndexHostedServiceTests
         _uiIndexMock
             .Setup(i => i.CreateOneAsync(
                 It.IsAny<CreateIndexModel<UiInstanceDoc>>(),
+                It.IsAny<CreateOneIndexOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("idx");
+
+        _auditIndexMock
+            .Setup(i => i.CreateOneAsync(
+                It.IsAny<CreateIndexModel<ExternalServiceAuditDoc>>(),
                 It.IsAny<CreateOneIndexOptions>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync("idx");
@@ -188,6 +217,13 @@ public class MongoIndexHostedServiceTests
         _uiIndexMock
             .Setup(i => i.CreateOneAsync(
                 It.IsAny<CreateIndexModel<UiInstanceDoc>>(),
+                It.IsAny<CreateOneIndexOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("idx");
+
+        _auditIndexMock
+            .Setup(i => i.CreateOneAsync(
+                It.IsAny<CreateIndexModel<ExternalServiceAuditDoc>>(),
                 It.IsAny<CreateOneIndexOptions>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync("idx");
