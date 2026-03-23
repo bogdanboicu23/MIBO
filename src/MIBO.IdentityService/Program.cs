@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MIBO.Cache.Redis.Finance;
 using MIBO.Cache.Redis.Spotify;
 using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
@@ -142,6 +143,7 @@ if (!redisConnectionString.Contains("abortConnect", StringComparison.OrdinalIgno
     redisConnectionString += ",abortConnect=false";
 builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnectionString));
 builder.Services.AddSingleton<ISpotifyTokenStore, RedisSpotifyTokenStore>();
+builder.Services.AddSingleton<IFinanceConnectionStore, RedisFinanceConnectionStore>();
 builder.Services.AddHttpClient("spotify");
 
 // Add CORS

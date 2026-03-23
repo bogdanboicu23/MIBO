@@ -26,7 +26,7 @@ if (string.IsNullOrWhiteSpace(groqApiKey))
 }
 
 // Infrastructure
-var redis = builder.AddRedis("redis");
+var redis = builder.AddRedis("redis").WithoutHttpsCertificate();
 var mongo = builder.AddMongoDB("mongodb", port: 27017);
 var mongoDatabase = mongo.AddDatabase("miboMongo", "mibo");
 var postgres = builder.AddPostgres("postgres");
@@ -52,6 +52,11 @@ actionService
     .WithEnvironment("RetryPolicy__AuditEnabled", "true")
     .WithEnvironment("RetryPolicy__StatusPageEnabled", "true")
     .WithEnvironment("RabbitMq__ConnectionString", rabbitMq)
+    .WithEnvironment("BANKSERVICE_BASE_URL", "http://localhost:5148")
+    .WithEnvironment("RetryPolicy__MigratedServices__0", "OpenWeatherMap")
+    .WithEnvironment("RetryPolicy__MigratedServices__1", "DummyJson")
+    .WithEnvironment("RetryPolicy__MigratedServices__2", "Spotify")
+    .WithEnvironment("RetryPolicy__MigratedServices__3", "BankService")
     .WaitFor(redis)
     .WaitFor(mongo)
     .WaitFor(rabbitMq);

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <ExcludeByFile>
+            **/Migrations/**,
+            **/Program.cs
+          </ExcludeByFile>
+          <ExcludeByAttribute>
+            System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute,
+            System.CodeDom.Compiler.GeneratedCodeAttribute
+          </ExcludeByAttribute>
+          <Exclude>
+            [MIBO.TestInfrastructure]*,
+            [*.Tests]*
+          </Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

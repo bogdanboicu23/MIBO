@@ -37,7 +37,7 @@ Available action-service handlers for reusable live interactions and refresh:
 - products.catalog.query
 - products.categories.list
 - products.detail.get
-- finance.user.summary
+- finance.summary.get
 - weather.current.get
 - weather.forecast.get
 - pomodoro.config.get

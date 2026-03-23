@@ -7,6 +7,7 @@
         <Nullable>enable</Nullable>
         <UserSecretsId>474bcbb4-7367-4415-b5d8-7fb99ad5f850</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <NoWarn>$(NoWarn);ASPIRECERTIFICATES001</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

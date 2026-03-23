@@ -16,7 +16,7 @@ async def executor_node(state: PipelineState) -> PipelineState:
         result_key = call.get("result_key", tool_name or "result")
         tool_fn = TOOL_REGISTRY.get(tool_name)
 
-        if tool_name.startswith("spotify_") and user_id:
+        if user_id and (tool_name.startswith("spotify_") or tool_name.startswith("get_user_finance") or tool_name == "calculate_affordability"):
             tool_args["user_id"] = user_id
 
         if tool_fn is None:

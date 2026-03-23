@@ -11,6 +11,8 @@ export default function SettingsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [spotifyConnected, setSpotifyConnected] = useState<boolean | null>(null);
     const [spotifyLoading, setSpotifyLoading] = useState(false);
+    const [financeConnected, setFinanceConnected] = useState<boolean | null>(null);
+    const [financeLoading, setFinanceLoading] = useState(false);
 
     const checkSpotifyStatus = useCallback(async () => {
         try {
@@ -21,9 +23,19 @@ export default function SettingsPage() {
         }
     }, [api]);
 
+    const checkFinanceStatus = useCallback(async () => {
+        try {
+            const data = await api.get<{ connected: boolean }>(endpoints.finance.status);
+            setFinanceConnected(data.connected);
+        } catch {
+            setFinanceConnected(false);
+        }
+    }, [api]);
+
     useEffect(() => {
         checkSpotifyStatus();
-    }, [checkSpotifyStatus]);
+        checkFinanceStatus();
+    }, [checkSpotifyStatus, checkFinanceStatus]);
 
     useEffect(() => {
         if (searchParams.get("spotify") === "connected") {
@@ -50,6 +62,26 @@ export default function SettingsPage() {
             setSpotifyConnected(false);
         } finally {
             setSpotifyLoading(false);
+        }
+    };
+
+    const handleFinanceConnect = async () => {
+        setFinanceLoading(true);
+        try {
+            await api.post(endpoints.finance.connect);
+            setFinanceConnected(true);
+        } finally {
+            setFinanceLoading(false);
+        }
+    };
+
+    const handleFinanceDisconnect = async () => {
+        setFinanceLoading(true);
+        try {
+            await api.delete(endpoints.finance.disconnect);
+            setFinanceConnected(false);
+        } finally {
+            setFinanceLoading(false);
         }
     };
 
@@ -132,6 +164,50 @@ export default function SettingsPage() {
                                 onClick={handleSpotifyConnect}
                                 disabled={spotifyLoading || spotifyConnected === null}
                                 className="rounded-xl bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+                            >
+                                Connect
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Finance */}
+                <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/40">
+                                <svg viewBox="0 0 24 24" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                                    <line x1="1" y1="10" x2="23" y2="10" />
+                                </svg>
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium">Finance</div>
+                                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {financeConnected === null
+                                        ? "Checking..."
+                                        : financeConnected
+                                            ? "Connected"
+                                            : "Not connected"}
+                                </div>
+                            </div>
+                        </div>
+
+                        {financeConnected ? (
+                            <button
+                                type="button"
+                                onClick={handleFinanceDisconnect}
+                                disabled={financeLoading}
+                                className="rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                                Disconnect
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleFinanceConnect}
+                                disabled={financeLoading || financeConnected === null}
+                                className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
                             >
                                 Connect
                             </button>

@@ -27,4 +27,9 @@ export const endpoints = {
         status: "/api/auth/spotify/status",
         disconnect: "/api/auth/spotify/disconnect",
     },
+    finance: {
+        status: "/api/auth/finance/status",
+        connect: "/api/auth/finance/connect",
+        disconnect: "/api/auth/finance/disconnect",
+    },
 }

@@ -13,8 +13,8 @@ product_catalog_service = get_product_catalog_service()
 
 
 @tool
-async def get_user_finances(user_id: int) -> dict[str, Any]:
-    """Fetch deterministic finance data for a user."""
+async def get_user_finances(user_id: str = "") -> dict[str, Any]:
+    """Fetch finance data for the current user. user_id is injected automatically."""
     return await finance_data_service.get_user_finances(user_id)
 
 

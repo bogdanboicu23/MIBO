@@ -1,3 +1,4 @@
+using MIBO.ActionService.ExternalServices.BankService;
 using MIBO.ActionService.ExternalServices.DummyJson;
 using MIBO.ActionService.ExternalServices.OpenWeatherMap;
 using Microsoft.Extensions.Options;
@@ -20,7 +21,8 @@ public interface IExternalServiceRegistry
 
 public sealed class ExternalServiceRegistry(
     IOptionsMonitor<DummyJsonOptions> dummyJsonOptions,
-    IOptionsMonitor<OpenWeatherMapOptions> openWeatherMapOptions)
+    IOptionsMonitor<OpenWeatherMapOptions> openWeatherMapOptions,
+    IOptionsMonitor<BankServiceOptions> bankServiceOptions)
     : IExternalServiceRegistry
 {
     public ExternalServiceDescriptor? Resolve(string handler)
@@ -70,6 +72,24 @@ public sealed class ExternalServiceRegistry(
                     "spotify.playlists",
                     "spotify.top_tracks",
                     "spotify.top_artists",
+                }),
+            new ExternalServiceDescriptor(
+                "bankservice",
+                "BankService",
+                "MIBO Finance",
+                bankServiceOptions.CurrentValue.GetBaseUri().ToString().TrimEnd('/'),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "finance.accounts.list",
+                    "finance.accounts.get",
+                    "finance.transactions.list",
+                    "finance.transactions.search",
+                    "finance.expenses.list",
+                    "finance.expenses.categories",
+                    "finance.budgets.list",
+                    "finance.summary.get",
+                    "finance.analytics.expenses",
+                    "finance.analytics.transactions",
                 }),
         ];
     }
