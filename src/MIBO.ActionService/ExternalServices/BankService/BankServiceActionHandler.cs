@@ -131,7 +131,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         var limit = Math.Max(1, GetInt(args, 30, "limit"));
         var skip = Math.Max(0, GetInt(args, 0, "skip"));
         var sortBy = GetString(args, "sortBy");
@@ -159,7 +159,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         var limit = Math.Max(1, GetInt(args, 30, "limit"));
         var skip = Math.Max(0, GetInt(args, 0, "skip"));
         var type = GetString(args, "type");
@@ -202,7 +202,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         var limit = Math.Max(1, GetInt(args, 30, "limit"));
         var skip = Math.Max(0, GetInt(args, 0, "skip"));
         var category = GetString(args, "category");
@@ -242,7 +242,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         var limit = Math.Max(1, GetInt(args, 30, "limit"));
         var skip = Math.Max(0, GetInt(args, 0, "skip"));
         var category = GetString(args, "category");
@@ -260,7 +260,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         if (string.IsNullOrWhiteSpace(userId))
             throw new InvalidOperationException("finance.summary.get requires userId.");
 
@@ -271,7 +271,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         if (string.IsNullOrWhiteSpace(userId))
             throw new InvalidOperationException("finance.analytics.expenses requires userId.");
 
@@ -288,7 +288,7 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         IReadOnlyDictionary<string, object?> args,
         CancellationToken cancellationToken)
     {
-        var userId = GetString(args, "userId", "user_id");
+        var userId = MapToDemoUserId(GetString(args, "userId", "user_id"));
         if (string.IsNullOrWhiteSpace(userId))
             throw new InvalidOperationException("finance.analytics.transactions requires userId.");
 
@@ -299,6 +299,19 @@ public sealed class BankServiceActionHandler(IBankServiceClient bankServiceClien
         return await bankServiceClient.GetAsync(
             BuildPathWithQuery($"/api/analytics/transactions/user/{Uri.EscapeDataString(userId)}", query),
             cancellationToken);
+    }
+
+    private static string MapToDemoUserId(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return string.Empty;
+
+        if (userId.StartsWith("u-demo-", StringComparison.OrdinalIgnoreCase))
+            return userId;
+
+        var hash = Math.Abs(userId.GetHashCode(StringComparison.OrdinalIgnoreCase));
+        var demoIndex = (hash % 10) + 1;
+        return $"u-demo-{demoIndex:D3}";
     }
 
     private static string BuildPathWithQuery(string path, IReadOnlyDictionary<string, string?> query)
