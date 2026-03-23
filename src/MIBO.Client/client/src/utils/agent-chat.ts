@@ -1,5 +1,3 @@
-import { getJwt } from "@/auth/context/jwt";
-import { CONFIG } from "@/global-config";
 import type {
     UiActionState,
     UiBinding,
@@ -10,6 +8,10 @@ import type {
     UiSubscription,
     UiV1,
 } from "@/types/ui";
+
+type GatewayApiClient = {
+    post: <T = unknown>(url: string, data?: unknown) => Promise<T>;
+};
 
 export type AgentComponentSpec = {
     type: string;
@@ -743,22 +745,12 @@ export function joinUrl(baseUrl: string, path: string): string {
     return `${normalizedBase}${normalizedPath}`;
 }
 
-async function postJson<T>(path: string, body: Record<string, unknown>): Promise<T> {
-    const token = getJwt();
-    const response = await fetch(joinUrl(CONFIG.apiServerUrl, path), {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}.`);
-    }
-
-    return response.json() as Promise<T>;
+async function postJson<T>(
+    client: GatewayApiClient,
+    path: string,
+    body: Record<string, unknown>
+): Promise<T> {
+    return client.post<T>(path, body);
 }
 
 function serializeDataSourceState(dataSource: UiDataSourceState): Record<string, unknown> {
@@ -834,6 +826,7 @@ function serializeActionState(action: UiActionState): Record<string, unknown> {
 }
 
 export async function querySandboxDataSource(
+    client: GatewayApiClient,
     dataSource: UiDataSourceState,
     params: Record<string, unknown>
 ): Promise<GatewayQueryResponse> {
@@ -842,7 +835,7 @@ export async function querySandboxDataSource(
         ...params,
     };
 
-    return postJson<GatewayQueryResponse>("/api/actions/query", {
+    return postJson<GatewayQueryResponse>(client, "/api/actions/query", {
         dataSource: serializeDataSourceState({
             ...dataSource,
             lastArgs: mergedArgs,
@@ -851,7 +844,7 @@ export async function querySandboxDataSource(
     });
 }
 
-export async function executeSandboxAction(input: {
+export async function executeSandboxAction(client: GatewayApiClient, input: {
     action: UiActionState;
     dataSource?: UiDataSourceState | null;
     dataSources?: Record<string, UiDataSourceState>;
@@ -865,7 +858,7 @@ export async function executeSandboxAction(input: {
         {}
     );
 
-    return postJson<GatewayActionExecutionResponse>("/api/actions/execute", {
+    return postJson<GatewayActionExecutionResponse>(client, "/api/actions/execute", {
         action: serializeActionState(input.action),
         dataSource: input.dataSource ? serializeDataSourceState(input.dataSource) : null,
         dataSources: serializedDataSources,

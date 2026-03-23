@@ -8,6 +8,7 @@ interface ApiClient {
     put: <T = any>(url: string, data?: any, options?: any) => Promise<T>;
     patch: <T = any>(url: string, data?: any, options?: any) => Promise<T>;
     delete: <T = any>(url: string, options?: any) => Promise<T>;
+    fetch: (url: string, options?: RequestInit) => Promise<Response>;
     postBlob: (url: string, data: any) => Promise<Blob>;
     uploadFile: <T = any>(url: string, formData: FormData) => Promise<T>;
     postStream: (
@@ -27,7 +28,8 @@ interface AxiosContextProps {
     jwt: string | undefined;
     axiosLogin: AxiosInstance;
     axiosDefault: AxiosInstance;
-    setJwt: (jwt: string) => void;
+    setJwt: (jwt?: string) => void;
+    ensureValidJwt: () => Promise<string | undefined>;
     api: ApiClient;
 }
 

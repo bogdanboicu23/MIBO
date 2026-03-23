@@ -45,7 +45,7 @@ public class UserDto
 
 public class TokenDto
 {
-    public required string AccessToken { get; set; }
+    public string? AccessToken { get; set; }
     public required string RefreshToken { get; set; }
 }
 
@@ -57,8 +57,7 @@ public class LoginResponse
 
 public class RefreshTokenRequest
 {
-    [Required]
-    public required string JwtToken { get; set; }
+    public string? JwtToken { get; set; }
 }
 
 public class ApiResponse

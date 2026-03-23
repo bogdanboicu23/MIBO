@@ -272,18 +272,29 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task RefreshToken_MissingJwtToken_ReturnsUnauthorized()
+    public async Task RefreshToken_MissingJwtToken_UsesRefreshCookieAndReturnsOk()
     {
-        // Arrange — cookie exists but JwtToken is empty
+        // Arrange — cookie exists and refresh can be resolved without access token
         _sut.ControllerContext.HttpContext.Request.Headers["Cookie"] = "refreshToken=abc";
 
-        var request = new RefreshTokenRequest { JwtToken = "" };
+        _authServiceMock
+            .Setup(x => x.RefreshToken(
+                It.Is<TokenDto>(dto => dto.AccessToken == null && dto.RefreshToken == "abc"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new LoginResponse
+            {
+                AccessToken = "new-jwt",
+                RefreshToken = "new-refresh"
+            });
+
+        var request = new RefreshTokenRequest();
 
         // Act
         var result = await _sut.RefreshToken(request, CancellationToken.None);
 
         // Assert
-        result.Should().BeOfType<UnauthorizedObjectResult>();
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        ok.Value.Should().BeEquivalentTo(new { jwtToken = "new-jwt" });
     }
 
     [Fact]

@@ -59,15 +59,19 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse> RefreshToken(TokenDto data, CancellationToken ct = default)
     {
-        var jwtClaimsPrincipal = GetTokenPrincipal(data.AccessToken);
-
-        var userIdClaim = jwtClaimsPrincipal?.FindFirst(ClaimTypes.NameIdentifier)
-                          ?? jwtClaimsPrincipal?.FindFirst(JwtRegisteredClaimNames.Sub);
-
-        if (userIdClaim?.Value is null)
+        var refreshClaimsPrincipal = GetRefreshTokenPrincipal(data.RefreshToken);
+        var refreshUserId = GetUserId(refreshClaimsPrincipal);
+        if (string.IsNullOrWhiteSpace(refreshUserId))
             return new LoginResponse { };
 
-        var user = await _userManager.FindByIdAsync(userIdClaim.Value);
+        var accessUserId = GetUserId(GetAccessTokenPrincipal(data.AccessToken));
+        if (!string.IsNullOrWhiteSpace(accessUserId)
+            && !string.Equals(accessUserId, refreshUserId, StringComparison.Ordinal))
+        {
+            return new LoginResponse { };
+        }
+
+        var user = await _userManager.FindByIdAsync(refreshUserId);
 
         if (user is null || user.RefreshToken != data.RefreshToken || IsJwtExpired(data.RefreshToken))
             return new LoginResponse { };
@@ -170,8 +174,23 @@ public class AuthService : IAuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private ClaimsPrincipal? GetTokenPrincipal(string token)
+    private ClaimsPrincipal? GetAccessTokenPrincipal(string? token)
     {
+        return GetTokenPrincipal(token, _jwtSettings.AccessTokenSecret);
+    }
+
+    private ClaimsPrincipal? GetRefreshTokenPrincipal(string? token)
+    {
+        return GetTokenPrincipal(token, _jwtSettings.RefreshTokenSecret);
+    }
+
+    private ClaimsPrincipal? GetTokenPrincipal(string? token, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
         try
         {
             var validation = new TokenValidationParameters
@@ -184,27 +203,36 @@ public class AuthService : IAuthService
                 ValidIssuer = _jwtSettings.Issuer,
                 ValidAudience = _jwtSettings.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(_jwtSettings.AccessTokenSecret)
+                    Encoding.UTF8.GetBytes(secret)
                 )
             };
 
             var handler = new JwtSecurityTokenHandler();
             return handler.ValidateToken(token, validation, out _);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-
             return null;
         }
     }
 
-
-    private bool IsJwtExpired(string token)
+    private static string? GetUserId(ClaimsPrincipal? principal)
     {
+        return principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+               ?? principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+    }
+
+    private bool IsJwtExpired(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return true;
+        }
+
         var handler = new JwtSecurityTokenHandler();
 
         if (!handler.CanReadToken(token))
-            throw new ArgumentException("Invalid JWT token");
+            return true;
 
         var jwtToken = handler.ReadJwtToken(token);
 

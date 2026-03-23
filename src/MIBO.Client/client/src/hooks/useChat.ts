@@ -3,13 +3,11 @@ import type { Conversation, Message } from "@/types/chat";
 import type { UiActionState, UiDataSourceState, UiFieldHints, UiV1 } from "@/types/ui.ts";
 import { endpoints } from "@/axios/endpoints.ts";
 import { uidStr } from "@/_mock/conversations.ts";
-import { CONFIG } from "@/global-config";
 import { useAxios } from "@/axios/hooks";
 import {
     buildUiFromAgentResponse,
     type AgentFinalResponse,
     executeSandboxAction,
-    joinUrl,
     querySandboxDataSource,
 } from "@/utils/agent-chat";
 
@@ -142,10 +140,6 @@ function parseSseEvent(rawEvent: string): AgentStreamEvent | null {
     return JSON.parse(dataLines.join("\n")) as AgentStreamEvent;
 }
 
-function buildChatUrl(): string {
-    return joinUrl(CONFIG.apiServerUrl, endpoints.conversations.chat);
-}
-
 function updateLatestAssistantMessage(messages: Message[], update: (message: Message) => Message): Message[] {
     const nextMessages = [...messages];
     for (let index = nextMessages.length - 1; index >= 0; index -= 1) {
@@ -215,7 +209,7 @@ function mergeConversationSummaries(summaries: ConversationSummaryDto[], current
 }
 
 export function useChat() {
-    const { api, jwt } = useAxios();
+    const { api } = useAxios();
 
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeId, setActiveId] = useState("");
@@ -319,7 +313,7 @@ export function useChat() {
         return () => {
             cancelled = true;
         };
-    }, [api, jwt]);
+    }, [api]);
 
     useEffect(() => {
         if (activeId && conversations.some((conversation) => conversation.id === activeId)) {
@@ -461,7 +455,7 @@ export function useChat() {
 
             try {
                 if (type === "data.query" && targetSource) {
-                    const result = await querySandboxDataSource(targetSource, requestArgs);
+                    const result = await querySandboxDataSource(api, targetSource, requestArgs);
                     updateConversationUi(active.id, (currentUi) =>
                         patchUiDataSourceResult(currentUi, [targetSourceKey], result, requestArgs)
                     );
@@ -485,7 +479,7 @@ export function useChat() {
                     return;
                 }
 
-                const result = await executeSandboxAction({
+                const result = await executeSandboxAction(api, {
                     action: inlineAction,
                     dataSource: targetSource,
                     dataSources: sourceRegistry,
@@ -570,6 +564,7 @@ export function useChat() {
 
                 try {
                     const result = await querySandboxDataSource(
+                        api,
                         source,
                         (isRecord(source.lastArgs) ? source.lastArgs : source.defaultArgs) ?? {}
                     );
@@ -647,11 +642,10 @@ export function useChat() {
             const controller = new AbortController();
             abortRef.current = controller;
 
-            const response = await fetch(buildChatUrl(), {
+            const response = await api.fetch(endpoints.conversations.chat, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
                 },
                 body: JSON.stringify({
                     conversationId,
@@ -772,7 +766,7 @@ export function useChat() {
             setIsTyping(false);
             abortRef.current = null;
         }
-    }, [active, isTyping, jwt, newChat, updateConversation]);
+    }, [active, api, isTyping, newChat, updateConversation]);
 
     return {
         conversations,

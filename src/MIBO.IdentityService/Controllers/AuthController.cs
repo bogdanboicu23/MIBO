@@ -1,10 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using MIBO.IdentityService.Data;
 using MIBO.IdentityService.Models;
 using MIBO.IdentityService.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MIBO.IdentityService.Controllers;
@@ -70,7 +68,10 @@ public class AuthController : ControllerBase
         };
 
         var result = await _authenticationService.UserLogin(userDto, ct);
-        if (string.IsNullOrEmpty(result.AccessToken)) return BadRequest("Login Failed");
+        if (string.IsNullOrEmpty(result.AccessToken) || string.IsNullOrEmpty(result.RefreshToken))
+        {
+            return BadRequest("Login Failed");
+        }
 
         SetAuthCookies(result.RefreshToken);
         return Ok(new { jwtToken = result.AccessToken });
@@ -100,22 +101,25 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh-token")]
-    public async Task<IActionResult> RefreshToken(RefreshTokenRequest request, CancellationToken ct)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request, CancellationToken ct)
     {
         var refreshToken = Request.Cookies["refreshToken"];
 
-        if (string.IsNullOrEmpty(refreshToken) || string.IsNullOrEmpty(request.JwtToken))
+        if (string.IsNullOrEmpty(refreshToken))
         {
             return Unauthorized("Token Refresh Failed");
         }
 
         var result = await _authenticationService.RefreshToken(new TokenDto
         {
-            AccessToken = request.JwtToken,
+            AccessToken = request?.JwtToken,
             RefreshToken = refreshToken,
         }, ct);
 
-        if (string.IsNullOrEmpty(result.AccessToken)) return Unauthorized("Token Refresh Failed");
+        if (string.IsNullOrEmpty(result.AccessToken) || string.IsNullOrEmpty(result.RefreshToken))
+        {
+            return Unauthorized("Token Refresh Failed");
+        }
 
         SetAuthCookies(result.RefreshToken);
         return Ok(new { jwtToken = result.AccessToken });
@@ -170,14 +174,52 @@ public class AuthController : ControllerBase
 
     private void SetAuthCookies(string refreshToken)
     {
+        var refreshTokenExpirationDays = Math.Max(1, _config.GetValue<int?>("JwtSettings:RefreshTokenExpirationDays") ?? 7);
+        var forwardedProto = Request.Headers["X-Forwarded-Proto"].ToString();
+        var isHttps = Request.IsHttps || string.Equals(forwardedProto, "https", StringComparison.OrdinalIgnoreCase);
+        var configuredDomain = _config["AuthCookies:Domain"]?.Trim();
+        var resolvedDomain = !string.IsNullOrWhiteSpace(configuredDomain)
+            ? configuredDomain
+            : ResolveCookieDomain(Request.Host.Host);
+
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            SameSite = SameSiteMode.None,
-            Secure = true,
-			Domain = "mibo.monster",
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            Secure = isHttps,
+            Path = "/",
+            IsEssential = true,
+            Expires = DateTimeOffset.UtcNow.AddDays(refreshTokenExpirationDays),
+            MaxAge = TimeSpan.FromDays(refreshTokenExpirationDays),
         };
 
+        if (!string.IsNullOrWhiteSpace(resolvedDomain))
+        {
+            cookieOptions.Domain = resolvedDomain;
+        }
+
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+
+    private static string? ResolveCookieDomain(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return null;
+        }
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (host.Equals("mibo.monster", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".mibo.monster", StringComparison.OrdinalIgnoreCase))
+        {
+            return "mibo.monster";
+        }
+
+        return null;
     }
 }

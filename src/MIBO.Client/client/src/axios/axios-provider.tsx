@@ -19,7 +19,7 @@ import { CONFIG } from "src/global-config";
 
 import { endpoints } from "./endpoints";
 import { AxiosContext } from "./context/axios-context";
-import { getJwt, JWT_STORAGE_KEY } from "@/auth/context/jwt";
+import { getJwt, isJwtExpired, JWT_STORAGE_KEY } from "@/auth/context/jwt";
 
 type RefreshResponse = { jwtToken: string };
 
@@ -40,6 +40,43 @@ const getTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 type ApiErrorBody = { message?: string };
 
+const joinApiUrl = (baseUrl: string, path: string): string => {
+    if (/^https?:\/\//i.test(path)) {
+        return path;
+    }
+
+    const normalizedBase = baseUrl.replace(/\/+$/, "");
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+    if (normalizedBase.endsWith("/api") && normalizedPath.startsWith("/api/")) {
+        return `${normalizedBase}${normalizedPath.slice(4)}`;
+    }
+
+    return `${normalizedBase}${normalizedPath}`;
+};
+
+const buildRequestHeaders = (
+    headers: HeadersInit | undefined,
+    token?: string,
+    includeJsonContentType = false
+): Headers => {
+    const nextHeaders = new Headers(headers);
+
+    nextHeaders.set("X-User-Time-Zone", getTimeZone());
+
+    if (includeJsonContentType && !nextHeaders.has("Content-Type")) {
+        nextHeaders.set("Content-Type", "application/json");
+    }
+
+    if (token) {
+        nextHeaders.set("Authorization", `Bearer ${token}`);
+    } else {
+        nextHeaders.delete("Authorization");
+    }
+
+    return nextHeaders;
+};
+
 export const AxiosProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
@@ -51,6 +88,36 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         jwtRef.current = jwt;
     }, [jwt]);
+
+    useEffect(() => {
+        const syncJwtFromStorage = () => {
+            const storedJwt = getJwt();
+            if (storedJwt === jwtRef.current) {
+                return;
+            }
+
+            jwtRef.current = storedJwt;
+            setJwtState(storedJwt);
+        };
+
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                syncJwtFromStorage();
+            }
+        };
+
+        window.addEventListener("storage", syncJwtFromStorage);
+        window.addEventListener("focus", syncJwtFromStorage);
+        window.addEventListener("pageshow", syncJwtFromStorage);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener("storage", syncJwtFromStorage);
+            window.removeEventListener("focus", syncJwtFromStorage);
+            window.removeEventListener("pageshow", syncJwtFromStorage);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, []);
 
     const setJwt = useCallback((token?: string) => {
         if (token) localStorage.setItem(JWT_STORAGE_KEY, token);
@@ -86,14 +153,9 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
 
         const doRefresh = (async () => {
             const currentJwt = jwtRef.current || getJwt();
-
-            if (!currentJwt) {
-                throw new Error("Missing JWT for refresh.");
-            }
-
             const response = await axiosLogin.post<RefreshResponse>(
                 endpoints.auth.refresh,
-                { jwtToken: currentJwt }
+                currentJwt ? { jwtToken: currentJwt } : {}
             );
 
             if (response.status !== 200 || !response.data?.jwtToken) {
@@ -114,22 +176,53 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [axiosLogin, setJwt]);
 
+    const ensureValidJwt = useCallback(async (): Promise<string | undefined> => {
+        const currentJwt = jwtRef.current || getJwt();
+
+        if (currentJwt && !isJwtExpired(currentJwt, 30)) {
+            return currentJwt;
+        }
+
+        try {
+            return await refreshJwt();
+        } catch {
+            setJwt(undefined);
+            return undefined;
+        }
+    }, [refreshJwt, setJwt]);
+
+    const fetchWithAuth = useCallback(
+        async (url: string, options?: RequestInit): Promise<Response> => {
+            const requestUrl = joinApiUrl(CONFIG.apiServerUrl, url);
+            const doFetch = async (token?: string) => {
+                return fetch(requestUrl, {
+                    ...options,
+                    headers: buildRequestHeaders(options?.headers, token),
+                    credentials: options?.credentials ?? "include",
+                });
+            };
+
+            let token = jwtRef.current || getJwt();
+            const response = await doFetch(token);
+
+            if (response.status !== 401) {
+                return response;
+            }
+
+            try {
+                token = await refreshJwt();
+                return await doFetch(token);
+            } catch (error) {
+                logoutAndRedirect();
+                throw error;
+            }
+        },
+        [refreshJwt, logoutAndRedirect]
+    );
+
     const postStream = useCallback(
         async (url: string, data: any, opts: StreamOptions): Promise<void> => {
             const { signal, onToken, onDone, onError } = opts;
-
-            const doFetch = async (token?: string) => {
-                return fetch(`${CONFIG.apiServerUrl}${url}`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-User-Time-Zone": getTimeZone(),
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                    },
-                    body: JSON.stringify(data),
-                    signal,
-                });
-            };
 
             const handleError = (err: unknown) => {
                 onError?.(err);
@@ -137,21 +230,12 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
             };
 
             try {
-                // 1) try with current token
-                let token = jwtRef.current || getJwt();
-                let res = await doFetch(token);
-
-                // 2) if unauthorized, refresh once and retry
-                if (res.status === 401) {
-                    try {
-                        const newToken = await refreshJwt();
-                        token = newToken;
-                        res = await doFetch(token);
-                    } catch (e) {
-                        logoutAndRedirect();
-                        return handleError(e);
-                    }
-                }
+                const res = await fetchWithAuth(url, {
+                    method: "POST",
+                    headers: buildRequestHeaders(undefined, undefined, true),
+                    body: JSON.stringify(data),
+                    signal,
+                });
 
                 if (!res.ok) {
                     const text = await res.text().catch(() => "");
@@ -273,7 +357,7 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
                 throw err;
             }
         },
-        [refreshJwt, logoutAndRedirect]
+        [fetchWithAuth]
     );
 
     useEffect(() => {
@@ -359,10 +443,14 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
 
                     if (status === 401 || status === 403) {
                         toast.error("You don't have permission to perform this action.");
-                    } else if (status === 400 && data?.translationKey) {
+                        throw error;
+                    }
+
+                    if (status === 400 && data?.translationKey) {
                         toast.error(data.translationKey);
                         throw error;
                     }
+
                     toast.error("Something went wrong. Please try again.");
                 }
                 throw error;
@@ -383,6 +471,8 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
                 requestHandler(() => axiosInstance.patch<T>(url, data, options)),
             delete: <T = any, >(url: string, options?: AxiosRequestConfig) =>
                 requestHandler(() => axiosInstance.delete<T>(url, options)),
+            fetch: (url: string, options?: RequestInit) =>
+                fetchWithAuth(url, options),
 
             postBlob: async (url: string, data: any): Promise<Blob> => {
                 const response = await axiosInstance.post(url, data, { responseType: "blob" });
@@ -402,7 +492,7 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
 
             postStream,
         }),
-        [axiosInstance, requestHandler]
+        [axiosInstance, requestHandler, fetchWithAuth, postStream]
     );
 
     return (
@@ -412,6 +502,7 @@ export const AxiosProvider = ({ children }: { children: ReactNode }) => {
                 axiosLogin,
                 axiosDefault,
                 setJwt,
+                ensureValidJwt,
                 api,
             }}
         >

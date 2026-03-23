@@ -21,10 +21,20 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add JWT Authentication (for validating tokens)
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "your-default-secret-key-for-development";
-var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MIBO.IdentityService";
-var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MIBO.Services";
+// Accept both the legacy Jwt:* layout and the newer JwtSettings:* layout
+// so local/dev gateway validation stays aligned with IdentityService.
+var jwtKey = ResolveJwtSetting(
+    builder.Configuration,
+    "Jwt:Key",
+    "JwtSettings:AccessTokenSecret");
+var jwtIssuer = ResolveJwtSetting(
+    builder.Configuration,
+    "Jwt:Issuer",
+    "JwtSettings:Issuer");
+var jwtAudience = ResolveJwtSetting(
+    builder.Configuration,
+    "Jwt:Audience",
+    "JwtSettings:Audience");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer("Bearer", options =>
@@ -94,3 +104,18 @@ app.UseWebSockets();
 await app.UseOcelot();
 
 app.Run();
+
+static string ResolveJwtSetting(IConfiguration configuration, params string[] keys)
+{
+    foreach (var key in keys)
+    {
+        var value = configuration[key];
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+    }
+
+    throw new InvalidOperationException(
+        $"Missing JWT configuration. Expected one of: {string.Join(", ", keys)}");
+}

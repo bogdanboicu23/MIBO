@@ -213,7 +213,6 @@ public class AuthServiceTests
     public async Task RefreshToken_WithInvalidUser_ReturnsEmptyResponse()
     {
         // Arrange
-        var userId = Guid.NewGuid().ToString();
         var tokenDto = new TokenDto
         {
             AccessToken = "invalid-access-token",
@@ -230,6 +229,60 @@ public class AuthServiceTests
         result.Should().NotBeNull();
         result.AccessToken.Should().BeNullOrEmpty();
         result.RefreshToken.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task RefreshToken_WithValidRefreshTokenAndMissingAccessToken_ReturnsNewAccessToken()
+    {
+        // Arrange
+        var email = "refresh@mibo.com";
+        var password = "Test123!";
+        var user = new ApplicationUser
+        {
+            Email = email,
+            UserName = "refreshuser",
+            Id = Guid.NewGuid().ToString(),
+            FirstName = "Refresh",
+            LastName = "User"
+        };
+
+        _userManagerMock
+            .Setup(x => x.FindByEmailAsync(email))
+            .ReturnsAsync(user);
+
+        _userManagerMock
+            .Setup(x => x.CheckPasswordAsync(user, password))
+            .ReturnsAsync(true);
+
+        _userManagerMock
+            .Setup(x => x.GetRolesAsync(user))
+            .ReturnsAsync(new List<string> { "User" });
+
+        _userManagerMock
+            .Setup(x => x.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Success);
+
+        _userManagerMock
+            .Setup(x => x.FindByIdAsync(user.Id))
+            .ReturnsAsync(user);
+
+        var login = await _sut.UserLogin(new UserDto
+        {
+            Email = email,
+            Password = password
+        });
+
+        // Act
+        var result = await _sut.RefreshToken(new TokenDto
+        {
+            AccessToken = null,
+            RefreshToken = login.RefreshToken!
+        });
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AccessToken.Should().NotBeNullOrEmpty();
+        result.RefreshToken.Should().NotBeNullOrEmpty();
     }
 
 }

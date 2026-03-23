@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import Turnstile from "react-turnstile";
 
@@ -28,9 +28,9 @@ export default function Login() {
 
     const [tsToken, setTsToken] = useState<string | null>(null);
 
-    const canSubmit = useMemo(() => {
-        return !!form.email.trim() && !!form.password && !!tsToken && !busy;
-    }, [form.email, form.password, tsToken, busy]);
+    // const canSubmit = useMemo(() => {
+    //     return !!form.email.trim() && !!form.password && !!tsToken && !busy;
+    // }, [form.email, form.password, tsToken, busy]);
 
     function validate() {
         const parsed = schema.safeParse(form);
@@ -152,7 +152,7 @@ export default function Login() {
                                 </div>
                             ) : null}
 
-                            <Button type="submit" className="w-full" disabled={!canSubmit}>
+                            <Button type="submit" className="w-full">
                                 {busy ? "Se autentifică..." : "Intră în cont"}
                             </Button>
 

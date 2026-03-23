@@ -1,15 +1,15 @@
 import { type ReactNode, useState } from 'react';
 
-import { jwtDecode } from "jwt-decode";
 import { useMemo, useEffect, useCallback } from 'react';
 
 import { useAxios } from "src/axios/hooks";
 import { endpoints } from "src/axios/endpoints";
 
+import { parseUserFromJwt } from "./utils";
 import { JWT_STORAGE_KEY } from "./constant";
 import { AuthContext } from '../auth-context';
 
-import type { UserType, LoginData, AuthState } from "../../types";
+import type { LoginData, AuthState } from "../../types";
 import { useRouter } from "@/routes/hooks";
 
 type Props = {
@@ -18,7 +18,7 @@ type Props = {
 
 export function AuthProvider({ children }: Props) {
     const [ state, setState ] = useState<AuthState>({ user: undefined, loading: true });
-    const { jwt, axiosLogin, setJwt } = useAxios();
+    const { jwt, axiosLogin, setJwt, ensureValidJwt } = useAxios();
     const router = useRouter();
     const login = (request: LoginData) =>
         axiosLogin
@@ -36,31 +36,34 @@ export function AuthProvider({ children }: Props) {
 
     const checkUserSession = useCallback(async () => {
         try {
-            if (!jwt) {
+            setState((current) => ({ ...current, loading: true }));
+
+            const token = await ensureValidJwt();
+            if (!token) {
                 setState({ user: undefined, loading: false });
                 return;
             }
-            const decoded = jwtDecode<UserType>(jwt);
+
+            const user = parseUserFromJwt(token);
+            if (!user) {
+                setJwt(undefined);
+                setState({ user: undefined, loading: false });
+                return;
+            }
+
             setState({
-                user: {
-                    id: decoded.id,
-                    email: decoded.email,
-                    firstName: decoded.firstName,
-                    lastName: decoded.lastName,
-                    username: decoded.username,
-                    role: decoded.role,
-                },
+                user,
                 loading: false
             });
         } catch {
+            setJwt(undefined);
             setState({ user: undefined, loading: false });
         }
-    }, [setState, jwt]);
+    }, [ensureValidJwt, setJwt]);
 
     useEffect(() => {
-        checkUserSession();
-         
-    }, []);
+        void checkUserSession();
+    }, [checkUserSession, jwt]);
 
     // ----------------------------------------------------------------------
 

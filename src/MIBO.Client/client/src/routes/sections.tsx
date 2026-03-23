@@ -2,7 +2,7 @@ import type { RouteObject } from 'react-router';
 
 import { lazy, Suspense } from 'react';
 
-// import { AuthGuard } from "../auth/guard/auth-guard";
+import { AuthGuard } from "../auth/guard/auth-guard";
 import { GuestGuard } from "../auth/guard/guest-guard";
 import { LoadingOverlay } from "@/components/ui";
 import ChatPage from "@/pages/ChatPage.tsx";
@@ -27,8 +27,22 @@ export const routesSection: RouteObject[] = [
         ),
         children: [
             { index: true, element: <LandingPage/> },
-            { path: "/chat", element: <ChatPage/> },
-            { path: "/settings", element: <SettingsPage/> }
+            {
+                path: "/chat",
+                element: (
+                    <AuthGuard>
+                        <ChatPage />
+                    </AuthGuard>
+                ),
+            },
+            {
+                path: "/settings",
+                element: (
+                    <AuthGuard>
+                        <SettingsPage />
+                    </AuthGuard>
+                ),
+            }
         ],
     },
     {
