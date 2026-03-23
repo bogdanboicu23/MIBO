@@ -15,3 +15,16 @@ env:
   RetryPolicy__MigratedServices__1: DummyJson
   RetryPolicy__MigratedServices__2: Spotify
   RetryPolicy__MigratedServices__3: BankService
+  ConnectionStrings__Redis: "redis.test.svc.cluster.local:6379,abortConnect=false"
+
+secretEnv:
+  - name: Spotify__ClientId
+    valueFrom:
+      secretKeyRef:
+        name: spotify-secrets
+        key: client-id
+  - name: Spotify__ClientSecret
+    valueFrom:
+      secretKeyRef:
+        name: spotify-secrets
+        key: client-secret

@@ -7,6 +7,8 @@ on:
     branches: [main]
     paths:
       - 'src/MIBO.ActionService/**'
+      - 'src/MIBO.Cache.Redis/**'
+      - 'src/MIBO.Storage.Mongo/**'
       - 'deploy/helm/action-service/**'
       - 'deploy/environments/**/values-action-service.yaml'
       - '.github/workflows/deploy-action-service.yml'
@@ -14,6 +16,8 @@ on:
     branches: [main, "SCRUM-*", test, develop]
     paths:
       - 'src/MIBO.ActionService/**'
+      - 'src/MIBO.Cache.Redis/**'
+      - 'src/MIBO.Storage.Mongo/**'
       - 'deploy/helm/action-service/**'
       - 'deploy/environments/**/values-action-service.yaml'
       - '.github/workflows/deploy-action-service.yml'
