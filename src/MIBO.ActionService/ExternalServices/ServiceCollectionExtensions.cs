@@ -1,6 +1,5 @@
 using MIBO.ActionService.ExternalServices.Abstractions;
 using MIBO.ActionService.ExternalServices.BankService;
-using MIBO.ActionService.ExternalServices.CoinGecko;
 using MIBO.ActionService.ExternalServices.DummyJson;
 using MIBO.ActionService.ExternalServices.NewsApi;
 using MIBO.ActionService.ExternalServices.OpenWeatherMap;
@@ -83,27 +82,6 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IExternalDataSourceHandler, BankServiceActionHandler>();
-
-        // CoinGecko (Crypto)
-        services.AddOptions<CoinGeckoOptions>()
-            .Bind(configuration.GetSection(CoinGeckoOptions.SectionName));
-
-        services.PostConfigure<CoinGeckoOptions>(options =>
-        {
-            var baseUrlOverride = configuration["COINGECKO_BASE_URL"];
-            if (!string.IsNullOrWhiteSpace(baseUrlOverride))
-            {
-                options.BaseUrl = baseUrlOverride;
-            }
-        });
-
-        services.AddHttpClient<ICoinGeckoClient, CoinGeckoClient>((serviceProvider, client) =>
-        {
-            var options = serviceProvider.GetRequiredService<IOptions<CoinGeckoOptions>>().Value;
-            client.BaseAddress = options.GetBaseUri();
-        });
-
-        services.AddSingleton<IExternalDataSourceHandler, CoinGeckoActionHandler>();
 
         // NewsAPI
         services.AddOptions<NewsApiOptions>()

@@ -15,8 +15,7 @@ env:
   RetryPolicy__MigratedServices__1: DummyJson
   RetryPolicy__MigratedServices__2: Spotify
   RetryPolicy__MigratedServices__3: BankService
-  RetryPolicy__MigratedServices__4: CoinGecko
-  RetryPolicy__MigratedServices__5: NewsApi
+  RetryPolicy__MigratedServices__4: NewsApi
   ConnectionStrings__Redis: "redis.test.svc.cluster.local:6379,abortConnect=false"
 
 secretEnv:

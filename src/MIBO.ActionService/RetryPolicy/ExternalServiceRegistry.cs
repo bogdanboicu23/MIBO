@@ -1,5 +1,4 @@
 using MIBO.ActionService.ExternalServices.BankService;
-using MIBO.ActionService.ExternalServices.CoinGecko;
 using MIBO.ActionService.ExternalServices.DummyJson;
 using MIBO.ActionService.ExternalServices.NewsApi;
 using MIBO.ActionService.ExternalServices.OpenWeatherMap;
@@ -25,8 +24,7 @@ public sealed class ExternalServiceRegistry(
     IOptionsMonitor<DummyJsonOptions> dummyJsonOptions,
     IOptionsMonitor<OpenWeatherMapOptions> openWeatherMapOptions,
     IOptionsMonitor<BankServiceOptions> bankServiceOptions,
-    IOptionsMonitor<CoinGeckoOptions> coinGeckoOptions,
-    IOptionsMonitor<NewsApiOptions> newsApiOptions)
+IOptionsMonitor<NewsApiOptions> newsApiOptions)
     : IExternalServiceRegistry
 {
     public ExternalServiceDescriptor? Resolve(string handler)
@@ -94,19 +92,6 @@ public sealed class ExternalServiceRegistry(
                     "finance.summary.get",
                     "finance.analytics.expenses",
                     "finance.analytics.transactions",
-                }),
-            new ExternalServiceDescriptor(
-                "coingecko",
-                "CoinGecko",
-                "CoinGecko",
-                coinGeckoOptions.CurrentValue.GetBaseUri().ToString().TrimEnd('/'),
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "crypto.markets",
-                    "crypto.price",
-                    "crypto.trending",
-                    "crypto.search",
-                    "crypto.coin.detail",
                 }),
             new ExternalServiceDescriptor(
                 "newsapi",
