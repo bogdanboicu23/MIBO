@@ -29,7 +29,7 @@ export function GuestGuard({ children }: GuestGuardProps) {
             // Using `window.location.href` instead of `router.replace` to avoid unnecessary re-rendering
             // that might be caused by the AuthGuard component
             // window.location.href = paths.dashboard + paths.order.list;
-            router.push(paths.root);
+            router.push(paths.intro);
             return;
         }
 

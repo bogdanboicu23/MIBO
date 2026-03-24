@@ -27,7 +27,7 @@ export function AuthProvider({ children }: Props) {
                 const { jwtToken } = response.data;
                 localStorage.setItem(JWT_STORAGE_KEY, jwtToken);
                 setJwt(jwtToken);
-                router.refresh();
+                router.push('/intro');
             })
             .catch((error) => {
                 throw error;

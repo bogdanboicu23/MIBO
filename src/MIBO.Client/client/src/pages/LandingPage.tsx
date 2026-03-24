@@ -276,7 +276,7 @@ export default function LandingPage() {
     const { theme, setTheme } = useThemeContext();
     const router = useRouter();
     const goToDocs = () => router.push("docs.mibo.monster")
-    const onEnterApp = () => router.push("/chat");
+    const onEnterApp = () => router.push("/auth/login");
     const typed = useTyping(["ui interactiv", "formulare dinamice", "grafice live"]);
 
     useReveal();
