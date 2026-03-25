@@ -27,7 +27,7 @@ export const routesSection: RouteObject[] = [
             </Suspense>
         ),
         children: [
-            { index: true, element: <LandingPage/> },
+            { index: true, element: <LandingPage /> },
             {
                 path: paths.chat,
                 element: (

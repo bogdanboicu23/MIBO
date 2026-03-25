@@ -9,6 +9,23 @@ order: 52
 
 `MIBO.LangChainService` is the AI execution core of the platform. It is a FastAPI service that exposes a single `/chat` endpoint and executes a sequential LangGraph pipeline against the current conversation state.
 
+## Visual runtime map
+
+<figure className="my-10">
+  <ZoomableImage
+    src="/AI-soft-arhitecture.png"
+    alt="Detailed MIBO AI agent architecture diagram"
+    title="MIBO.LangChainService architecture"
+    className="w-full"
+  />
+  <figcaption>
+    Detailed runtime view of `MIBO.LangChainService`, including the FastAPI entrypoint,
+    LangGraph stages, prompt-driven agent nodes, Mongo-backed memory, tool registry,
+    ActionService adapters, and outbound dependency boundaries. Click the diagram to
+    open it in a zoomable viewer.
+  </figcaption>
+</figure>
+
 ## Runtime stack
 
 | Area | Implementation |

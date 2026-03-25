@@ -35,10 +35,6 @@ var postgres = builder.AddPostgres("postgres");
 var identityDb = postgres.AddDatabase("identitydb", "mibo_identity");
 var rabbitMq = builder.AddRabbitMQ("rabbitmq", port: 5672)
     .WithManagementPlugin(port: 15672);
-var nats = builder.AddContainer("nats", "nats:2.10-alpine")
-    .WithArgs("-js")
-    .WithEndpoint(name: "client", port: 4222, targetPort: 4222)
-    .WithEndpoint(name: "monitor", port: 8222, targetPort: 8222);
 
 // Backend services
 var actionService = builder.AddProject<Projects.MIBO_ActionService>("action-service");
@@ -94,10 +90,8 @@ conversation
     .WithEnvironment("AGENT_SERVICE_URL", langchain.GetEndpoint("http"))
     .WithEnvironment("ACTION_SERVICE_URL", actionService.GetEndpoint("http"))
     .WithEnvironment("Planner__BaseUrl", langchain.GetEndpoint("http"))
-    .WithEnvironment("NatsJetStream__Url", "nats://localhost:4222")
     .WaitFor(redis)
     .WaitFor(mongo)
-    .WaitFor(nats)
     .WaitFor(langchain);
 
 var identityService = builder.AddProject<Projects.MIBO_IdentityService>("identity-service");

@@ -5,30 +5,9 @@ networks:
     driver: bridge
 
 volumes:
-  nats_data:
   redis_data:
 
 services:
-  # -----------------------------
-  # NATS (JetStream enabled)
-  # -----------------------------
-  nats:
-    image: nats:2.10-alpine
-    container_name: mibo-nats
-    command: >
-      -js
-      -sd /data
-      -m 8222
-      -p 4222
-      --name mibo-nats
-    ports:
-      - "4222:4222"   # NATS client
-      - "8222:8222"   # Monitoring
-    volumes:
-      - nats_data:/data
-    networks:
-      - mibo
-
   # -----------------------------
   # Redis
   # -----------------------------
