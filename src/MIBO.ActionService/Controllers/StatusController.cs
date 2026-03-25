@@ -7,6 +7,7 @@ namespace MIBO.ActionService.Controllers;
 [Route("api/actions/status")]
 public sealed class StatusController(IExternalServiceStatusQuery statusQuery) : ControllerBase
 {
+    // Status Controller
     [HttpGet("summary")]
     public async Task<ActionResult<ExternalServiceStatusSummary>> GetSummary(
         [FromQuery] int auditLimit = 50,

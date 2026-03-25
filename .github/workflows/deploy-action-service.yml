@@ -7,6 +7,8 @@ on:
     branches: [main]
     paths:
       - 'src/MIBO.ActionService/**'
+      - 'src/MIBO.Cache.Redis/**'
+      - 'src/MIBO.Storage.Mongo/**'
       - 'deploy/helm/action-service/**'
       - 'deploy/environments/**/values-action-service.yaml'
       - '.github/workflows/deploy-action-service.yml'
@@ -14,6 +16,8 @@ on:
     branches: [main, "SCRUM-*", test, develop]
     paths:
       - 'src/MIBO.ActionService/**'
+      - 'src/MIBO.Cache.Redis/**'
+      - 'src/MIBO.Storage.Mongo/**'
       - 'deploy/helm/action-service/**'
       - 'deploy/environments/**/values-action-service.yaml'
       - '.github/workflows/deploy-action-service.yml'
@@ -132,7 +136,8 @@ jobs:
             --values deploy/environments/test/values-${{ env.SERVICE_NAME }}.yaml \
             --set image.tag=test-${{ github.sha }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.DO_REGISTRY_NAME }}/${{ env.SERVICE_NAME }} \
-            --set env.OPENWEATHERMAP_API_KEY=${{ secrets.OPENWEATHERMAP_API_KEY }}
+            --set env.OPENWEATHERMAP_API_KEY=${{ secrets.OPENWEATHERMAP_API_KEY }} \
+            --set env.NEWSAPI_API_KEY=${{ secrets.NEWSAPI_API_KEY }}
 
       - name: Wait for deployment
         run: |

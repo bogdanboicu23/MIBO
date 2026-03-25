@@ -18,6 +18,7 @@ static string? ResolveConfigValue(IConfiguration configuration, params string[] 
 }
 
 var groqApiKey = ResolveConfigValue(builder.Configuration, "Groq:ApiKey", "GROQ_API_KEY");
+var newsApiKey = ResolveConfigValue(builder.Configuration, "ExternalServices:NewsApi:ApiKey", "NEWSAPI_API_KEY");
 
 if (string.IsNullOrWhiteSpace(groqApiKey))
 {
@@ -58,6 +59,8 @@ actionService
     .WithEnvironment("RetryPolicy__MigratedServices__1", "DummyJson")
     .WithEnvironment("RetryPolicy__MigratedServices__2", "Spotify")
     .WithEnvironment("RetryPolicy__MigratedServices__3", "BankService")
+    .WithEnvironment("RetryPolicy__MigratedServices__4", "NewsApi")
+    .WithEnvironment("NEWSAPI_API_KEY", newsApiKey ?? "")
     .WaitFor(redis)
     .WaitFor(mongo)
     .WaitFor(rabbitMq);

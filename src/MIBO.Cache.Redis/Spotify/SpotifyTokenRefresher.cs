@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MIBO.Cache.Redis.Spotify;
@@ -8,7 +9,8 @@ namespace MIBO.Cache.Redis.Spotify;
 public sealed class SpotifyTokenRefresher(
     ISpotifyTokenStore tokenStore,
     IHttpClientFactory httpClientFactory,
-    IOptions<SpotifyClientOptions> options) : ISpotifyTokenRefresher
+    IOptions<SpotifyClientOptions> options,
+    ILogger<SpotifyTokenRefresher> logger) : ISpotifyTokenRefresher
 {
     private static readonly TimeSpan ExpiryBuffer = TimeSpan.FromSeconds(60);
 
@@ -16,11 +18,18 @@ public sealed class SpotifyTokenRefresher(
     {
         var tokens = await tokenStore.GetTokensAsync(userId, ct);
         if (tokens is null)
+        {
+            logger.LogWarning("Spotify: no tokens found in Redis for user {UserId}.", userId);
             return null;
+        }
 
         if (tokens.ExpiresAtUtc > DateTime.UtcNow.Add(ExpiryBuffer))
+        {
+            logger.LogDebug("Spotify: using cached access token for user {UserId} (expires {ExpiresAt}).", userId, tokens.ExpiresAtUtc);
             return tokens.AccessToken;
+        }
 
+        logger.LogInformation("Spotify: access token expired for user {UserId} (expired {ExpiresAt}), refreshing.", userId, tokens.ExpiresAtUtc);
         return await RefreshAsync(userId, tokens.RefreshToken, ct);
     }
 
@@ -44,7 +53,12 @@ public sealed class SpotifyTokenRefresher(
 
         using var response = await client.SendAsync(request, ct);
         if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            logger.LogError("Spotify: token refresh failed for user {UserId}. Status {StatusCode}, body: {ErrorBody}",
+                userId, (int)response.StatusCode, errorBody);
             return null;
+        }
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
 
@@ -55,6 +69,7 @@ public sealed class SpotifyTokenRefresher(
             : refreshToken;
 
         await tokenStore.SaveTokensAsync(userId, accessToken, newRefreshToken, expiresIn, ct);
+        logger.LogInformation("Spotify: token refreshed for user {UserId}, expires in {ExpiresIn}s.", userId, expiresIn);
         return accessToken;
     }
 }

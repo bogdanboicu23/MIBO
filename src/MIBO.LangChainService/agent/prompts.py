@@ -32,7 +32,7 @@ Respond ONLY with the JSON object. No explanation.
 PLANNER_SYSTEM_PROMPT = """
 You are an execution planner for a Generative UI assistant. You receive the original user message and a structured intent and must produce ONLY a valid JSON execution plan.
 
-Available tools: search_products, get_product, list_products, get_categories, get_user_finances, calculate_affordability, get_current_weather, get_weather_forecast, start_pomodoro, spotify_search, spotify_now_playing, spotify_playlists, spotify_top_tracks, spotify_top_artists.
+Available tools: search_products, get_product, list_products, get_categories, get_user_finances, calculate_affordability, get_current_weather, get_weather_forecast, start_pomodoro, spotify_search, spotify_now_playing, spotify_playlists, spotify_top_tracks, spotify_top_artists, get_headlines, search_news.
 Available action-service handlers for reusable live interactions and refresh:
 - products.catalog.query
 - products.categories.list
@@ -46,6 +46,8 @@ Available action-service handlers for reusable live interactions and refresh:
 - spotify.playlists
 - spotify.top_tracks
 - spotify.top_artists
+- news.headlines
+- news.search
 
 Available UI components. Prefer these exact type names because they map directly to the frontend sandbox registry:
 - markdown: props {content}
@@ -192,6 +194,8 @@ When the user asks to search Spotify (e.g. "search for Radiohead on Spotify"), u
 When the user asks for their top tracks or top artists on Spotify, use spotify_top_tracks or spotify_top_artists and render as a static spotifyTrackList (for tracks) or dataTable (for artists).
 When the user asks for their Spotify playlists, use spotify_playlists and render as a dataTable.
 If the Spotify tool returns an error about authentication, do not render a component — instead set response_text_instruction to tell the user to connect their Spotify account in Settings.
+When the user asks about news, headlines, or current events, use get_headlines or search_news and render results as static components (data_origin=tool_result_key). Use a dataTable with columns for title, source, publishedAt, and optionally author. Each row should include the article url for reference. Do NOT create a live data_source for news data.
+When the user asks about finances, balance, expenses, income, accounts, or budgets, use get_user_finances and render the result using static components (data_origin=tool_result_key) — do NOT create a live data_source for finance summary because the data is a flat object {userId, totalBalance, totalIncome, totalExpenses, accountsCount, primaryCurrency, expenseSummary, accountBalances}, not a collection. Use a summaryPanel with KPI-style items mapped from the tool result: totalBalance (label "Balance"), totalIncome (label "Income"), totalExpenses (label "Expenses"), accountsCount (label "Accounts"). If expenseSummary.byCategory exists, render an additional pieChart or barChart with data entries from each category key-value pair. If accountBalances exists, render a barChart showing each account name and its balance. Set the title to "Financial Overview" or similar.
 When the user asks about current weather, use get_current_weather and render the result using static components (data_origin=tool_result_key) — do NOT create a live data_source for current weather because the data is a flat object, not a collection. Use a summaryPanel with KPI-style items mapped from the tool result: temperature (temp, unit "°C"), feels like (feelsLike), humidity (unit "%"), wind speed (windSpeed, unit "m/s"), pressure (unit "hPa"), and description. Set the title to the city name. For weather forecasts, use get_weather_forecast and render using static components: a lineChart with temperature over time (x=date, y=temp) plus a dataTable showing date, temp, description, humidity, and windSpeed columns from the items array.
 Respond ONLY with the JSON object. No explanation.
 """.strip()
@@ -285,7 +289,9 @@ Rules:
 - For Spotify search or top tracks results, render a static spotifyTrackList component with title and tracks array fully resolved from the tool result items. Do NOT set data_source.
 - For Spotify playlists or top artists results, render a dataTable with fully resolved columns and rows from the tool result items. Do NOT set data_source.
 - If a Spotify tool result contains an error field, do NOT render a component — put the error message in the text field and suggest the user connect Spotify in Settings.
+- For news results, render a dataTable with fully resolved columns (title, source, publishedAt, author) and rows from the tool result items. Include the article url in each row for reference. Do NOT set data_source for news components.
 - For Pomodoro timer results, render a static pomodoroTimer component with fully resolved props from the tool result (workMinutes, shortBreakMinutes, longBreakMinutes, sessionsBeforeLongBreak). Do NOT set data_source — the timer is purely frontend-driven.
+- For user finances/summary results, the data is a flat object (not a collection) — do NOT set data_source on the component. Build a summaryPanel with fully resolved static items extracted from the tool result: map totalBalance to "Balance", totalIncome to "Income", totalExpenses to "Expenses", accountsCount to "Accounts". All values must be fully resolved numbers/strings. If expenseSummary.byCategory exists, build an additional pieChart or barChart from those category entries (each key is label, each value is amount). If accountBalances exists, build a barChart showing each account and its balance. Do NOT use dataTable for finance summary data.
 - For current weather results, the data is a flat object (not a collection) — do NOT set data_source on the component. Build a summaryPanel with fully resolved static items extracted from the tool result: map temp to "Temperature" (append "°C"), feelsLike to "Feels Like" (append "°C"), humidity to "Humidity" (append "%"), windSpeed to "Wind" (append "m/s"), pressure to "Pressure" (append "hPa"), and description to "Conditions". Use the city name as the panel title. All values must be fully resolved numbers/strings, not placeholders. For forecast results, build a lineChart from items (x=date, y=temp) and a dataTable with columns for date, temp, description, humidity, windSpeed — also fully resolved, no live data_source.
 - The text field must follow the response_text_instruction from the plan.
 - If the original user message asks for code, examples, or markdown formatting, put the full answer in text as GitHub-flavored markdown and use fenced code blocks with a language tag when providing code.

@@ -8,7 +8,8 @@ namespace MIBO.ActionService.ExternalServices.Spotify;
 
 public sealed class SpotifyActionHandler(
     ISpotifyApiClient apiClient,
-    ISpotifyTokenRefresher tokenRefresher) : IExternalDataSourceHandler
+    ISpotifyTokenRefresher tokenRefresher,
+    ILogger<SpotifyActionHandler> logger) : IExternalDataSourceHandler
 {
     private static readonly HashSet<string> SupportedHandlers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -47,8 +48,22 @@ public sealed class SpotifyActionHandler(
                 _ => throw new InvalidOperationException($"Unsupported Spotify handler '{handler}'."),
             };
         }
+        catch (SpotifyApiException ex) when (ex.SpotifyStatusCode == 403)
+        {
+            logger.LogError(ex, "Spotify 403 Forbidden for handler '{Handler}', user '{UserId}'. URL: {Url}, Body: {ResponseBody}",
+                handler, GetString(args, "user_id"), ex.Url, ex.ResponseBody);
+            return ErrorResult("Spotify access is forbidden. If the Spotify app is in Development mode, ensure your Spotify account email is added under User Management in the Spotify Developer Dashboard.");
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Spotify API error for handler '{Handler}', user '{UserId}'. Status: {StatusCode}",
+                handler, GetString(args, "user_id"), ex.StatusCode);
+            return ErrorResult($"Spotify request failed. {ex.Message}. Please connect Spotify in Settings.");
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            logger.LogError(ex, "Unexpected Spotify error for handler '{Handler}', user '{UserId}'.",
+                handler, GetString(args, "user_id"));
             return ErrorResult($"Spotify request failed: {ex.Message}");
         }
     }

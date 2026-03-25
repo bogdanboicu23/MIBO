@@ -175,14 +175,11 @@ export default function SettingsPage() {
                 <div className="mt-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/40">
-                                <svg viewBox="0 0 24 24" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                                    <line x1="1" y1="10" x2="23" y2="10" />
-                                </svg>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl">
+                                <img src="/maib_logo.png" alt="MAIB" className="h-10 w-10 rounded-xl object-contain" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium">Finance</div>
+                                <div className="text-sm font-medium">MAIB</div>
                                 <div className="text-xs text-zinc-500 dark:text-zinc-400">
                                     {financeConnected === null
                                         ? "Checking..."

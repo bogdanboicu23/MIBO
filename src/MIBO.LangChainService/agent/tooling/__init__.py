@@ -1,4 +1,5 @@
 from agent.tooling.finance import calculate_affordability, get_user_finances
+from agent.tooling.news import get_headlines, search_news
 from agent.tooling.pomodoro import start_pomodoro
 from agent.tooling.products import get_categories, get_product, list_products, search_products
 from agent.tooling.spotify import (
@@ -25,6 +26,8 @@ ALL_TOOLS = (
     spotify_playlists,
     spotify_top_tracks,
     spotify_top_artists,
+    get_headlines,
+    search_news,
 )
 
 __all__ = [
@@ -32,10 +35,12 @@ __all__ = [
     "calculate_affordability",
     "get_categories",
     "get_current_weather",
+    "get_headlines",
     "get_product",
     "get_user_finances",
     "get_weather_forecast",
     "list_products",
+    "search_news",
     "search_products",
     "spotify_now_playing",
     "spotify_playlists",

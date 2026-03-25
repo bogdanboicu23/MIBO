@@ -7,13 +7,15 @@ on:
     branches: [main]
     paths:
       - 'src/MIBO.IdentityService/**'
+      - 'src/MIBO.Cache.Redis/**'
       - 'deploy/helm/identity-service/**'
       - 'deploy/environments/**/values-identity-service.yaml'
       - '.github/workflows/deploy-identity-service.yml'
   push:
-    branches: [main]
+    branches: [main, "SCRUM-*", test, develop]
     paths:
       - 'src/MIBO.IdentityService/**'
+      - 'src/MIBO.Cache.Redis/**'
       - 'deploy/helm/identity-service/**'
       - 'deploy/environments/**/values-identity-service.yaml'
       - '.github/workflows/deploy-identity-service.yml'

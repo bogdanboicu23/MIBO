@@ -1,10 +1,11 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace MIBO.ActionService.ExternalServices.Spotify;
 
-public sealed class SpotifyApiClient(HttpClient httpClient) : ISpotifyApiClient
+public sealed class SpotifyApiClient(HttpClient httpClient, ILogger<SpotifyApiClient> logger) : ISpotifyApiClient
 {
     public async Task<JsonElement> SearchAsync(string accessToken, string query, string type, int limit, CancellationToken ct)
     {
@@ -39,7 +40,12 @@ public sealed class SpotifyApiClient(HttpClient httpClient) : ISpotifyApiClient
     private async Task<JsonElement> GetJsonAsync(string url, CancellationToken ct)
     {
         using var response = await httpClient.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            logger.LogError("Spotify API {StatusCode} for {Url}: {ErrorBody}", (int)response.StatusCode, url, errorBody);
+            throw new SpotifyApiException((int)response.StatusCode, url, errorBody);
+        }
         return await response.Content.ReadFromJsonAsync<JsonElement>(ct);
     }
 }

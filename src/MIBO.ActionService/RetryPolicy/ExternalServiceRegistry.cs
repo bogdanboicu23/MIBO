@@ -1,5 +1,6 @@
 using MIBO.ActionService.ExternalServices.BankService;
 using MIBO.ActionService.ExternalServices.DummyJson;
+using MIBO.ActionService.ExternalServices.NewsApi;
 using MIBO.ActionService.ExternalServices.OpenWeatherMap;
 using Microsoft.Extensions.Options;
 
@@ -22,7 +23,8 @@ public interface IExternalServiceRegistry
 public sealed class ExternalServiceRegistry(
     IOptionsMonitor<DummyJsonOptions> dummyJsonOptions,
     IOptionsMonitor<OpenWeatherMapOptions> openWeatherMapOptions,
-    IOptionsMonitor<BankServiceOptions> bankServiceOptions)
+    IOptionsMonitor<BankServiceOptions> bankServiceOptions,
+IOptionsMonitor<NewsApiOptions> newsApiOptions)
     : IExternalServiceRegistry
 {
     public ExternalServiceDescriptor? Resolve(string handler)
@@ -90,6 +92,16 @@ public sealed class ExternalServiceRegistry(
                     "finance.summary.get",
                     "finance.analytics.expenses",
                     "finance.analytics.transactions",
+                }),
+            new ExternalServiceDescriptor(
+                "newsapi",
+                "NewsApi",
+                "NewsAPI",
+                newsApiOptions.CurrentValue.GetBaseUri().ToString().TrimEnd('/'),
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "news.headlines",
+                    "news.search",
                 }),
         ];
     }

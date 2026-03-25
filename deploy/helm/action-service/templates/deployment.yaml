@@ -30,5 +30,8 @@ spec:
             - name: {{ $key }}
               value: "{{ $value }}"
             {{- end }}
+            {{- if .Values.secretEnv }}
+            {{- toYaml .Values.secretEnv | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
