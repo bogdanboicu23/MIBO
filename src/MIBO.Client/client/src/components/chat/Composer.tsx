@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { Textarea } from "../ui/Textarea";
 
 export function Composer(props: { onSend: (text: string) => Promise<void> | void; disabled?: boolean }) {
     const { onSend, disabled } = props;
     const [value, setValue] = useState("");
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useLayoutEffect(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        textarea.style.height = "0px";
+        const nextHeight = Math.min(textarea.scrollHeight, 200);
+        textarea.style.height = `${nextHeight}px`;
+        textarea.style.overflowY = textarea.scrollHeight > 200 ? "auto" : "hidden";
+    }, [value]);
 
     async function send() {
         if (!value.trim() || disabled) return;
@@ -19,10 +30,12 @@ export function Composer(props: { onSend: (text: string) => Promise<void> | void
                 <div className="rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="flex items-end gap-2">
                         <Textarea
+                            ref={textareaRef}
                             value={value}
                             onChange={(e) => setValue(e.target.value)}
                             placeholder="Message your agent…"
                             rows={1}
+                            className="min-h-[44px] max-h-[200px]"
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                     e.preventDefault();

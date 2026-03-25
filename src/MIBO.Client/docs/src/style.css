@@ -3,3 +3,71 @@
 html, body, #root { height: 100%; }
 body { margin: 0; }
 @custom-variant dark (&:where(.dark, .dark *));
+
+[data-mdx-content] {
+    letter-spacing: -0.01em;
+}
+
+[data-mdx-content] table {
+    width: 100%;
+    margin: 1.75rem 0 2.5rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-top: 1px solid rgba(24, 24, 27, 0.12);
+}
+
+.dark [data-mdx-content] table {
+    border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-mdx-content] thead th {
+    padding: 1rem 1rem 0.9rem 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: rgb(24 24 27);
+}
+
+.dark [data-mdx-content] thead th {
+    color: rgb(244 244 245);
+}
+
+[data-mdx-content] tbody td {
+    padding: 0.65rem 1rem 0.65rem 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: rgb(82 82 91);
+}
+
+.dark [data-mdx-content] tbody td {
+    color: rgb(212 212 216);
+}
+
+[data-mdx-content] tbody tr + tr td {
+    border-top: 1px solid rgba(24, 24, 27, 0.06);
+}
+
+.dark [data-mdx-content] tbody tr + tr td {
+    border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-mdx-content] table code {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 0;
+    font-size: 0.96em;
+    color: inherit;
+}
+
+[data-mdx-content] ul,
+[data-mdx-content] ol {
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+[data-mdx-content] p + h2,
+[data-mdx-content] ul + h2,
+[data-mdx-content] ol + h2,
+[data-mdx-content] table + h2 {
+    margin-top: 4rem;
+}

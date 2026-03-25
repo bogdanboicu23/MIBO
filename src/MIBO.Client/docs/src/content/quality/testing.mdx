@@ -1,0 +1,50 @@
+---
+title: Testing
+description: Current automated test coverage and test execution entry points in the MIBO repository
+category: quality
+order: 71
+---
+
+# Testing
+
+The main automated test entry point is:
+
+```bash
+dotnet test tests/MIBO.Tests.sln
+```
+
+## CI test workflow
+
+`.github/workflows/tests.yml` currently:
+
+- restores `tests/MIBO.Tests.sln`
+- builds the solution in `Release`
+- runs `dotnet test`
+
+## Real test coverage that exists today
+
+### End-to-end tests
+
+`tests/MIBO.E2ETests/` contains real E2E coverage for:
+
+- chat streaming
+- conversation CRUD
+- auth flows
+- action execution
+
+### Unit tests with meaningful coverage
+
+`tests/MIBO.Storage.Mongo.Tests/` contains real coverage for:
+
+- Mongo bootstrap
+- index creation
+- conversation store logic
+- UI instance store logic
+- ownership and model edge cases
+
+## Practical guidance
+
+The current test suite is especially strong around:
+
+- the Mongo-backed storage layer
+- core service-level E2E flows

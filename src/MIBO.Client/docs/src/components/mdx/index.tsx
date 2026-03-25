@@ -12,6 +12,7 @@ import { LinkCard, LinkCardGrid } from "./LinkCard";
 import { SectionDivider, SectionHeader } from "./SectionDivider";
 import { MiboIntroPreview } from "../MiboIntroPreview";
 import { RegistryComponentDoc } from "./RegistryComponentDoc";
+import { MdxImage } from "./ImageLightbox";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mdxComponents: Record<string, ComponentType<any>> = {
@@ -41,4 +42,6 @@ export const mdxComponents: Record<string, ComponentType<any>> = {
     SectionHeader,
     MiboIntroPreview,
     RegistryComponentDoc,
+    img: MdxImage,
+    ZoomableImage: MdxImage,
 };

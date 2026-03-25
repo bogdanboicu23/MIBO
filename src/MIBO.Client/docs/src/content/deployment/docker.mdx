@@ -1,114 +1,55 @@
 ---
-title: Docker
-description: Running MIBO with Docker Compose
+title: Docker & Images
+description: Dockerfiles, container builds, and image publishing across the MIBO platform
 category: deployment
 order: 61
 ---
 
-# Docker Deployment
+# Docker & Images
 
-MIBO uses Docker Compose to orchestrate all services and infrastructure for local development.
+Every major service and frontend in MIBO has a Docker build path, and GitHub Actions uses those Dockerfiles to publish images.
 
-<SectionDivider />
+## Active Docker build targets
 
-<SectionHeader title="Services in Docker Compose" description="The compose.yaml at the project root defines the following application services." />
+| Area | Dockerfile path |
+| --- | --- |
+| API Gateway | `src/MIBO.ApiGateway/Dockerfile` |
+| Identity Service | `src/MIBO.IdentityService/Dockerfile` |
+| Conversation Service | `src/MIBO.ConversationService/Dockerfile` |
+| Action Service | `src/MIBO.ActionService/Dockerfile` |
+| LangChain Service | `src/MIBO.LangChainService/Dockerfile` |
+| Client | `src/MIBO.Client/client/Dockerfile` |
+| Docs | `src/MIBO.Client/docs/Dockerfile` |
+| Status | `src/MIBO.Client/status/Dockerfile` |
 
-| Service | Image | Port | Description |
-|---------|-------|------|-------------|
-| `mibo.apigateway` | Custom build | 8080 | Ocelot API Gateway |
-| `mibo.identityservice` | Custom build | 8080 | Authentication service |
-| `mibo.conversationservice` | Custom build | 8080 | Chat orchestration |
-| `mibo.visualisationservice` | Custom build | 8080 | Data visualization |
-| `mibo.calendaragent` | Custom build | 8080 | Calendar functionality |
+## Local recommendation
 
-<SectionDivider />
+For local multi-service runtime, prefer **AppHost** because it:
 
-<SectionHeader title="Running with Docker" description="Build, run, and manage all MIBO services with Docker Compose." />
+- wires the service graph used by the application
+- provisions the supporting infrastructure required by the services
+- injects the runtime configuration expected by the platform
 
-<Steps>
-  <Step title="Build and start all services">
-    ```bash
-    docker-compose up --build -d
-    ```
-  </Step>
-  <Step title="View logs">
-    ```bash
-    docker-compose logs -f
-    ```
-  </Step>
-  <Step title="Stop all services">
-    ```bash
-    docker-compose down
-    ```
-  </Step>
-  <Step title="Rebuild a specific service">
-    ```bash
-    docker-compose up --build -d mibo.conversationservice
-    ```
-  </Step>
-</Steps>
+## CI/CD image publishing
 
-<Callout type="tip" title="Rebuild After Changes">
-  Use `docker-compose up --build` after making changes to service code to ensure Docker rebuilds the images with your latest changes.
-</Callout>
+The GitHub Actions workflows build and publish images to:
 
-<SectionDivider />
-
-<SectionHeader title="Infrastructure Services" description="Supporting containers required by the application services." />
-
-<FeatureGrid columns={2}>
-  <FeatureCard title="PostgreSQL" description="Relational database for Identity Service user data" icon="🐘" />
-  <FeatureCard title="NATS + JetStream" description="Async message broker between microservices" icon="📨" />
-  <FeatureCard title="Redis" description="Caching and session storage" icon="⚡" />
-  <FeatureCard title="MongoDB" description="Document store for Conversation Service" icon="🍃" />
-</FeatureGrid>
-
-```yaml
-# PostgreSQL
-postgres:
-  image: postgres:16
-  environment:
-    POSTGRES_PASSWORD: your_password
-  ports:
-    - "5432:5432"
-
-# NATS with JetStream
-nats:
-  image: nats:latest
-  command: ["--js"]
-  ports:
-    - "4222:4222"
-
-# Redis
-redis:
-  image: redis:7
-  ports:
-    - "6379:6379"
-
-# MongoDB
-mongodb:
-  image: mongo:7
-  ports:
-    - "27017:27017"
+```text
+registry.digitalocean.com/mibo/
 ```
 
-<SectionDivider />
+Typical tags include:
 
-<SectionHeader title="Service Communication" description="In Docker, services reference each other by container name." />
+- `test-latest`
+- `test-<sha>`
+- `test-<run_id>-<run_attempt>`
+- `pr-<number>-<sha>` for pull-request builds in some workflows
 
-| From | To | URL Pattern |
-|------|-----|-------------|
-| Gateway | Identity | `identity-service:8080` |
-| Gateway | Conversation | `conversation-service:8080` |
-| Gateway | Visualisation | `visualisation-service:8080` |
-| Any Service | NATS | `nats:4222` |
-| Any Service | Redis | `redis:6379` |
-| Any Service | PostgreSQL | `postgres:5432` |
+## LangChain image specifics
 
-<SectionDivider />
+The Python agent image:
 
-<LinkCardGrid>
-  <LinkCard title="Kubernetes Deployment" description="Deploy to production with Kubernetes" href="/deployment/kubernetes" icon="☸️" />
-  <LinkCard title="Infrastructure" description="Stateful services on Kubernetes" href="/deployment/infrastructure" icon="🗄️" />
-  <LinkCard title="Deployment Overview" description="Back to deployment overview" href="/deployment" icon="🏠" />
-</LinkCardGrid>
+- uses `python:3.11-slim`
+- installs dependencies from `requirements.txt`
+- runs `uvicorn main:app`
+- bundles the agent code and config into the image

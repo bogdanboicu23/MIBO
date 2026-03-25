@@ -1,7 +1,8 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { paths } from 'src/routes/paths';
-import { useRouter, usePathname } from 'src/routes/hooks';
+import { useRouter } from 'src/routes/hooks';
 
 import { useAuthContext } from '../hooks';
 import { LoadingOverlay } from "../../components/ui";
@@ -13,14 +14,15 @@ type AuthGuardProps = {
 
 export function AuthGuard({ children }: AuthGuardProps) {
     const router = useRouter();
-    const pathname = usePathname();
+    const location = useLocation();
 
     const { authenticated, loading } = useAuthContext();
 
     const [isChecking, setIsChecking] = useState<boolean>(true);
 
     const createRedirectPath = (currentPath: string) => {
-        const queryString = new URLSearchParams({ returnTo: pathname }).toString();
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const queryString = new URLSearchParams({ returnTo }).toString();
         return `${currentPath}?${queryString}`;
     };
 
@@ -43,7 +45,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     useEffect(() => {
         checkPermissions();
          
-    }, [authenticated, loading]);
+    }, [authenticated, loading, location.pathname, location.search, location.hash]);
 
     if (isChecking) {
         return (

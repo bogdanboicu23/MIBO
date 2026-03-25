@@ -1,0 +1,68 @@
+---
+title: Integration Status
+description: Monitoring summary contract exposed by ActionService and consumed by the status frontend
+category: api-reference
+order: 27
+---
+
+# Integration Status
+
+Endpoint:
+
+```http
+GET /api/actions/status/summary?auditLimit=50
+```
+
+This endpoint is served by `ActionService` and consumed by `MIBO.Client/status`.
+
+## Typical response shape
+
+```json
+{
+  "enabled": true,
+  "generatedAtUtc": "2026-03-23T00:00:00Z",
+  "overallStatus": "operational",
+  "counts": {
+    "total": 4,
+    "monitoring": 0,
+    "operational": 4,
+    "degraded": 0,
+    "outage": 0
+  },
+  "services": [],
+  "audits": []
+}
+```
+
+## Monitored components
+
+In addition to external integrations, the status model includes synthetic platform components:
+
+- `platform` for gateway plus conversation flow health
+- `ai-agent` for the LangChain service
+
+## Possible service states
+
+- `monitoring`
+- `operational`
+- `degraded`
+- `outage`
+
+## Possible audit outcomes
+
+- `succeeded`
+- `failed`
+- `failed_queued`
+
+## When monitoring is considered enabled
+
+The endpoint reports monitoring as enabled when at least one of these conditions is true:
+
+- `RetryPolicy:AuditEnabled`
+- `RetryPolicy:StatusPageEnabled`
+- `RetryPolicy:Enabled && RetryPolicy:UseRabbit`
+
+## Sources of truth
+
+- `external_service_statuses` stores the latest snapshot per component
+- `external_service_audits` stores the execution/audit history

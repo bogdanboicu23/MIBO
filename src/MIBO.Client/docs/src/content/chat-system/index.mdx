@@ -1,90 +1,92 @@
 ---
-title: Chat System
-description: Overview of MIBO's AI-powered conversational interface
+title: Chat & AI Overview
+description: End-to-end architecture for MIBO's conversational runtime, AI agent pipeline, and structured UI responses
 category: chat-system
 order: 50
 ---
 
-# Chat System
+# Chat & AI Overview
 
-MIBO's chat system provides a natural language interface for users to interact with their financial data. The system orchestrates AI responses, executes financial operations, and delivers generative UI components in real-time.
+The current MIBO assistant is a coordinated runtime, not a single chatbot endpoint. It is composed of:
 
-<SectionDivider />
+- a React client that opens SSE streams and materializes generative UI
+- `MIBO.ApiGateway` for authentication and request routing
+- `MIBO.ConversationService` for conversation ownership, persistence, SSE relay, and monitoring
+- `MIBO.LangChainService` for AI reasoning, tool orchestration, and final response composition
+- `MIBO.ActionService` for typed data access and action execution
 
-<SectionHeader title="How It Works" description="The complete message lifecycle from user input to rendered response" />
+## What the runtime is optimized for
 
-<Steps>
-  <Step title="User sends a message">
-    The user types a prompt via the React client interface.
-  </Step>
-  <Step title="Chat Orchestrator receives the request">
-    The orchestrator coordinates the full response pipeline.
-  </Step>
-  <Step title="Planner analyzes intent">
-    The LLM integration analyzes the intent and selects appropriate tools.
-  </Step>
-  <Step title="Tool Executor runs selected tools">
-    Financial queries, account operations, and other backend calls are executed.
-  </Step>
-  <Step title="UI Composer generates dynamic UI">
-    Dynamic UI specifications are created based on the returned data.
-  </Step>
-  <Step title="Text Composer produces a response">
-    A human-readable natural language response is generated.
-  </Step>
-  <Step title="Response streams back to the client">
-    The combined response is delivered via SSE to the React client.
-  </Step>
-</Steps>
+The system is designed to return a structured assistant payload rather than only plain text. A final response can contain:
 
-<SectionDivider />
+- `text`
+- `components`
+- `data_sources`
+- `actions`
+- `subscriptions`
 
-<SectionHeader title="Key Architecture Components" description="The core services that power the chat pipeline" />
+That payload is then translated by the client into `ui.v1`, which allows the interface to keep working after the initial AI answer.
 
-<FeatureGrid columns={2}>
-  <FeatureCard title="Chat Orchestrator" description="Main coordination logic for the entire chat flow" icon="🎯" />
-  <FeatureCard title="Planner" description="LLM-powered intent analysis and tool selection" icon="🧠" />
-  <FeatureCard title="Tool Registry" description="Catalog of available tools the AI can invoke" icon="📋" />
-  <FeatureCard title="Tool Executor" description="Executes tool calls against backend services" icon="⚙️" />
-  <FeatureCard title="UI Composer" description="Generates generative UI component specifications" icon="🎨" />
-  <FeatureCard title="Text Composer" description="Creates natural language responses for the user" icon="✍️" />
-  <FeatureCard title="Action Router" description="Routes user actions from UI components to handlers" icon="🔀" />
-  <FeatureCard title="Event Publisher" description="Publishes events via NATS JetStream" icon="📡" />
-</FeatureGrid>
+## End-to-end request path
 
-<SectionDivider />
+```text
+Browser
+  -> ApiGateway
+  -> ConversationService
+  -> LangChainService
+  -> ActionService
+  -> external providers
 
-<SectionHeader title="Example Interactions" description="How the system handles common user queries" />
+Browser
+  <- SSE relay
+  <- ConversationService
+  <- LangChainService
+```
 
-<Callout type="tip" title="Spending Query">
-**User:** "Show me my spending this month"
-- Planner selects the expense analytics tool
-- Tool Executor queries the Finance Data Service
-- UI Composer generates a spending chart component
-- Text Composer writes a summary
-</Callout>
+## Runtime responsibilities by service
 
-<Callout type="tip" title="Balance Query">
-**User:** "What's my account balance?"
-- Planner selects the account summary tool
-- Tool Executor fetches account data
-- UI Composer renders an account card
-- Text Composer provides the balance information
-</Callout>
+| Layer | Runtime owner | What it does |
+| --- | --- | --- |
+| Conversation entry | `MIBO.ConversationService` | validates prompt, resolves conversation, persists user message, opens upstream AI stream |
+| AI reasoning | `MIBO.LangChainService` | loads memory, classifies intent, plans execution, runs tools, composes final structured response |
+| Tool and data execution | `MIBO.ActionService` | executes handlers for products, finance, weather, Spotify, and Pomodoro |
+| Response delivery | `MIBO.ConversationService` | relays SSE downstream and persists the assistant payload on `done` |
+| UI realization | `MIBO.Client/client` | parses the final payload and builds `ui.v1` from it |
 
-<SectionDivider />
+## Core implementation characteristics
 
-<SectionHeader title="API Endpoints" description="The three main controllers exposed by the chat system" />
+- The transport between browser and backend is **HTTP + SSE**.
+- `ConversationService` is the outer orchestration boundary seen by the client.
+- `LangChainService` is the inner AI boundary seen by `ConversationService`.
+- The agent reads conversation context directly from MongoDB.
+- The agent does not persist chat messages itself; `ConversationService` owns message persistence.
+- The agent composes JSON that is intentionally shaped for the frontend sandbox registry.
 
-| Endpoint | Description |
-|----------|-------------|
-| `POST /api/v1/chat` | Main chat endpoint |
-| `POST /api/conversations/stream` | SSE streaming endpoint |
-| `POST /api/v1/action` | Action execution endpoint |
+## The two most important service boundaries
 
-<SectionDivider />
+### `MIBO.ConversationService`
 
-<LinkCardGrid>
-  <LinkCard title="Conversation Flow" description="Detailed lifecycle of a chat message from input to response" href="/chat-system/conversation-flow" icon="🔄" />
-  <LinkCard title="Real-Time Features" description="SSE streaming and SignalR integration for live updates" href="/chat-system/realtime" icon="⚡" />
-</LinkCardGrid>
+This service owns:
+
+- conversation CRUD
+- per-user ownership checks
+- user and assistant message persistence
+- SSE relay to the browser
+- correlation and synthetic monitoring records for both platform and AI agent activity
+
+### `MIBO.LangChainService`
+
+This service owns:
+
+- the `/chat` AI endpoint
+- the LangGraph pipeline
+- prompt contracts for intent, planning, composition, and context compaction
+- tool invocation through `ActionService`
+- response normalization when model output is imperfect JSON
+
+## Read next
+
+- [Conversation Flow](/chat-system/conversation-flow)
+- [AI Agent Runtime](/chat-system/ai-agent-runtime)
+- [Conversation Service Runtime](/chat-system/conversation-service-runtime)
+- [Streaming & Live Runtime](/chat-system/realtime)

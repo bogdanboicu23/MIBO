@@ -1,104 +1,68 @@
 ---
 title: Streaming
-description: Server-Sent Events endpoint for streaming AI responses
+description: SSE event format between ConversationService, LangChainService, and the React client
 category: api-reference
-order: 23
+order: 24
 ---
 
-# Streaming API
+# Streaming
 
-The streaming endpoint delivers AI responses token-by-token using Server-Sent Events (SSE).
+Both `LangChainService` and `ConversationService` use `text/event-stream`.
 
-**Base path:** `/api/conversations`
+## Event types seen by the client
 
-<Callout type="info" title="Authentication Required">
-  This endpoint requires a valid JWT Bearer token in the `Authorization` header.
-</Callout>
+| Type | Emitted by | Meaning |
+| --- | --- | --- |
+| `session` | ConversationService or LangChainService | communicates the created conversation/session ID |
+| `status` | LangChainService | intermediate progress message |
+| `chunk` | LangChainService | raw partial fragment of the final JSON payload |
+| `done` | LangChainService | complete final payload serialized as JSON text |
+| `error` | optional | error during streaming or composition |
 
-<SectionDivider />
+## Generic format
 
-<SectionHeader title="Stream Message" description="Send a message and receive a streaming response via SSE" />
+```text
+data: {"type":"status","content":"Understanding your request..."}
 
-<ApiEndpoint
-    method="POST"
-    path="/api/conversations/stream"
-    description="Send a message and receive a streaming response via Server-Sent Events. Tokens are delivered as they are generated."
-    body={`{
-    "message": "What are my top expenses?"
-}`}
-    response={`data: {"token": "Your"}
+data: {"type":"chunk","content":"{\"text\":\"..."}
 
-data: {"token": " top"}
-
-data: {"token": " expenses"}
-
-data: {"token": " this"}
-
-data: {"token": " month"}
-
-data: {"token": " are..."}
-
-data: {"done": true}`}
-/>
-
-<SectionDivider />
-
-<SectionHeader title="SSE Event Format" description="Understanding the Server-Sent Events data structure" />
-
-The response uses the `text/event-stream` content type. Each event is a `data:` line followed by a JSON payload.
-
-<FeatureGrid columns={3}>
-  <FeatureCard title="Token Event" description='{"token": "word"} — A single token of the response text' icon="📝" />
-  <FeatureCard title="Done Event" description='{"done": true} — Signals the end of the stream' icon="✅" />
-  <FeatureCard title="Error Event" description='{"message": "...", "details": "..."} — Error during generation' icon="❌" />
-</FeatureGrid>
-
-<SectionDivider />
-
-<SectionHeader title="Client Implementation" description="Example TypeScript code for consuming the SSE stream" />
-
-```typescript
-async function streamChat(message: string) {
-    const response = await fetch("/api/conversations/stream", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message }),
-    });
-
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop()!;
-
-        for (const line of lines) {
-            if (line.startsWith("data: ")) {
-                const data = JSON.parse(line.slice(6));
-                if (data.done) return;
-                if (data.token) appendToUI(data.token);
-            }
-        }
-    }
-}
+data: {"type":"done","content":"{\"text\":\"Final response\",\"components\":[]}"}
 ```
 
-<Callout type="tip" title="Buffer Handling">
-  Always buffer incomplete lines when reading from the stream. SSE data may arrive in chunks that split across line boundaries.
+## What ConversationService does with the stream
+
+- reads the raw upstream agent stream
+- detects the `done` event
+- attempts to parse the final payload
+- extracts the assistant text and payload
+- persists the assistant message after the upstream stream completes
+- emits a synthetic `session` event itself when it had to create the conversation before calling the agent
+
+## What the React client does
+
+`useChat.ts`:
+
+1. reads the stream through `ReadableStream`
+2. splits events on `\n\n`
+3. updates the assistant status message for `status`
+4. accumulates `chunk` fragments
+5. parses the final `AgentFinalResponse` on `done`
+6. builds `ui.v1` through `buildUiFromAgentResponse()`
+
+## Final payload schema in practice
+
+The `done` event usually contains a JSON string that can include:
+
+- `text`
+- `components`
+- `data_sources`
+- `actions`
+- `subscriptions`
+
+That makes the streaming contract an application protocol for generative UI, not just a text transport.
+
+## Operational note
+
+<Callout type="info" title="The assistant streams structured state">
+  The main value of the stream is not only progressive text. It is the progressive delivery of a final structured assistant payload that can drive generative UI and follow-up actions.
 </Callout>
-
-<SectionDivider />
-
-<LinkCardGrid>
-  <LinkCard title="Chat API" description="Non-streaming chat endpoint" href="/api-reference/conversation/chat" icon="💬" />
-  <LinkCard title="Actions API" description="Execute generative UI actions" href="/api-reference/conversation/actions" icon="⚡" />
-  <LinkCard title="Authentication" description="Get your JWT token" href="/api-reference/identity/auth" icon="🔐" />
-</LinkCardGrid>

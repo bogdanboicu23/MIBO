@@ -1,122 +1,93 @@
 ---
 title: Architecture Overview
-description: High-level architecture of the MIBO microservices platform
+description: Current runtime architecture for the MIBO platform
 category: architecture
 order: 10
 ---
 
 # Architecture Overview
 
-MIBO follows a **microservices architecture** where each service owns its domain, data, and business logic. Services communicate asynchronously through NATS message broker and are fronted by a YARP-based API gateway.
+MIBO is a service-oriented platform with a clear active runtime path across the client, gateway, conversation runtime, action runtime, and AI pipeline.
 
-<SectionDivider />
+Today, the core user-facing flow is:
 
-<SectionHeader title="System Diagram" description="Visual overview of how the client, gateway, services, and message broker connect" />
+1. the React client calls the **Ocelot** gateway
+2. the gateway validates JWTs and forwards user identity via headers
+3. `ConversationService` persists the user message and opens an SSE session to `LangChainService`
+4. `LangChainService` plans and executes tools through `ActionService`
+5. the final structured response is streamed back to the client as SSE
+6. `ConversationService` persists the assistant payload in MongoDB
 
+## Visual system map
+
+<figure className="my-10">
+  <ZoomableImage
+    src="/general-soft-arhitecture.png"
+    alt="General MIBO software architecture diagram"
+    title="General MIBO software architecture"
+    className="w-full"
+  />
+  <figcaption>
+    High-level runtime architecture of the current MIBO platform, including the
+    client, gateway, backend services, AI agent, active data stores, and external
+    integrations. Click the diagram to open it in a zoomable viewer.
+  </figcaption>
+</figure>
+
+## Current runtime topology
+
+```text
+Browser / React Client
+        |
+        | HTTPS
+        v
+MIBO.ApiGateway (Ocelot)
+        |
+        +--> MIBO.IdentityService
+        |
+        +--> MIBO.ConversationService
+        |         |
+        |         +--> MongoDB (conversations, messages, UI instances)
+        |         |
+        |         +--> MIBO.LangChainService (HTTP + SSE)
+        |                   |
+        |                   +--> MIBO.ActionService
+        |                               |
+        |                               +--> BankService
+        |                               +--> DummyJSON
+        |                               +--> OpenWeatherMap
+        |                               +--> Spotify API
+        |                               +--> local Pomodoro config
+        |
+        +--> MIBO.ActionService
+
+Supporting infrastructure:
+- PostgreSQL for IdentityService
+- Redis for finance connection state and Spotify tokens
+- RabbitMQ for ActionService retry flow
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    React Client (SPA)                    │
-│              Vite + React 19 + Tailwind CSS              │
-└──────────────────────┬──────────────────────────────────┘
-                       │ HTTP / SignalR
-                       ▼
-┌──────────────────────────────────────────────────────────┐
-│                   API Gateway (YARP)                      │
-│          Reverse Proxy · Route-based Forwarding           │
-└─────┬──────────────┬───────────────────┬────────────────┘
-      │              │                   │
-      ▼              ▼                   ▼
-┌───────────┐  ┌──────────────┐  ┌──────────────┐
-│  Identity  │  │ Conversation │  │   Finance    │
-│  Service   │  │   Service    │  │   Service    │
-├───────────┤  ├──────────────┤  ├──────────────┤
-│ Auth/JWT  │  │ Chat/AI      │  │ Accounts     │
-│ Users     │  │ Streaming    │  │ Transactions │
-│ Profiles  │  │ Actions      │  │ Budgets      │
-└─────┬─────┘  └──────┬───────┘  └──────┬───────┘
-      │               │                  │
-      └───────────────┼──────────────────┘
-                      │
-               ┌──────▼──────┐
-               │    NATS     │
-               │  Message    │
-               │   Broker    │
-               └─────────────┘
-```
 
-<SectionDivider />
+## Key architectural characteristics
 
-<SectionHeader title="Design Principles" description="Core architectural decisions that guide the platform" />
+| Characteristic | Current state |
+| --- | --- |
+| Gateway | Ocelot |
+| Main chat transport | HTTP plus SSE |
+| Main AI orchestration | LangGraph pipeline in Python |
+| Tool/data runtime | Action Service with typed handler routing |
+| Primary persistence | PostgreSQL, MongoDB, Redis |
+| Monitoring path | Mongo-backed integration status/audit data plus status frontend |
 
-<Callout type="tip" title="Why Microservices?">
-  MIBO is built as a microservices platform so that each domain (identity, conversation, finance) can evolve, scale, and deploy independently without impacting the rest of the system.
-</Callout>
+## Design choices that matter
 
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Service Autonomy"
-    description="Each service has its own database and can be deployed independently"
-    icon="🧩"
-  />
-  <FeatureCard
-    title="Async Communication"
-    description="Services communicate via NATS for loose coupling and resilience"
-    icon="📨"
-  />
-  <FeatureCard
-    title="API Gateway Pattern"
-    description="YARP gateway provides a single entry point for all client requests"
-    icon="🚪"
-  />
-  <FeatureCard
-    title="Domain-Driven Design"
-    description="Each service encapsulates a specific business domain with clear boundaries"
-    icon="📐"
-  />
-  <FeatureCard
-    title="Event-Driven"
-    description="Key operations publish events that other services can react to asynchronously"
-    icon="⚡"
-  />
-  <FeatureCard
-    title="Real-Time Streaming"
-    description="AI responses stream to the client via SSE for an interactive experience"
-    icon="🌊"
-  />
-</FeatureGrid>
+- The client does **not** talk directly to the Python agent.
+- The Python agent does **not** talk directly to external providers for the main data domains; it goes through `ActionService`.
+- The main response path is synchronous streaming over HTTP plus SSE.
+- The generative UI contract is persisted as assistant payload, then materialized into `ui.v1` on the client.
 
-<SectionDivider />
+## Where to go next
 
-<SectionHeader title="Service Ports" description="Default ports for local development" />
-
-| Service | Default Port | Description |
-|---------|-------------|-------------|
-| API Gateway | 5000 | Entry point for all API calls |
-| Identity Service | 5001 | Authentication & users |
-| Conversation Service | 5002 | Chat & AI orchestration |
-| Finance Service | 5003 | Financial data management |
-| Client (SPA) | 5173 | React frontend |
-| Docs | 3030 | Documentation site |
-
-<Callout type="info" title="Port Configuration">
-  All ports are configurable via `launchSettings.json` or environment variables. The table above shows the defaults used during local development.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Continue Reading" description="Dive deeper into the architecture" />
-
-<LinkCardGrid>
-  <LinkCard
-    title="Service Descriptions"
-    description="Detailed overview of each microservice, its responsibilities, and tech stack"
-    href="/architecture/services"
-    icon="🔧"
-  />
-  <LinkCard
-    title="Inter-Service Communication"
-    description="How services talk to each other via NATS and stream data to clients via SSE"
-    href="/architecture/communication"
-    icon="🔗"
-  />
-</LinkCardGrid>
+- [Services](/architecture/services) for service-by-service responsibilities.
+- [Communication](/architecture/communication) for actual transport and request flows.
+- [Data Layer](/architecture/data-layer) for persistence ownership.
+- [Frontend Apps](/architecture/frontend-apps) for the client, docs, and status applications.

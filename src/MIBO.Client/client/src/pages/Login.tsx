@@ -5,11 +5,12 @@ import Turnstile from "react-turnstile";
 import { Button, Card, Divider, Input } from "@/components/ui";
 import { ThemeToggle } from "@/components/chat/ThemeToggle.tsx";
 import { RouterLink } from "@/routes/components";
-import { paths } from "@/routes/paths.ts";
-import { useRouter } from "@/routes/hooks";
+import { normalizeReturnTo, paths } from "@/routes/paths.ts";
+import { useRouter, useSearchParams } from "@/routes/hooks";
 import { useAuthContext } from "@/auth/hooks";
 import type { LoginData } from "@/auth/types.ts";
 import { useTheme } from "@/hooks/useTheme.ts";
+import { queueIntroPlayback } from "@/utils/intro.ts";
 
 const schema = z.object({
     email: z.string().trim().min(3, "Introdu email (minim 3 caractere)."),
@@ -18,8 +19,10 @@ const schema = z.object({
 
 export default function Login() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { login } = useAuthContext();
     const { theme } = useTheme();
+    const returnTo = normalizeReturnTo(searchParams.get("returnTo"));
 
     const [form, setForm] = useState<LoginData>({ email: "", password: "" });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,7 +67,8 @@ export default function Login() {
 
             setTsToken(null);
 
-            router.push(paths.root);
+            queueIntroPlayback();
+            router.replace(returnTo);
         } catch (err: any) {
             setServerError(err?.message ?? "Autentificare eșuată. Încearcă din nou.");
             setTsToken(null);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "@/routes/hooks";
+import { paths } from "@/routes/paths.ts";
 import { useThemeContext } from "@/app/providers/useThemeContext.ts";
 
 // ── Typing hook ──────────────────────────────────────────────────────────────
@@ -276,7 +277,7 @@ export default function LandingPage() {
     const { theme, setTheme } = useThemeContext();
     const router = useRouter();
     const goToDocs = () => router.push("docs.mibo.monster")
-    const onEnterApp = () => router.push("/chat");
+    const onEnterApp = () => router.push(paths.chat);
     const typed = useTyping(["ui interactiv", "formulare dinamice", "grafice live"]);
 
     useReveal();

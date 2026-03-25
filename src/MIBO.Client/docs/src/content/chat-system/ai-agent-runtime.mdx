@@ -1,0 +1,363 @@
+---
+title: AI Agent Runtime
+description: Detailed architecture of MIBO.LangChainService, including graph execution, prompts, tool orchestration, memory, and output shaping
+category: chat-system
+order: 52
+---
+
+# AI Agent Runtime
+
+`MIBO.LangChainService` is the AI execution core of the platform. It is a FastAPI service that exposes a single `/chat` endpoint and executes a sequential LangGraph pipeline against the current conversation state.
+
+## Runtime stack
+
+| Area | Implementation |
+| --- | --- |
+| Web framework | FastAPI |
+| LLM integration | `langchain-groq` |
+| Orchestration | LangGraph |
+| Validation | Pydantic |
+| Memory access | Motor + MongoDB |
+| Tool execution | LangChain tools + `ActionService` query wrappers |
+
+## External contract
+
+The service exposes:
+
+```http
+POST /chat
+```
+
+Request body:
+
+```json
+{
+  "session_id": "conversation-id-or-empty",
+  "message": "User prompt",
+  "user_id": "optional-authenticated-user-id"
+}
+```
+
+Response:
+
+- `Content-Type: text/event-stream`
+- SSE events with `session`, `status`, `chunk`, and `done`
+
+## Key implementation files
+
+| File | Why it matters |
+| --- | --- |
+| `main.py` | FastAPI entrypoint, SSE queue, pipeline invocation, terminal `done` emission |
+| `agent/graph.py` | LangGraph topology and node ordering |
+| `agent/state.py` | shared `PipelineState` contract |
+| `agent/memory.py` | conversation window loading and summary compaction |
+| `agent/prompts.py` | prompt contracts that define the agent's behavior and output schema |
+| `agent/agents/*.py` | per-phase logic for intent, planning, execution, and composition |
+| `agent/tooling/*.py` | LangChain tools exposed to the planner and executor |
+| `agent/external_services/*.py` | typed wrappers over `ActionService` |
+| `models/schemas.py` | Pydantic models for intent, plan, final response, and JSON recovery |
+
+## Entry-point behavior
+
+The FastAPI endpoint in `main.py` is intentionally small and orchestration-focused.
+
+Its main responsibilities are:
+
+1. validate that the message is non-empty
+2. generate a `session_id` if one was not supplied
+3. allocate an internal async queue for SSE events
+4. build the initial `PipelineState`
+5. invoke the compiled LangGraph workflow
+6. emit a final `done` event containing `final_response`
+
+If the caller does not provide a session ID, the service emits a `session` event before the rest of the stream.
+
+## Pipeline state
+
+The graph works on a single typed state object:
+
+| Field | Purpose |
+| --- | --- |
+| `session_id` | conversation identifier shared with Mongo and ConversationService |
+| `user_id` | authenticated user identity, used mainly for finance and Spotify tools |
+| `user_message` | current prompt |
+| `conversation_history` | loaded memory window |
+| `intent` | validated intent classification result |
+| `plan` | validated execution plan |
+| `tool_results` | normalized outputs from executed tools |
+| `final_response` | final structured response for the client |
+| `stream_callback` | async callback used to emit SSE status and chunk events |
+
+## Graph topology
+
+The compiled graph is linear and deterministic:
+
+```text
+memory_loader
+  -> intent_agent
+  -> planner_agent
+  -> executor_agent
+  -> composer_agent
+  -> memory_saver
+```
+
+## Code-level control flow
+
+```text
+receive request
+  -> build PipelineState
+  -> load memory window from Mongo
+  -> classify intent
+  -> create execution plan
+  -> invoke tool registry
+  -> stream JSON composition
+  -> recover/validate final payload
+  -> emit done
+```
+
+## Node-by-node behavior
+
+### `memory_loader`
+
+This node loads the conversation window directly from MongoDB.
+
+The logic in `agent/memory.py`:
+
+- reads the conversation document from the `conversations` collection
+- loads recent normalized messages from the `messages` collection
+- excludes messages that are already represented by a stored summary
+- prepends a synthetic `system` message containing the summary when present
+- falls back to legacy embedded messages if normalized messages are absent
+
+Default working budget:
+
+- conversation window target: about `6000` tokens
+
+### `intent_agent`
+
+This node answers the question: "What kind of request is this?"
+
+It sends the recent history and current prompt into Groq using `INTENT_SYSTEM_PROMPT`, then validates the result into `IntentResult`.
+
+The intent classifier decides:
+
+- `intent_type`
+- `needs_external_data`
+- `needs_ui`
+- `needs_calculation`
+- `entities.explicit_data`
+- `entities.required_services`
+- `entities.suggested_components`
+- `summary`
+
+The node also emits a downstream SSE status:
+
+```text
+Understanding your request...
+```
+
+### Context budget enforcement
+
+Before running the intent classifier, the service checks a soft prompt budget of roughly `8500` tokens.
+
+If the prompt is too large, the service:
+
+1. triggers `compact_context(session_id)`
+2. reloads the conversation with a summary message
+3. if still too large, progressively drops the oldest non-system messages until the prompt fits
+
+This makes context management explicit and deterministic rather than leaving truncation entirely to the model provider.
+
+### `planner_agent`
+
+This node transforms intent into an executable UI-and-data plan.
+
+It uses `PLANNER_SYSTEM_PROMPT`, which is one of the most important pieces of the agent runtime because it defines:
+
+- the list of available tools
+- the list of action-service handlers
+- the list of allowed frontend component types
+- the output schema for `ExecutionPlan`
+- rules for live data sources, transforms, and interactive actions
+
+The planner is where the model decides whether to produce:
+
+- direct static components
+- live data sources plus reusable actions
+- plain markdown
+- domain-specific outputs such as weather panels, Spotify cards, or Pomodoro timers
+
+The node emits:
+
+```text
+Planning the response...
+```
+
+### `executor_agent`
+
+This node executes the tool calls selected by the planner.
+
+Important implementation mechanics:
+
+- tool calls are resolved from `TOOL_REGISTRY`
+- each result is stored under its `result_key`
+- finance and Spotify tools receive `user_id` automatically
+- each result is token-truncated before it is handed to the composer
+- unknown tools and runtime failures become structured error payloads instead of hard pipeline failures
+
+The executor emits:
+
+```text
+Fetching data...
+```
+
+only when the plan actually contains tool calls.
+
+### `composer_agent`
+
+This is the final generation phase and the only node configured with `streaming=True`.
+
+It receives:
+
+- original user message
+- validated intent
+- validated execution plan
+- tool results
+
+It then streams partial content via `astream()` and emits each fragment as an SSE `chunk`.
+
+The model is expected to return a `FinalResponse` object containing:
+
+- `text`
+- `components`
+- `data_sources`
+- `actions`
+- `subscriptions`
+
+### Output recovery and normalization
+
+The composer includes several resilience mechanisms because LLM output can drift from the ideal JSON contract:
+
+- JSON fence stripping
+- balanced-object extraction
+- field-level recovery for `text`, `components`, `data_sources`, `actions`, and `subscriptions`
+- markdown promotion when the model returns markdown text but no components
+
+That last mechanism is important: if the model returns a markdown answer and no component list, the service automatically wraps the response as a `markdown` component so the client can still render it through the sandbox registry.
+
+### `memory_saver`
+
+`memory_saver` is currently a no-op in the Python service.
+
+That is intentional: `ConversationService` owns persistence of user and assistant messages. The AI service only manages context compaction metadata such as summary fields on the conversation document.
+
+## Tooling model
+
+The tool layer is split into two levels.
+
+### 1. LangChain tool definitions
+
+The files under `agent/tooling/` define decorated tools such as:
+
+- `search_products`
+- `get_user_finances`
+- `get_current_weather`
+- `start_pomodoro`
+- `spotify_now_playing`
+
+These are the names the planner can place into `tool_calls`.
+
+### 2. External-service wrappers
+
+The files under `agent/external_services/` implement thin typed clients over `ActionService`.
+
+This is a deliberate architectural boundary:
+
+- the planner and executor work with semantic tool names
+- the actual service integration is routed through `ActionService /api/actions/query`
+- handler-level wiring stays centralized in the Action Service boundary
+
+## ActionService integration
+
+The shared client in `agent/external_services/action_service.py` sends payloads in this shape:
+
+```json
+{
+  "dataSource": {
+    "id": "semantic_source_id",
+    "handler": "handler.name",
+    "defaultArgs": {}
+  },
+  "args": {}
+}
+```
+
+This means the agent is not coupled to low-level provider URLs. It is coupled to semantic handlers such as:
+
+- `products.catalog.query`
+- `finance.summary.get`
+- `weather.current.get`
+- `spotify.search`
+- `pomodoro.config.get`
+
+## Memory compaction model
+
+The compaction flow in `memory.py` is one of the most important operational mechanisms in the service.
+
+When enough messages accumulate, the service:
+
+1. selects older messages
+2. builds a compaction prompt
+3. asks the model for a concise factual summary
+4. stores that summary back into the conversation document
+5. uses the summary as a `system` message on future requests
+
+If `GROQ_API_KEY` is missing, the service falls back to a local truncated summary string rather than failing outright.
+
+## Token-budgeting strategy
+
+The service explicitly manages token pressure at multiple stages:
+
+- `intent_agent` compacts history when needed
+- `planner_agent` truncates oversized planner input
+- `executor_agent` truncates tool outputs before storing them in state
+- `composer_agent` progressively reduces per-tool result budget before composing the final answer
+
+This is one of the main reasons the pipeline stays stable even when tool results are verbose.
+
+## Streaming contract
+
+The agent emits these event types:
+
+| Type | Meaning |
+| --- | --- |
+| `session` | generated session ID when the request did not include one |
+| `status` | human-readable phase update |
+| `chunk` | partial fragment of the final JSON payload |
+| `done` | final structured response serialized as JSON text |
+
+The final `done` content is the authoritative payload consumed by both:
+
+- `ConversationService`, which persists it as `assistantPayload`
+- the React client, which turns it into `ui.v1`
+
+## Configuration that matters in the current code
+
+The runtime actively depends on:
+
+- `GROQ_API_KEY`
+- `ACTION_SERVICE_URL` or equivalent service-discovery env vars
+- `MONGO_URI` or `Mongo__ConnectionString`
+- `MONGO_DATABASE` or `Mongo__Database`
+- `MONGO_CONVERSATIONS_COLLECTION`
+- `MONGO_MESSAGES_COLLECTION`
+
+## Key architectural outcome
+
+`MIBO.LangChainService` is not just a prompt wrapper. It is a structured execution engine that:
+
+- reasons about user intent
+- plans typed UI and data contracts
+- delegates data access to `ActionService`
+- manages token pressure and context compaction
+- shapes frontend-ready JSON under an explicit schema

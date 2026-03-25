@@ -1,0 +1,30 @@
+---
+title: SpotifyPlayer
+description: Runtime Spotify now-playing card available in the client sandbox registry
+category: components
+order: 92
+---
+
+# SpotifyPlayer
+
+`SpotifyPlayer` renders a compact now-playing card for Spotify data returned through the Action Service Spotify handlers.
+
+## Typical payload fields
+
+| Prop | Meaning |
+| --- | --- |
+| `name` | track title |
+| `artist` | artist display string |
+| `album` | album title |
+| `albumArt` | cover image URL |
+| `isPlaying` | playback state |
+| `progressMs` | current playback position |
+| `durationMs` | track duration |
+| `spotifyUrl` | deep link to Spotify |
+| `message` | fallback message when nothing is playing |
+
+## Behavior
+
+- renders a fallback card if no track is available
+- shows a progress bar based on `progressMs` and `durationMs`
+- links out to Spotify when `spotifyUrl` is present

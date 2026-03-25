@@ -12,66 +12,94 @@ export const navItems: NavItem[] = [
   {
     "title": "Platform Overview",
     "slug": "/getting-started",
-    "description": "Introduction to the MIBO intelligent financial assistant platform",
+    "description": "Current product, platform, and repository overview for MIBO",
     "category": "getting-started",
     "order": 1,
     "children": [
       {
         "title": "Installation",
         "slug": "/getting-started/installation",
-        "description": "How to set up and run the MIBO platform locally",
+        "description": "Recommended ways to run the MIBO platform locally and what each mode starts",
         "category": "getting-started",
         "order": 2
       },
       {
         "title": "Project Structure",
         "slug": "/getting-started/project-structure",
-        "description": "Overview of the MIBO repository layout and file organization",
+        "description": "Repository layout and how the codebase is partitioned by services, apps, infrastructure, and tests",
         "category": "getting-started",
         "order": 3
+      },
+      {
+        "title": "Platform Snapshot",
+        "slug": "/getting-started/current-state",
+        "description": "Active platform summary for the current MIBO repository",
+        "category": "getting-started",
+        "order": 4
       }
     ]
   },
   {
     "title": "Architecture Overview",
     "slug": "/architecture",
-    "description": "High-level architecture of the MIBO microservices platform",
+    "description": "Current runtime architecture for the MIBO platform",
     "category": "architecture",
     "order": 10,
     "children": [
       {
-        "title": "Service Descriptions",
+        "title": "Services",
         "slug": "/architecture/services",
-        "description": "Detailed overview of each MIBO microservice",
+        "description": "Service catalog for the applications and shared runtime libraries in MIBO",
         "category": "architecture",
         "order": 11
       },
       {
-        "title": "Inter-Service Communication",
+        "title": "Communication",
         "slug": "/architecture/communication",
-        "description": "How MIBO services communicate via NATS and SignalR",
+        "description": "Active request, streaming, identity propagation, and retry flows used by MIBO today",
         "category": "architecture",
         "order": 12
+      },
+      {
+        "title": "Data Layer",
+        "slug": "/architecture/data-layer",
+        "description": "Persistence ownership across PostgreSQL, MongoDB, Redis, and RabbitMQ",
+        "category": "architecture",
+        "order": 13
+      },
+      {
+        "title": "Frontend Apps",
+        "slug": "/architecture/frontend-apps",
+        "description": "The three frontend applications and the client-side generative UI runtime",
+        "category": "architecture",
+        "order": 14
       }
     ]
   },
   {
     "title": "API Reference",
     "slug": "/api-reference",
-    "description": "Complete REST API documentation for the MIBO platform",
+    "description": "Public HTTP contracts and action runtime contracts used by the current MIBO platform",
     "category": "api-reference",
     "order": 20,
     "children": [
+      {
+        "title": "API Gateway",
+        "slug": "/api-reference/gateway",
+        "description": "Ocelot routes, authentication behavior, and claim propagation in MIBO.ApiGateway",
+        "category": "api-reference",
+        "order": 21
+      },
       {
         "title": "Identity",
         "order": 99,
         "children": [
           {
-            "title": "Authentication",
+            "title": "Identity & Auth",
             "slug": "/api-reference/identity/auth",
-            "description": "Identity Service authentication endpoints - login, register, tokens",
+            "description": "Current IdentityService endpoints for login, registration, refresh, user info, finance connection state, and Spotify OAuth",
             "category": "api-reference",
-            "order": 21
+            "order": 22
           }
         ]
       },
@@ -82,23 +110,43 @@ export const navItems: NavItem[] = [
           {
             "title": "Chat",
             "slug": "/api-reference/conversation/chat",
-            "description": "Main chat endpoint for sending messages to the AI assistant",
-            "category": "api-reference",
-            "order": 22
-          },
-          {
-            "title": "Streaming",
-            "slug": "/api-reference/conversation/streaming",
-            "description": "Server-Sent Events endpoint for streaming AI responses",
+            "description": "Live chat endpoint exposed by ConversationService through the gateway",
             "category": "api-reference",
             "order": 23
           },
           {
-            "title": "Actions",
-            "slug": "/api-reference/conversation/actions",
-            "description": "Action execution endpoint for generative UI interactions",
+            "title": "Streaming",
+            "slug": "/api-reference/conversation/streaming",
+            "description": "SSE event format between ConversationService, LangChainService, and the React client",
             "category": "api-reference",
             "order": 24
+          },
+          {
+            "title": "Conversation Management",
+            "slug": "/api-reference/conversation/actions",
+            "description": "CRUD contracts for conversations and their stored message history",
+            "category": "api-reference",
+            "order": 25
+          }
+        ]
+      },
+      {
+        "title": "Action Service",
+        "order": 99,
+        "children": [
+          {
+            "title": "Action Service Runtime",
+            "slug": "/api-reference/action-service/runtime",
+            "description": "Public query and execute contracts plus the supported handler catalog in MIBO.ActionService",
+            "category": "api-reference",
+            "order": 26
+          },
+          {
+            "title": "Integration Status",
+            "slug": "/api-reference/action-service/status",
+            "description": "Monitoring summary contract exposed by ActionService and consumed by the status frontend",
+            "category": "api-reference",
+            "order": 27
           }
         ]
       },
@@ -107,46 +155,46 @@ export const navItems: NavItem[] = [
         "order": 99,
         "children": [
           {
-            "title": "Accounts",
+            "title": "Finance Accounts",
             "slug": "/api-reference/finance/accounts",
-            "description": "Bank account management endpoints",
-            "category": "api-reference",
-            "order": 25
-          },
-          {
-            "title": "Transactions",
-            "slug": "/api-reference/finance/transactions",
-            "description": "Transaction query and search endpoints",
-            "category": "api-reference",
-            "order": 26
-          },
-          {
-            "title": "Expenses",
-            "slug": "/api-reference/finance/expenses",
-            "description": "Expense tracking and categorization endpoints",
-            "category": "api-reference",
-            "order": 27
-          },
-          {
-            "title": "Budgets",
-            "slug": "/api-reference/finance/budgets",
-            "description": "Budget management endpoints",
+            "description": "Finance account handlers exposed through Action Service",
             "category": "api-reference",
             "order": 28
           },
           {
-            "title": "Summary",
-            "slug": "/api-reference/finance/summary",
-            "description": "Financial summary endpoints for user overviews",
+            "title": "Finance Transactions",
+            "slug": "/api-reference/finance/transactions",
+            "description": "Finance transaction list and search handlers exposed through Action Service",
             "category": "api-reference",
             "order": 29
           },
           {
-            "title": "Analytics",
-            "slug": "/api-reference/finance/analytics",
-            "description": "Spending analytics and insights endpoints",
+            "title": "Finance Expenses",
+            "slug": "/api-reference/finance/expenses",
+            "description": "Expense list and expense category handlers exposed through Action Service",
             "category": "api-reference",
             "order": 30
+          },
+          {
+            "title": "Finance Budgets",
+            "slug": "/api-reference/finance/budgets",
+            "description": "Budget handlers exposed through Action Service",
+            "category": "api-reference",
+            "order": 31
+          },
+          {
+            "title": "Finance Summary",
+            "slug": "/api-reference/finance/summary",
+            "description": "Summary handlers used by the agent and generative UI",
+            "category": "api-reference",
+            "order": 32
+          },
+          {
+            "title": "Finance Analytics",
+            "slug": "/api-reference/finance/analytics",
+            "description": "Expense and transaction analytics handlers exposed through Action Service",
+            "category": "api-reference",
+            "order": 33
           }
         ]
       }
@@ -155,14 +203,14 @@ export const navItems: NavItem[] = [
   {
     "title": "Component Library",
     "slug": "/components",
-    "description": "Documentation for the sandbox UI registry used by dynamic client rendering",
+    "description": "Documentation for the sandbox UI registry used by the client-side generative UI runtime",
     "category": "components",
     "order": 40,
     "children": [
       {
         "title": "Sandbox Registry Components",
         "slug": "/components/sandbox-registry",
-        "description": "Complete documentation for all dynamic UI components used by client sandbox runtime",
+        "description": "Runtime component catalog for the generative UI registry used by the MIBO client",
         "category": "components",
         "order": 70,
         "children": [
@@ -312,82 +360,147 @@ export const navItems: NavItem[] = [
             "description": "Event timeline list with clickable items",
             "category": "components",
             "order": 90
+          },
+          {
+            "title": "PomodoroTimer",
+            "slug": "/components/sandbox-registry/pomodoro-timer",
+            "description": "Runtime Pomodoro timer component available in the client sandbox registry",
+            "category": "components",
+            "order": 91
+          },
+          {
+            "title": "SpotifyPlayer",
+            "slug": "/components/sandbox-registry/spotify-player",
+            "description": "Runtime Spotify now-playing card available in the client sandbox registry",
+            "category": "components",
+            "order": 92
+          },
+          {
+            "title": "SpotifyTrackList",
+            "slug": "/components/sandbox-registry/spotify-track-list",
+            "description": "Runtime Spotify track-list component available in the client sandbox registry",
+            "category": "components",
+            "order": 93
           }
         ]
       }
     ]
   },
   {
-    "title": "Chat System",
+    "title": "Chat & AI Overview",
     "slug": "/chat-system",
-    "description": "Overview of MIBO's AI-powered conversational interface",
+    "description": "End-to-end architecture for MIBO's conversational runtime, AI agent pipeline, and structured UI responses",
     "category": "chat-system",
     "order": 50,
     "children": [
       {
         "title": "Conversation Flow",
         "slug": "/chat-system/conversation-flow",
-        "description": "Detailed flow of a conversation from user input to AI response",
+        "description": "Detailed lifecycle from browser prompt to persisted assistant payload and client-side generative UI",
         "category": "chat-system",
         "order": 51
       },
       {
-        "title": "Real-Time Features",
-        "slug": "/chat-system/realtime",
-        "description": "SignalR and SSE streaming in the MIBO chat system",
+        "title": "AI Agent Runtime",
+        "slug": "/chat-system/ai-agent-runtime",
+        "description": "Detailed architecture of MIBO.LangChainService, including graph execution, prompts, tool orchestration, memory, and output shaping",
         "category": "chat-system",
         "order": 52
+      },
+      {
+        "title": "Conversation Service Runtime",
+        "slug": "/chat-system/conversation-service-runtime",
+        "description": "Detailed architecture of MIBO.ConversationService, including CRUD, SSE relay, Mongo persistence, ownership, and monitoring",
+        "category": "chat-system",
+        "order": 53
+      },
+      {
+        "title": "Streaming & Live Runtime",
+        "slug": "/chat-system/realtime",
+        "description": "SSE protocol, event semantics, and structured response handling across ConversationService, LangChainService, and the React client",
+        "category": "chat-system",
+        "order": 54
       }
     ]
   },
   {
     "title": "Deployment",
     "slug": "/deployment",
-    "description": "Deployment architecture and infrastructure overview for the MIBO platform",
+    "description": "Current local orchestration, Kubernetes deployment model, ingress, and delivery pipeline for MIBO",
     "category": "deployment",
     "order": 60,
     "children": [
       {
-        "title": "Docker",
+        "title": "Docker & Images",
         "slug": "/deployment/docker",
-        "description": "Running MIBO with Docker Compose",
+        "description": "Dockerfiles, container builds, and image publishing across the MIBO platform",
         "category": "deployment",
         "order": 61
       },
       {
-        "title": "Kubernetes",
+        "title": "Kubernetes Layout",
         "slug": "/deployment/kubernetes",
-        "description": "Kubernetes deployment architecture and manifest structure",
+        "description": "How the repository splits backend Helm deployments, frontend manifests, and Traefik resources",
         "category": "deployment",
         "order": 62
       },
       {
         "title": "Helm Charts",
         "slug": "/deployment/helm",
-        "description": "Helm chart structure and configuration for MIBO services",
+        "description": "Current backend Helm charts and the values model used by deployment workflows",
         "category": "deployment",
         "order": 63
       },
       {
         "title": "Infrastructure",
         "slug": "/deployment/infrastructure",
-        "description": "Stateful infrastructure services - NATS, Redis, and PostgreSQL on Kubernetes",
+        "description": "Current infrastructure dependencies across AppHost, Kubernetes resources, and environment configuration",
         "category": "deployment",
         "order": 64
       },
       {
         "title": "Ingress & TLS",
         "slug": "/deployment/ingress",
-        "description": "Traefik ingress controller with automatic Let's Encrypt TLS certificates",
+        "description": "Traefik ingress, public hostnames, and TLS behavior for the currently documented environment",
         "category": "deployment",
         "order": 65
       },
       {
         "title": "Observability",
         "slug": "/deployment/observability",
-        "description": "Monitoring, logging, and tracing with OpenTelemetry, Prometheus, Grafana, and Loki",
+        "description": "Current operational visibility across status monitoring, logs, and deployment rollouts",
         "category": "deployment",
         "order": 66
+      }
+    ]
+  },
+  {
+    "title": "Quality Overview",
+    "slug": "/quality",
+    "description": "Testing, CI/CD, security, and reliability practices for the current MIBO platform",
+    "category": "quality",
+    "order": 70,
+    "children": [
+      {
+        "title": "Testing",
+        "slug": "/quality/testing",
+        "description": "Current automated test coverage and test execution entry points in the MIBO repository",
+        "category": "quality",
+        "order": 71
+      },
+      {
+        "title": "CI/CD",
+        "slug": "/quality/ci-cd",
+        "description": "Current GitHub Actions delivery model for backend services, frontends, and docs",
+        "category": "quality",
+        "order": 72
+      },
+      {
+        "title": "Security & Reliability",
+        "slug": "/quality/security-and-reliability",
+        "description": "Current auth, ownership, retry, and runtime reliability characteristics in MIBO",
+        "category": "quality",
+        "order": 73
       }
     ]
   }
@@ -401,177 +514,237 @@ export const searchIndex: Array<{
 }> = [
   {
     "title": "Platform Overview",
-    "description": "Introduction to the MIBO intelligent financial assistant platform",
+    "description": "Current product, platform, and repository overview for MIBO",
     "slug": "/getting-started",
     "category": "getting-started"
   },
   {
     "title": "Installation",
-    "description": "How to set up and run the MIBO platform locally",
+    "description": "Recommended ways to run the MIBO platform locally and what each mode starts",
     "slug": "/getting-started/installation",
     "category": "getting-started"
   },
   {
     "title": "Project Structure",
-    "description": "Overview of the MIBO repository layout and file organization",
+    "description": "Repository layout and how the codebase is partitioned by services, apps, infrastructure, and tests",
     "slug": "/getting-started/project-structure",
     "category": "getting-started"
   },
   {
+    "title": "Platform Snapshot",
+    "description": "Active platform summary for the current MIBO repository",
+    "slug": "/getting-started/current-state",
+    "category": "getting-started"
+  },
+  {
     "title": "Architecture Overview",
-    "description": "High-level architecture of the MIBO microservices platform",
+    "description": "Current runtime architecture for the MIBO platform",
     "slug": "/architecture",
     "category": "architecture"
   },
   {
-    "title": "Service Descriptions",
-    "description": "Detailed overview of each MIBO microservice",
+    "title": "Services",
+    "description": "Service catalog for the applications and shared runtime libraries in MIBO",
     "slug": "/architecture/services",
     "category": "architecture"
   },
   {
-    "title": "Inter-Service Communication",
-    "description": "How MIBO services communicate via NATS and SignalR",
+    "title": "Communication",
+    "description": "Active request, streaming, identity propagation, and retry flows used by MIBO today",
     "slug": "/architecture/communication",
     "category": "architecture"
   },
   {
+    "title": "Data Layer",
+    "description": "Persistence ownership across PostgreSQL, MongoDB, Redis, and RabbitMQ",
+    "slug": "/architecture/data-layer",
+    "category": "architecture"
+  },
+  {
+    "title": "Frontend Apps",
+    "description": "The three frontend applications and the client-side generative UI runtime",
+    "slug": "/architecture/frontend-apps",
+    "category": "architecture"
+  },
+  {
     "title": "API Reference",
-    "description": "Complete REST API documentation for the MIBO platform",
+    "description": "Public HTTP contracts and action runtime contracts used by the current MIBO platform",
     "slug": "/api-reference",
     "category": "api-reference"
   },
   {
-    "title": "Authentication",
-    "description": "Identity Service authentication endpoints - login, register, tokens",
+    "title": "API Gateway",
+    "description": "Ocelot routes, authentication behavior, and claim propagation in MIBO.ApiGateway",
+    "slug": "/api-reference/gateway",
+    "category": "api-reference"
+  },
+  {
+    "title": "Identity & Auth",
+    "description": "Current IdentityService endpoints for login, registration, refresh, user info, finance connection state, and Spotify OAuth",
     "slug": "/api-reference/identity/auth",
     "category": "api-reference"
   },
   {
     "title": "Chat",
-    "description": "Main chat endpoint for sending messages to the AI assistant",
+    "description": "Live chat endpoint exposed by ConversationService through the gateway",
     "slug": "/api-reference/conversation/chat",
     "category": "api-reference"
   },
   {
     "title": "Streaming",
-    "description": "Server-Sent Events endpoint for streaming AI responses",
+    "description": "SSE event format between ConversationService, LangChainService, and the React client",
     "slug": "/api-reference/conversation/streaming",
     "category": "api-reference"
   },
   {
-    "title": "Actions",
-    "description": "Action execution endpoint for generative UI interactions",
+    "title": "Conversation Management",
+    "description": "CRUD contracts for conversations and their stored message history",
     "slug": "/api-reference/conversation/actions",
     "category": "api-reference"
   },
   {
-    "title": "Accounts",
-    "description": "Bank account management endpoints",
+    "title": "Action Service Runtime",
+    "description": "Public query and execute contracts plus the supported handler catalog in MIBO.ActionService",
+    "slug": "/api-reference/action-service/runtime",
+    "category": "api-reference"
+  },
+  {
+    "title": "Integration Status",
+    "description": "Monitoring summary contract exposed by ActionService and consumed by the status frontend",
+    "slug": "/api-reference/action-service/status",
+    "category": "api-reference"
+  },
+  {
+    "title": "Finance Accounts",
+    "description": "Finance account handlers exposed through Action Service",
     "slug": "/api-reference/finance/accounts",
     "category": "api-reference"
   },
   {
-    "title": "Transactions",
-    "description": "Transaction query and search endpoints",
+    "title": "Finance Transactions",
+    "description": "Finance transaction list and search handlers exposed through Action Service",
     "slug": "/api-reference/finance/transactions",
     "category": "api-reference"
   },
   {
-    "title": "Expenses",
-    "description": "Expense tracking and categorization endpoints",
+    "title": "Finance Expenses",
+    "description": "Expense list and expense category handlers exposed through Action Service",
     "slug": "/api-reference/finance/expenses",
     "category": "api-reference"
   },
   {
-    "title": "Budgets",
-    "description": "Budget management endpoints",
+    "title": "Finance Budgets",
+    "description": "Budget handlers exposed through Action Service",
     "slug": "/api-reference/finance/budgets",
     "category": "api-reference"
   },
   {
-    "title": "Summary",
-    "description": "Financial summary endpoints for user overviews",
+    "title": "Finance Summary",
+    "description": "Summary handlers used by the agent and generative UI",
     "slug": "/api-reference/finance/summary",
     "category": "api-reference"
   },
   {
-    "title": "Analytics",
-    "description": "Spending analytics and insights endpoints",
+    "title": "Finance Analytics",
+    "description": "Expense and transaction analytics handlers exposed through Action Service",
     "slug": "/api-reference/finance/analytics",
     "category": "api-reference"
   },
   {
     "title": "Component Library",
-    "description": "Documentation for the sandbox UI registry used by dynamic client rendering",
+    "description": "Documentation for the sandbox UI registry used by the client-side generative UI runtime",
     "slug": "/components",
     "category": "components"
   },
   {
-    "title": "Chat System",
-    "description": "Overview of MIBO's AI-powered conversational interface",
+    "title": "Chat & AI Overview",
+    "description": "End-to-end architecture for MIBO's conversational runtime, AI agent pipeline, and structured UI responses",
     "slug": "/chat-system",
     "category": "chat-system"
   },
   {
     "title": "Conversation Flow",
-    "description": "Detailed flow of a conversation from user input to AI response",
+    "description": "Detailed lifecycle from browser prompt to persisted assistant payload and client-side generative UI",
     "slug": "/chat-system/conversation-flow",
     "category": "chat-system"
   },
   {
-    "title": "Real-Time Features",
-    "description": "SignalR and SSE streaming in the MIBO chat system",
+    "title": "AI Agent Runtime",
+    "description": "Detailed architecture of MIBO.LangChainService, including graph execution, prompts, tool orchestration, memory, and output shaping",
+    "slug": "/chat-system/ai-agent-runtime",
+    "category": "chat-system"
+  },
+  {
+    "title": "Conversation Service Runtime",
+    "description": "Detailed architecture of MIBO.ConversationService, including CRUD, SSE relay, Mongo persistence, ownership, and monitoring",
+    "slug": "/chat-system/conversation-service-runtime",
+    "category": "chat-system"
+  },
+  {
+    "title": "Streaming & Live Runtime",
+    "description": "SSE protocol, event semantics, and structured response handling across ConversationService, LangChainService, and the React client",
     "slug": "/chat-system/realtime",
     "category": "chat-system"
   },
   {
     "title": "Deployment",
-    "description": "Deployment architecture and infrastructure overview for the MIBO platform",
+    "description": "Current local orchestration, Kubernetes deployment model, ingress, and delivery pipeline for MIBO",
     "slug": "/deployment",
     "category": "deployment"
   },
   {
-    "title": "Docker",
-    "description": "Running MIBO with Docker Compose",
+    "title": "Docker & Images",
+    "description": "Dockerfiles, container builds, and image publishing across the MIBO platform",
     "slug": "/deployment/docker",
     "category": "deployment"
   },
   {
-    "title": "Kubernetes",
-    "description": "Kubernetes deployment architecture and manifest structure",
+    "title": "Kubernetes Layout",
+    "description": "How the repository splits backend Helm deployments, frontend manifests, and Traefik resources",
     "slug": "/deployment/kubernetes",
     "category": "deployment"
   },
   {
     "title": "Helm Charts",
-    "description": "Helm chart structure and configuration for MIBO services",
+    "description": "Current backend Helm charts and the values model used by deployment workflows",
     "slug": "/deployment/helm",
     "category": "deployment"
   },
   {
     "title": "Infrastructure",
-    "description": "Stateful infrastructure services - NATS, Redis, and PostgreSQL on Kubernetes",
+    "description": "Current infrastructure dependencies across AppHost, Kubernetes resources, and environment configuration",
     "slug": "/deployment/infrastructure",
     "category": "deployment"
   },
   {
     "title": "Ingress & TLS",
-    "description": "Traefik ingress controller with automatic Let's Encrypt TLS certificates",
+    "description": "Traefik ingress, public hostnames, and TLS behavior for the currently documented environment",
     "slug": "/deployment/ingress",
     "category": "deployment"
   },
   {
     "title": "Observability",
-    "description": "Monitoring, logging, and tracing with OpenTelemetry, Prometheus, Grafana, and Loki",
+    "description": "Current operational visibility across status monitoring, logs, and deployment rollouts",
     "slug": "/deployment/observability",
     "category": "deployment"
   },
   {
+    "title": "Quality Overview",
+    "description": "Testing, CI/CD, security, and reliability practices for the current MIBO platform",
+    "slug": "/quality",
+    "category": "quality"
+  },
+  {
     "title": "Sandbox Registry Components",
-    "description": "Complete documentation for all dynamic UI components used by client sandbox runtime",
+    "description": "Runtime component catalog for the generative UI registry used by the MIBO client",
     "slug": "/components/sandbox-registry",
     "category": "components"
+  },
+  {
+    "title": "Testing",
+    "description": "Current automated test coverage and test execution entry points in the MIBO repository",
+    "slug": "/quality/testing",
+    "category": "quality"
   },
   {
     "title": "ActionPanel",
@@ -580,10 +753,22 @@ export const searchIndex: Array<{
     "category": "components"
   },
   {
+    "title": "CI/CD",
+    "description": "Current GitHub Actions delivery model for backend services, frontends, and docs",
+    "slug": "/quality/ci-cd",
+    "category": "quality"
+  },
+  {
     "title": "BarChartCard",
     "description": "SVG bar chart with grouped, stacked and horizontal modes",
     "slug": "/components/sandbox-registry/bar-chart-card",
     "category": "components"
+  },
+  {
+    "title": "Security & Reliability",
+    "description": "Current auth, ownership, retry, and runtime reliability characteristics in MIBO",
+    "slug": "/quality/security-and-reliability",
+    "category": "quality"
   },
   {
     "title": "Carousel",
@@ -697,6 +882,24 @@ export const searchIndex: Array<{
     "title": "TimelineCard",
     "description": "Event timeline list with clickable items",
     "slug": "/components/sandbox-registry/timeline-card",
+    "category": "components"
+  },
+  {
+    "title": "PomodoroTimer",
+    "description": "Runtime Pomodoro timer component available in the client sandbox registry",
+    "slug": "/components/sandbox-registry/pomodoro-timer",
+    "category": "components"
+  },
+  {
+    "title": "SpotifyPlayer",
+    "description": "Runtime Spotify now-playing card available in the client sandbox registry",
+    "slug": "/components/sandbox-registry/spotify-player",
+    "category": "components"
+  },
+  {
+    "title": "SpotifyTrackList",
+    "description": "Runtime Spotify track-list component available in the client sandbox registry",
+    "slug": "/components/sandbox-registry/spotify-track-list",
     "category": "components"
   }
 ];

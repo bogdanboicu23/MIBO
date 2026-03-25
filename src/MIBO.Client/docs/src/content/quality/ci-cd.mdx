@@ -1,0 +1,53 @@
+---
+title: CI/CD
+description: Current GitHub Actions delivery model for backend services, frontends, and docs
+category: quality
+order: 72
+---
+
+# CI/CD
+
+The repository uses GitHub Actions for both verification and deployment.
+
+## Workflow families
+
+| Workflow type | Examples |
+| --- | --- |
+| Shared test workflow | `tests.yml` |
+| Backend deploy workflows | `deploy-action-service.yml`, `deploy-api-gateway.yml`, `deploy-conversation-service.yml`, `deploy-identity-service.yml`, `deploy-langchain-service.yml` |
+| Frontend/docs/status deploy workflows | `deploy-client.yml`, `deploy-docs.yml`, `deploy-status.yml` |
+
+## Backend deployment pattern
+
+Most backend workflows follow this pattern:
+
+1. call the shared test workflow
+2. build a Docker image
+3. push to DigitalOcean Container Registry
+4. create/update secrets where needed
+5. run `helm upgrade --install`
+6. wait for rollout and print deployment status
+
+## Frontend/docs/status deployment pattern
+
+The frontend-style workflows:
+
+1. build and push the image
+2. fetch kubeconfig
+3. `kubectl apply` the raw manifests
+4. update the deployment image
+5. wait for rollout
+
+## Environment characteristics
+
+- the active namespace in current workflows is `test`
+- images are published to `registry.digitalocean.com/mibo`
+- backends and frontends are not deployed through a single unified pipeline; the repo uses per-service workflows
+
+## Important nuance
+
+Not every workflow has the same branch policy. For example:
+
+- some services deploy from `main`, `test`, or `develop`
+- some are restricted to `main`
+- some run tests before deployment while others are simpler publish-and-rollout pipelines

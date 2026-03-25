@@ -1,179 +1,46 @@
 ---
 title: Ingress & TLS
-description: Traefik ingress controller with automatic Let's Encrypt TLS certificates
+description: Traefik ingress, public hostnames, and TLS behavior for the currently documented environment
 category: deployment
 order: 65
 ---
 
 # Ingress & TLS
 
-MIBO uses **Traefik v3.1** as its ingress controller with automatic **Let's Encrypt** TLS certificate provisioning via HTTP-01 challenge.
+MIBO uses Traefik as the ingress controller for the environment represented by this repository.
 
-<SectionDivider />
+## Public hosts represented by current manifests
 
-<SectionHeader title="Traefik Setup" description="Traefik runs in its own namespace with dedicated RBAC permissions." />
+| Host | Backing service | Manifest source |
+| --- | --- | --- |
+| `mibo.monster` | `mibo-client` | `k8s/apps/11-mibo-client-ingress.yaml` |
+| `docs.mibo.monster` | `mibo-docs` | `k8s/apps/13-mibo-docs-ingress.yaml` |
+| `status.mibo.monster` | `mibo-status` | `k8s/apps/15-mibo-status-ingress.yaml` |
+| `api.mibo.monster` | `api-gateway` | Helm values for `api-gateway` |
+| `traefik.mibo.monster` | Traefik dashboard | `k8s/traefik/05-06*` |
 
-```
+## TLS behavior
+
+- Traefik is configured with Let's Encrypt certificate resolution
+- HTTP routes are redirected to HTTPS
+- Traefik dashboard access is protected with basic auth middleware
+
+## Traefik assets in the repo
+
+```text
 k8s/traefik/
-├── 00-namespace.yaml      # traefik namespace
-├── 01-rbac.yaml           # ServiceAccount + ClusterRole
-├── 02-ingressclass.yaml   # IngressClass: traefik
-├── 03-deployment.yaml     # Traefik Deployment
-├── 04-service-lb.yaml     # LoadBalancer Service
-├── 05-dashboard-ingress   # Dashboard route
-├── 06-dashboard.yaml      # Dashboard IngressRoute
-├── 07-dashboard-auth      # Basic auth secret
-├── 08-dashboard-auth-mw   # Auth middleware
-└── 09-traefik-acme-pvc    # TLS cert storage
+├── 00-namespace.yaml
+├── 01-rbac.yaml
+├── 02-ingressclass.yaml
+├── 03-deployment.yaml
+├── 04-service-lb.yaml
+├── 05-dashboard-ingress.yaml
+├── 06-dashboard.yaml
+├── 07-dashboard-auth-secret.yaml
+├── 08-dashboard-auth-middleware.yaml
+└── 09-traefik-acme-pvc.yaml
 ```
 
-<SectionDivider />
+## Practical note
 
-<SectionHeader title="Deployment Configuration" description="Traefik entrypoints, providers, and TLS resolver configuration." />
-
-```yaml
-image: traefik:v3.1
-ports:
-  - name: web          # :80  (HTTP)
-  - name: websecure    # :443 (HTTPS)
-  - name: admin        # :9000 (Dashboard)
-args:
-  - --ping=true
-  - --providers.kubernetesingress
-  - --providers.kubernetescrd
-  - --entrypoints.web.address=:80
-  - --entrypoints.websecure.address=:443
-  - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
-  - --certificatesresolvers.le.acme.storage=/data/acme.json
-```
-
-<Callout type="info" title="TLS Certificate Storage">
-  TLS certificates are stored in a **1Gi PersistentVolumeClaim** (`traefik-acme`) so they survive pod restarts. The ACME email is configured for certificate expiry notifications, and certificates are automatically renewed before expiration.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Ingress Routes" description="Traefik IngressRoute resources for each public-facing service." />
-
-### MIBO Client (`mibo.monster`)
-
-```yaml
-# HTTP -> HTTPS redirect
-kind: IngressRoute
-metadata:
-  name: mibo-client-http
-spec:
-  entryPoints: [web]
-  routes:
-    - match: Host(`mibo.monster`)
-      middlewares:
-        - name: redirect-to-https
-      services:
-        - name: mibo-client
-          port: 80
-
-# HTTPS with TLS
-kind: IngressRoute
-metadata:
-  name: mibo-client
-spec:
-  entryPoints: [websecure]
-  routes:
-    - match: Host(`mibo.monster`)
-      services:
-        - name: mibo-client
-          port: 80
-  tls:
-    certResolver: le    # Let's Encrypt
-```
-
-### API Gateway (`api.mibo.monster`)
-
-```yaml
-kind: IngressRoute
-metadata:
-  name: api-gateway-https
-spec:
-  entryPoints: [websecure]
-  routes:
-    - match: Host(`api.mibo.monster`)
-      services:
-        - name: api-gateway
-          port: 8080
-  tls:
-    certResolver: le
-```
-
-### Grafana (`grafana.mibo.monster`)
-
-```yaml
-kind: IngressRoute
-metadata:
-  name: grafana-https
-  namespace: observability
-spec:
-  entryPoints: [websecure]
-  routes:
-    - match: Host(`grafana.mibo.monster`)
-      services:
-        - name: grafana
-          port: 3000
-  tls:
-    certResolver: le
-```
-
-<SectionDivider />
-
-<SectionHeader title="All Routes" description="Complete list of ingress routes with their backend services and TLS configuration." />
-
-| Host | Backend Service | Port | Namespace | TLS |
-|------|----------------|------|-----------|-----|
-| `mibo.monster` | mibo-client | 80 | test | Let's Encrypt |
-| `api.mibo.monster` | api-gateway | 8080 | test | Let's Encrypt |
-| `grafana.mibo.monster` | grafana | 3000 | observability | Let's Encrypt |
-| `loki.mibo.monster` | loki | 3100 | observability | Let's Encrypt |
-| `traefik.mibo.monster` | traefik (dashboard) | 9000 | traefik | Let's Encrypt |
-
-<SectionDivider />
-
-<SectionHeader title="HTTPS Redirect Middleware" description="All HTTP traffic is automatically redirected to HTTPS." />
-
-```yaml
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: redirect-to-https
-spec:
-  redirectScheme:
-    scheme: https
-    permanent: true
-```
-
-<Callout type="warning" title="HTTPS Required">
-  All HTTP traffic is permanently redirected (301) to HTTPS. Ensure your clients and health checks account for this redirect behavior.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Dashboard Access" description="The Traefik dashboard is protected with basic authentication." />
-
-```yaml
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: dashboard-auth
-spec:
-  basicAuth:
-    secret: dashboard-auth
-```
-
-Access it at `https://traefik.mibo.monster/dashboard/` with the configured admin credentials.
-
-<SectionDivider />
-
-<LinkCardGrid>
-  <LinkCard title="Kubernetes Deployment" description="Manifest structure and service deployments" href="/deployment/kubernetes" icon="☸️" />
-  <LinkCard title="Observability" description="Monitoring and logging stack" href="/deployment/observability" icon="📈" />
-  <LinkCard title="Helm Charts" description="Service templating and configuration" href="/deployment/helm" icon="⎈" />
-  <LinkCard title="Deployment Overview" description="Back to deployment overview" href="/deployment" icon="🏠" />
-</LinkCardGrid>
+The frontend apps use raw Kubernetes ingress manifests, while the API Gateway ingress is expressed through Helm chart values. That split is intentional in the current repository layout.

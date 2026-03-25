@@ -83,7 +83,7 @@ public class AuthService : IAuthService
     {
         var accessTokenKey =
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.AccessTokenSecret));
-        var accessTokenExpires = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        var accessTokenExpires = DateTime.UtcNow.AddDays(_jwtSettings.AccessTokenExpirationMinutes);
 
         // Get user roles
         var roles = await _userManager.GetRolesAsync(user);

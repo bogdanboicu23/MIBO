@@ -1,0 +1,141 @@
+---
+title: Action Service Runtime
+description: Public query and execute contracts plus the supported handler catalog in MIBO.ActionService
+category: api-reference
+order: 26
+---
+
+# Action Service Runtime
+
+`ActionService` is the shared runtime through which the agent and the interactive client access external or synthetic data.
+
+## Public endpoints
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/actions/query` | execute a `DataSourceDefinition` |
+| `POST` | `/api/actions/execute` | execute an `ActionDefinition`, optionally refreshing related data sources |
+
+## `POST /api/actions/query`
+
+Request:
+
+```json
+{
+  "dataSource": {
+    "id": "products.catalog",
+    "handler": "products.catalog.query",
+    "defaultArgs": { "limit": 10 },
+    "refreshOnLoad": true,
+    "refreshOnConversationOpen": false,
+    "staleAfterMs": 60000,
+    "fieldHints": null,
+    "transforms": []
+  },
+  "args": {
+    "q": "headphones"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "dataSourceId": "products.catalog",
+  "handler": "products.catalog.query",
+  "data": {},
+  "fieldHints": {},
+  "fetchedAtUtc": "2026-03-23T00:00:00.0000000Z"
+}
+```
+
+## `POST /api/actions/execute`
+
+Request:
+
+```json
+{
+  "action": {
+    "id": "products.catalog.search",
+    "actionType": "ui.action.execute",
+    "handler": "products.catalog.query",
+    "dataSourceId": "products.catalog",
+    "defaultArgs": {},
+    "refreshDataSourceIds": ["products.catalog"]
+  },
+  "dataSource": {
+    "id": "products.catalog",
+    "handler": "products.catalog.query",
+    "defaultArgs": { "limit": 10 }
+  },
+  "dataSources": {},
+  "payload": {
+    "q": "camera"
+  }
+}
+```
+
+Possible response fields:
+
+- `data` for the primary source result
+- `refreshes[]` for additional sources that should be refreshed in the UI
+
+## Identity injection
+
+If `X-User-Id` is present, `ActionService` injects it into request arguments as `user_id`. This is how authenticated user context reaches finance and Spotify handlers.
+
+## Supported handler families
+
+### Products / DummyJSON
+
+- `products.catalog.query`
+- `products.categories.list`
+- `products.detail.get`
+
+### Weather / OpenWeatherMap
+
+- `weather.current.get`
+- `weather.forecast.get`
+
+### Spotify
+
+- `spotify.search`
+- `spotify.now_playing`
+- `spotify.playlists`
+- `spotify.top_tracks`
+- `spotify.top_artists`
+
+### Finance / BankService
+
+- `finance.accounts.list`
+- `finance.accounts.get`
+- `finance.transactions.list`
+- `finance.transactions.search`
+- `finance.expenses.list`
+- `finance.expenses.categories`
+- `finance.budgets.list`
+- `finance.summary.get`
+- `finance.analytics.expenses`
+- `finance.analytics.transactions`
+
+### Pomodoro
+
+- `pomodoro.config.get`
+
+### Synthetic local handler
+
+- `finance.user.summary`
+
+This one is implemented directly in `ActionRouter` and returns deterministic local demo data.
+
+## Supported transforms
+
+The router explicitly supports `project_rows`.
+
+This transform can:
+
+- remap fields
+- inject constants
+- evaluate simple expressions such as `add`, `subtract`, `multiply`, `divide`, `round`, `concat`, and `coalesce`
+- attach transform-level field hints used by tables and charts

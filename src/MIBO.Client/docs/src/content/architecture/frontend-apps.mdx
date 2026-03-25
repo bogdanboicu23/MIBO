@@ -1,0 +1,65 @@
+---
+title: Frontend Apps
+description: The three frontend applications and the client-side generative UI runtime
+category: architecture
+order: 14
+---
+
+# Frontend Apps
+
+The repository currently contains three frontend applications under `src/MIBO.Client/`.
+
+## 1. Main client
+
+`src/MIBO.Client/client`
+
+This is the user-facing application. It is responsible for:
+
+- authentication and token usage
+- conversation list and detail loading
+- SSE chat consumption
+- rendering assistant text plus generative UI
+- dispatching follow-up UI actions to `ActionService`
+
+### Important client runtime pieces
+
+| File / area | Responsibility |
+| --- | --- |
+| `hooks/useChat.ts` | conversation lifecycle, SSE parsing, action refresh behavior |
+| `utils/agent-chat.ts` | converts agent responses into `ui.v1`, source registry, and action registry |
+| `components/sandbox/*` | generative UI runtime renderer and registry components |
+
+## 2. Docs site
+
+`src/MIBO.Client/docs`
+
+This application:
+
+- renders MDX content
+- generates navigation from the content tree
+- contains its own sandbox component documentation helpers
+
+It is both product documentation and developer-facing technical documentation.
+
+## 3. Status app
+
+`src/MIBO.Client/status`
+
+This application consumes `GET /api/actions/status/summary` and presents operational status for monitored integrations and synthetic platform components.
+
+## Generative UI runtime
+
+The client does not receive ready-to-render React elements from the agent. It receives structured JSON that is transformed into a `ui.v1` tree.
+
+### Flow
+
+1. the agent returns `components`, `data_sources`, `actions`, and optional `subscriptions`
+2. `buildUiFromAgentResponse()` converts that into `ui.v1`
+3. the client stores source metadata and action metadata in runtime registries
+4. components can later trigger `query` or `execute` calls back to `ActionService`
+
+### Why this matters
+
+- The UI is data-driven, not hardcoded per prompt.
+- Action execution and data refresh are first-class runtime concepts.
+- The same action runtime is shared by the AI pipeline and the interactive client.

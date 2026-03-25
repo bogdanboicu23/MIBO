@@ -9,6 +9,7 @@ import ChatPage from "@/pages/ChatPage.tsx";
 import SettingsPage from "@/pages/SettingsPage.tsx";
 import AppLayout from "@/layouts/AppLayout.tsx";
 import { Outlet } from "react-router-dom";
+import { paths } from "@/routes/paths.ts";
 
 
 export const Signup = lazy(() => import('@/pages/Signup.tsx'));
@@ -28,7 +29,7 @@ export const routesSection: RouteObject[] = [
         children: [
             { index: true, element: <LandingPage/> },
             {
-                path: "/chat",
+                path: paths.chat,
                 element: (
                     <AuthGuard>
                         <ChatPage />
@@ -36,7 +37,7 @@ export const routesSection: RouteObject[] = [
                 ),
             },
             {
-                path: "/settings",
+                path: paths.settings,
                 element: (
                     <AuthGuard>
                         <SettingsPage />

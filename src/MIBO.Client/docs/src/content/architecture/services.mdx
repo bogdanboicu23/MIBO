@@ -1,252 +1,68 @@
 ---
-title: Service Descriptions
-description: Detailed overview of each MIBO microservice
+title: Services
+description: Service catalog for the applications and shared runtime libraries in MIBO
 category: architecture
 order: 11
 ---
 
-# Service Descriptions
+# Services
 
-MIBO is composed of five backend services and a shared library. Each service is a standalone application with its own responsibilities, data sources, and deployment lifecycle.
+## Backend applications
 
-<SectionDivider />
+| Service | Stack | Responsibilities | Primary persistence |
+| --- | --- | --- | --- |
+| `MIBO.ApiGateway` | ASP.NET Core + Ocelot | Public HTTP entry point, JWT validation, CORS, claims-to-header propagation | none |
+| `MIBO.IdentityService` | ASP.NET Core + ASP.NET Identity + EF Core | Login, registration, refresh flow, `me`, finance connection state, Spotify OAuth | PostgreSQL + Redis |
+| `MIBO.ConversationService` | ASP.NET Core | Conversation CRUD, chat endpoints, SSE proxying, assistant/user message persistence, monitoring updates | MongoDB |
+| `MIBO.ActionService` | ASP.NET Core | Tool/data access via `query` and `execute`, handler routing, retry integration, status summary | Redis + MongoDB for monitoring data |
+| `MIBO.LangChainService` | FastAPI + LangGraph + Groq | Intent detection, execution planning, tool invocation, response composition, context compaction | MongoDB for conversation context windows |
+| `MIBO.AppHost` | .NET Aspire | Local orchestration for services and infrastructure | none |
 
-<SectionHeader title="Identity Service" description="Authentication, authorization, and user management" />
+## Frontend applications
 
-The Identity Service handles all authentication and user management concerns. It issues JWT tokens and manages the full user lifecycle.
+| Application | Stack | Responsibilities |
+| --- | --- | --- |
+| `MIBO.Client/client` | React 19 + Vite + Tailwind | End-user chat experience, auth-aware UI, generative UI rendering, action execution |
+| `MIBO.Client/docs` | React + MDX + Vite | Developer and platform documentation |
+| `MIBO.Client/status` | React + Vite | Public-facing integration health dashboard |
 
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Registration & Login"
-    description="User sign-up and credential-based authentication"
-    icon="🔐"
-  />
-  <FeatureCard
-    title="JWT Tokens"
-    description="Access token generation and refresh token management"
-    icon="🎟️"
-  />
-  <FeatureCard
-    title="User Profiles"
-    description="Profile storage, updates, and password management"
-    icon="👤"
-  />
-</FeatureGrid>
+## Shared runtime libraries
 
-<Callout type="info" title="Tech Stack">
-  ASP.NET Core, Entity Framework Core, PostgreSQL, JWT Bearer Authentication
-</Callout>
+| Library | Purpose |
+| --- | --- |
+| `MIBO.Cache.Redis` | Redis-backed finance connection and Spotify token storage |
+| `MIBO.Storage.Mongo` | Mongo bootstrap, indexes, conversation store, UI instance store, monitoring store |
 
-<SectionDivider />
+## Important service notes
 
-<SectionHeader title="Conversation Service" description="AI chat orchestration and real-time streaming" />
+### `MIBO.ApiGateway`
 
-The Conversation Service orchestrates chat interactions between users and the AI assistant. It integrates with LLM providers, manages conversation history, and streams responses in real time.
+- Uses `ocelot.json` and environment-specific Ocelot config files.
+- Injects `X-User-Id` and `X-User-Email` into downstream requests.
 
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Chat Processing"
-    description="Receives and processes user chat messages through the AI pipeline"
-    icon="💬"
-  />
-  <FeatureCard
-    title="AI Orchestration"
-    description="Integrates with LLM providers to generate intelligent responses"
-    icon="🤖"
-  />
-  <FeatureCard
-    title="SSE Streaming"
-    description="Streams AI response tokens to the client in real time"
-    icon="🌊"
-  />
-  <FeatureCard
-    title="Conversation History"
-    description="Persists and retrieves past conversations for context"
-    icon="📜"
-  />
-  <FeatureCard
-    title="Action Execution"
-    description="Triggers financial operations based on chat intent"
-    icon="⚙️"
-  />
-  <FeatureCard
-    title="Generative UI"
-    description="Resolves dynamic UI components to render in the chat interface"
-    icon="🎨"
-  />
-</FeatureGrid>
+### `MIBO.IdentityService`
 
-<Callout type="info" title="Tech Stack">
-  ASP.NET Core, SignalR, AI/LLM Integration, NATS
-</Callout>
+- Stores users in PostgreSQL through ASP.NET Identity.
+- Issues access tokens in the response body and refresh tokens in an HTTP-only cookie.
+- Stores Spotify tokens and finance connection flags in Redis.
 
-<SectionDivider />
+### `MIBO.ConversationService`
 
-<SectionHeader title="Action Service" description="Reusable external data orchestration for live generative UI" />
+- Exposes `GET/POST/PATCH/DELETE /api/v1/conversations*`.
+- Exposes `POST /api/v1/chat` and a compatibility `POST /api/chat`.
+- Persists user messages before AI execution and assistant payloads after the terminal `done` event.
+- Owns conversation scoping, title generation, SSE relay, and synthetic monitoring for `platform` and `ai-agent`.
 
-The Action Service is the reusable external-data layer used by the generative UI runtime. It exposes normalized handlers that the AI agent and the frontend can call through the API Gateway for live data queries, refreshes, filters, and post-render interactions.
+### `MIBO.ActionService`
 
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Unified Query Contract"
-    description="Exposes external integrations behind stable handler names such as products.catalog.query or crypto.coins.markets."
-    icon="🧩"
-  />
-  <FeatureCard
-    title="DummyJSON + CoinGecko"
-    description="Aggregates product catalog data and crypto market data behind the same JSON contract."
-    icon="🌐"
-  />
-  <FeatureCard
-    title="Field Hints"
-    description="Returns semantic metadata so generic tables, KPIs, charts, and detail cards can render deterministically."
-    icon="🗂️"
-  />
-  <FeatureCard
-    title="Transform Pipeline"
-    description="Supports reusable row projections and computed fields before data reaches the frontend."
-    icon="🧮"
-  />
-  <FeatureCard
-    title="Refresh-Friendly"
-    description="Designed for live reloads, search, pagination, sorting, and reopening conversations without regenerating the entire answer."
-    icon="🔄"
-  />
-  <FeatureCard
-    title="Service Decoupling"
-    description="Keeps service-specific APIs out of the client and out of UI components."
-    icon="🪢"
-  />
-</FeatureGrid>
+- Exposes `POST /api/actions/query` and `POST /api/actions/execute`.
+- Hosts handlers for products, weather, Spotify, finance, and Pomodoro.
+- Can persist integration monitoring state and queue retries through RabbitMQ when configured.
 
-<Callout type="info" title="Tech Stack">
-  ASP.NET Core, HttpClient, CoinGecko Demo API v3, DummyJSON
-</Callout>
+### `MIBO.LangChainService`
 
-<SectionDivider />
-
-<SectionHeader title="Finance Service" description="Financial data, accounts, transactions, and budgets" />
-
-The Finance Service manages all financial data and operations. It serves as the system of record for accounts, transactions, and budgets.
-
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Bank Accounts"
-    description="Create, read, update, and delete bank account records"
-    icon="🏦"
-  />
-  <FeatureCard
-    title="Transactions"
-    description="Record, query, and categorize financial transactions"
-    icon="💳"
-  />
-  <FeatureCard
-    title="Budgets"
-    description="Create budgets and track spending against them"
-    icon="📊"
-  />
-  <FeatureCard
-    title="Categorization"
-    description="Automatic and manual expense categorization"
-    icon="🏷️"
-  />
-  <FeatureCard
-    title="Analytics"
-    description="Financial summaries, reports, and spending insights"
-    icon="📈"
-  />
-  <FeatureCard
-    title="Spending Reports"
-    description="Detailed breakdowns of spending by category and period"
-    icon="📋"
-  />
-</FeatureGrid>
-
-<Callout type="info" title="Tech Stack">
-  ASP.NET Core, Entity Framework Core, PostgreSQL
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="API Gateway" description="Reverse proxy and single entry point for all client requests" />
-
-The Gateway routes client requests to the appropriate backend services using YARP (Yet Another Reverse Proxy).
-
-<FeatureGrid columns={2}>
-  <FeatureCard
-    title="Reverse Proxy"
-    description="Routes incoming requests to the correct backend service via YARP"
-    icon="🔀"
-  />
-  <FeatureCard
-    title="Route Forwarding"
-    description="Path-based routing rules map URLs to specific microservices"
-    icon="🗺️"
-  />
-  <FeatureCard
-    title="CORS Configuration"
-    description="Centralized cross-origin resource sharing policy management"
-    icon="🌐"
-  />
-  <FeatureCard
-    title="Request Transformation"
-    description="Modifies request and response headers as needed"
-    icon="🔄"
-  />
-</FeatureGrid>
-
-<Callout type="info" title="Tech Stack">
-  ASP.NET Core, YARP (Yet Another Reverse Proxy)
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Shared Library" description="Cross-cutting concerns used by all backend services" />
-
-The `MIBO.Shared` project provides common code that is referenced by multiple services, ensuring consistency and reducing duplication.
-
-<FeatureGrid columns={2}>
-  <FeatureCard
-    title="NATS Contracts"
-    description="Message contracts and subject definitions for inter-service communication"
-    icon="📝"
-  />
-  <FeatureCard
-    title="Shared DTOs"
-    description="Common data transfer objects and models used across services"
-    icon="📦"
-  />
-  <FeatureCard
-    title="Service Extensions"
-    description="Reusable service registration and configuration helpers"
-    icon="🧰"
-  />
-  <FeatureCard
-    title="Middleware"
-    description="Shared middleware components for logging, error handling, and more"
-    icon="🔧"
-  />
-</FeatureGrid>
-
-<Callout type="tip" title="Why a Shared Library?">
-  The shared library ensures that message contracts and DTOs stay in sync across services. Changes to a contract are caught at compile time rather than at runtime.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Continue Reading" description="Explore related architecture topics" />
-
-<LinkCardGrid>
-  <LinkCard
-    title="Architecture Overview"
-    description="High-level system diagram and design principles"
-    href="/architecture"
-    icon="🏗️"
-  />
-  <LinkCard
-    title="Inter-Service Communication"
-    description="NATS messaging patterns and real-time streaming with SSE"
-    href="/architecture/communication"
-    icon="🔗"
-  />
-</LinkCardGrid>
+- Exposes a single `/chat` SSE endpoint.
+- Runs the sequential LangGraph pipeline:
+  `memory_loader -> intent_agent -> planner_agent -> executor_agent -> composer_agent -> memory_saver`
+- Reads memory directly from MongoDB, compacts older context when token pressure grows, and delegates typed data access to `ActionService`.
+- Produces structured frontend-oriented JSON rather than a plain-text-only answer stream.

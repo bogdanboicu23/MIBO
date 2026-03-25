@@ -27,7 +27,8 @@ if (string.IsNullOrWhiteSpace(groqApiKey))
 
 // Infrastructure
 var redis = builder.AddRedis("redis").WithoutHttpsCertificate();
-var mongo = builder.AddMongoDB("mongodb", port: 27017);
+var mongo = builder.AddMongoDB("mongodb", port: 27017)
+    .WithDataVolume("mibo-mongodb-data");
 var mongoDatabase = mongo.AddDatabase("miboMongo", "mibo");
 var postgres = builder.AddPostgres("postgres");
 var identityDb = postgres.AddDatabase("identitydb", "mibo_identity");
