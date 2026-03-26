@@ -19,6 +19,10 @@ async def executor_node(state: PipelineState) -> PipelineState:
         if user_id and (tool_name.startswith("spotify_") or tool_name.startswith("get_user_finance") or tool_name == "calculate_affordability"):
             tool_args["user_id"] = user_id
 
+        # Normalise common arg aliases the LLM tends to produce.
+        if "location" in tool_args and "city" not in tool_args:
+            tool_args["city"] = tool_args.pop("location")
+
         if tool_fn is None:
             results.append({"key": result_key, "data": truncate_to_tokens({"error": f"Unknown tool '{tool_name}'"}, 300)})
             continue
