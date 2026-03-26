@@ -72,7 +72,7 @@ public sealed class NewsApiActionHandler(INewsApiClient client) : IExternalDataS
         var category = GetString(args, "category");
         var limit = Math.Max(1, GetInt(args, 20, "limit", "pageSize"));
 
-        var path = $"/top-headlines?country={Uri.EscapeDataString(country)}&pageSize={limit}";
+        var path = $"top-headlines?country={Uri.EscapeDataString(country)}&pageSize={limit}";
         if (!string.IsNullOrWhiteSpace(category))
         {
             path += $"&category={Uri.EscapeDataString(category)}";
@@ -107,7 +107,7 @@ public sealed class NewsApiActionHandler(INewsApiClient client) : IExternalDataS
             sortBy = "publishedAt";
         }
 
-        var path = $"/everything?q={Uri.EscapeDataString(query)}&pageSize={limit}&sortBy={Uri.EscapeDataString(sortBy)}";
+        var path = $"everything?q={Uri.EscapeDataString(query)}&pageSize={limit}&sortBy={Uri.EscapeDataString(sortBy)}";
         var payload = await client.GetAsync(path, cancellationToken);
         var items = ExtractArticles(payload);
 

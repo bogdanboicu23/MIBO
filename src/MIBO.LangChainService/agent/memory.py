@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection, AsyncIOMotorCursor
 
+from agent.groq_provider import GroqKeyPool, invoke_with_rotation
 from agent.prompts import CONTEXT_COMPACTION_SYSTEM_PROMPT
 from agent.state import PipelineState
 from agent.token_utils import count_tokens, truncate_to_tokens
+
+logger = logging.getLogger(__name__)
 
 _MONGO_CLIENT: AsyncIOMotorClient | None = None
 
@@ -193,6 +196,24 @@ async def memory_saver_node(state: PipelineState) -> PipelineState:
     return state
 
 
+async def _summarise_or_truncate(prompt_text: str) -> str:
+    """Use the Groq key pool to summarise messages; fall back to truncation
+    when no keys are configured or all keys are exhausted."""
+    if GroqKeyPool().size == 0:
+        return truncate_to_tokens(prompt_text, 800)
+    try:
+        response = await invoke_with_rotation(
+            [
+                SystemMessage(content=CONTEXT_COMPACTION_SYSTEM_PROMPT),
+                HumanMessage(content=prompt_text),
+            ]
+        )
+        return str(response.content).strip()
+    except Exception:
+        logger.warning("All Groq keys failed during context compaction — falling back to truncation.")
+        return truncate_to_tokens(prompt_text, 800)
+
+
 async def compact_context(session_id: str) -> list[dict[str, Any]]:
     conversations_collection = get_conversations_collection()
     document = await conversations_collection.find_one({"_id": session_id})
@@ -220,23 +241,7 @@ async def compact_context(session_id: str) -> list[dict[str, Any]]:
 
         prompt_text = truncate_to_tokens("\n".join(prompt_parts), 6000)
 
-        groq_api_key = os.getenv("GROQ_API_KEY", "")
-        if not groq_api_key:
-            summary = truncate_to_tokens(prompt_text, 800)
-        else:
-            model = ChatGroq(
-                groq_api_key=groq_api_key,
-                model="llama-3.3-70b-versatile",
-                temperature=0,
-                streaming=False,
-            )
-            response = await model.ainvoke(
-                [
-                    SystemMessage(content=CONTEXT_COMPACTION_SYSTEM_PROMPT),
-                    HumanMessage(content=prompt_text),
-                ]
-            )
-            summary = str(response.content).strip()
+        summary = await _summarise_or_truncate(prompt_text)
 
         await conversations_collection.update_one(
             {"_id": session_id},
@@ -269,23 +274,7 @@ async def compact_context(session_id: str) -> list[dict[str, Any]]:
 
     prompt_text = truncate_to_tokens("\n".join(prompt_parts), 6000)
 
-    groq_api_key = os.getenv("GROQ_API_KEY", "")
-    if not groq_api_key:
-        summary = truncate_to_tokens(prompt_text, 800)
-    else:
-        model = ChatGroq(
-            groq_api_key=groq_api_key,
-            model="llama-3.3-70b-versatile",
-            temperature=0,
-            streaming=False,
-        )
-        response = await model.ainvoke(
-            [
-                SystemMessage(content=CONTEXT_COMPACTION_SYSTEM_PROMPT),
-                HumanMessage(content=prompt_text),
-            ]
-        )
-        summary = str(response.content).strip()
+    summary = await _summarise_or_truncate(prompt_text)
 
     await conversations_collection.update_one(
         {"_id": session_id},

@@ -1,32 +1,18 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_groq import ChatGroq
 
+from agent.groq_provider import astream_with_rotation
 from agent.prompts import COMPOSER_SYSTEM_PROMPT
 from agent.state import PipelineState
 from agent.token_utils import count_tokens, truncate_to_tokens
 from models.schemas import FinalResponse, parse_json_payload, strip_outer_json_fence
 
 SOFT_TOKEN_LIMIT = 8500
-
-
-def _build_model() -> ChatGroq:
-    groq_api_key = os.getenv("GROQ_API_KEY", "")
-    if not groq_api_key:
-        raise RuntimeError("GROQ_API_KEY is not configured.")
-
-    return ChatGroq(
-        groq_api_key=groq_api_key,
-        model="llama-3.3-70b-versatile",
-        temperature=0,
-        streaming=True,
-    )
 
 
 def _chunk_to_text(chunk_content: Any) -> str:
@@ -280,7 +266,7 @@ async def composer_agent_node(state: PipelineState) -> PipelineState:
     raw_chunks: list[str] = []
     stream_callback = state.get("stream_callback")
 
-    async for chunk in _build_model().astream(
+    async for chunk in astream_with_rotation(
         [
             SystemMessage(content=COMPOSER_SYSTEM_PROMPT),
             HumanMessage(content=payload),
