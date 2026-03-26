@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
 import { Navbar } from "./Navbar";
 import { Sidebar } from "./Sidebar";
@@ -10,6 +10,7 @@ import { SearchDialog } from "@/components/search/SearchDialog";
 
 export function DocsLayout() {
     const { theme, setTheme } = useTheme();
+    const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
 
@@ -27,6 +28,10 @@ export function DocsLayout() {
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
     }, []);
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }, [location.pathname]);
 
     return (
         <div className="min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
