@@ -22,7 +22,16 @@ spec:
             - containerPort: {{ .Values.service.port }}
           env:
             {{- if .Values.env }}
-            {{- toYaml .Values.env | nindent 12 }}
+            {{- range .Values.env }}
+            - name: {{ .name }}
+              {{- if hasKey . "valueFrom" }}
+              value: ""
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- else if hasKey . "value" }}
+              value: {{ .value | quote }}
+              {{- end }}
+            {{- end }}
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
