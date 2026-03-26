@@ -276,7 +276,9 @@ function ChatDemo({ start }: { start: boolean }) {
 export default function LandingPage() {
     const { theme, setTheme } = useThemeContext();
     const router = useRouter();
-    const goToDocs = () => router.push("docs.mibo.monster")
+    const goToDocs = () => {
+        window.location.href = "https://docs.mibo.monster";
+    };
     const onEnterApp = () => router.push(paths.chat);
     const typed = useTyping(["ui interactiv", "formulare dinamice", "grafice live"]);
 
