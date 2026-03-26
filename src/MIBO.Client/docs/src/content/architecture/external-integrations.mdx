@@ -1,0 +1,35 @@
+---
+title: External Integrations
+description: Runtime-facing third-party and adjacent external services used by the current MIBO platform
+category: architecture
+order: 15
+---
+
+# External Integrations
+
+This page lists the runtime integrations that connect MIBO to services outside the core platform codebase.
+
+It excludes PostgreSQL, MongoDB, Redis, and RabbitMQ because those are infrastructure dependencies documented separately under deployment and data-layer pages.
+
+## Core platform integrations
+
+| Service | Used by | What it provides | Notes |
+| --- | --- | --- | --- |
+| Groq | `MIBO.LangChainService` | LLM inference for intent detection, execution planning, response composition, and conversation-summary compaction | AppHost requires `GROQ_API_KEY`. The current agent nodes instantiate `ChatGroq` with `llama-3.3-70b-versatile`. |
+| Cloudflare Turnstile | `MIBO.Client/client` and `MIBO.IdentityService` | Human verification during login | The frontend collects a Turnstile token and the backend verifies it before authenticating when `Turnstile:Enabled=true`. |
+| Spotify Accounts + Spotify Web API | `MIBO.IdentityService`, `MIBO.ActionService`, and the client | OAuth account connection, token exchange/refresh, catalog search, current playback, playlists, and top tracks/artists | Tokens are stored in Redis and refreshed server-side before ActionService calls Spotify. |
+
+## ActionService-backed data providers
+
+| Service | Main handlers | What it provides | Notes |
+| --- | --- | --- | --- |
+| DummyJSON | `products.catalog.query`, `products.categories.list`, `products.detail.get` | Demo e-commerce product search, category lists, and product details | Used as the current product catalog source for UI and agent flows. This is sample data, not a MIBO-owned catalog. |
+| OpenWeatherMap | `weather.current.get`, `weather.forecast.get` | Current weather and forecast data normalized into MIBO-friendly fields | `ActionService` requests metric units and also exposes provider icon URLs for the UI layer. |
+| NewsAPI | `news.headlines`, `news.search` | Top headlines by country/category and article search by query | Requires `NEWSAPI_API_KEY` when the news handlers are used. |
+| MIBO Finance / BankService | `finance.accounts.*`, `finance.transactions.*`, `finance.expenses.*`, `finance.budgets.list`, `finance.summary.get`, `finance.analytics.*` | Account, transaction, expense, budget, summary, and analytics data for finance flows | This service is external to the main repository. Locally it defaults to `http://localhost:5286`, while the test deployment points to `https://financial.mibo.monster`. |
+
+## Client-side handoff integrations
+
+| Service | Used by | What it provides | Notes |
+| --- | --- | --- | --- |
+| Gmail compose URL | `EmailComposerCard` in the generative UI registry | Opens a prefilled Gmail compose window from AI-generated email draft fields | This is a browser handoff only. The project does not use the Gmail API and does not sync mailbox data server-side. |

@@ -73,6 +73,13 @@ export const navItems: NavItem[] = [
         "description": "The three frontend applications and the client-side generative UI runtime",
         "category": "architecture",
         "order": 14
+      },
+      {
+        "title": "External Integrations",
+        "slug": "/architecture/external-integrations",
+        "description": "Runtime-facing third-party and adjacent external services used by the current MIBO platform",
+        "category": "architecture",
+        "order": 15
       }
     ]
   },
@@ -564,6 +571,12 @@ export const searchIndex: Array<{
     "title": "Frontend Apps",
     "description": "The three frontend applications and the client-side generative UI runtime",
     "slug": "/architecture/frontend-apps",
+    "category": "architecture"
+  },
+  {
+    "title": "External Integrations",
+    "description": "Runtime-facing third-party and adjacent external services used by the current MIBO platform",
+    "slug": "/architecture/external-integrations",
     "category": "architecture"
   },
   {

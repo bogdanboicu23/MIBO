@@ -43,6 +43,7 @@ order: 11
 ### `MIBO.IdentityService`
 
 - Stores users in PostgreSQL through ASP.NET Identity.
+- Can enforce Cloudflare Turnstile verification during login.
 - Issues access tokens in the response body and refresh tokens in an HTTP-only cookie.
 - Stores Spotify tokens and finance connection flags in Redis.
 
@@ -56,7 +57,7 @@ order: 11
 ### `MIBO.ActionService`
 
 - Exposes `POST /api/actions/query` and `POST /api/actions/execute`.
-- Hosts handlers for products, weather, Spotify, finance, and Pomodoro.
+- Hosts handlers for products, weather, news, Spotify, finance, and Pomodoro.
 - Can persist integration monitoring state and queue retries through RabbitMQ when configured.
 
 ### `MIBO.LangChainService`
@@ -66,3 +67,6 @@ order: 11
   `memory_loader -> intent_agent -> planner_agent -> executor_agent -> composer_agent -> memory_saver`
 - Reads memory directly from MongoDB, compacts older context when token pressure grows, and delegates typed data access to `ActionService`.
 - Produces structured frontend-oriented JSON rather than a plain-text-only answer stream.
+- Uses Groq as the active hosted LLM provider in the current runtime.
+
+See [External Integrations](/architecture/external-integrations) for the provider-level view.

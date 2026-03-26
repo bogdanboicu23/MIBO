@@ -51,10 +51,13 @@ MIBO.ApiGateway (Ocelot)
         |         |
         |         +--> MIBO.LangChainService (HTTP + SSE)
         |                   |
+        |                   +--> Groq
+        |                   |
         |                   +--> MIBO.ActionService
         |                               |
         |                               +--> BankService
         |                               +--> DummyJSON
+        |                               +--> NewsAPI
         |                               +--> OpenWeatherMap
         |                               +--> Spotify API
         |                               +--> local Pomodoro config
@@ -91,3 +94,4 @@ Supporting infrastructure:
 - [Communication](/architecture/communication) for actual transport and request flows.
 - [Data Layer](/architecture/data-layer) for persistence ownership.
 - [Frontend Apps](/architecture/frontend-apps) for the client, docs, and status applications.
+- [External Integrations](/architecture/external-integrations) for the third-party and adjacent services used by the platform.
