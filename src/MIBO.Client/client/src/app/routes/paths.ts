@@ -1,4 +1,1 @@
-export const paths = {
-    chat: "/",
-    settings: "/settings",
-};
+export { paths } from "@/routes/paths.ts";

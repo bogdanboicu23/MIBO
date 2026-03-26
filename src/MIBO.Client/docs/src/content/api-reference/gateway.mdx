@@ -1,0 +1,55 @@
+---
+title: API Gateway
+description: Ocelot routes, authentication behavior, and claim propagation in MIBO.ApiGateway
+category: api-reference
+order: 21
+---
+
+# API Gateway
+
+The public API entry point is `MIBO.ApiGateway`, which uses **Ocelot**.
+
+## Active routes from `ocelot.json`
+
+| Upstream | Downstream | Auth | Notes |
+| --- | --- | --- | --- |
+| `/api/auth/{everything}` | `identity-service` | no | login, register, refresh, Spotify callback |
+| `/api/users/{everything}` | `identity-service` | yes | authenticated user operations |
+| `/api/v1/chat` | `conversation-service` | yes | main client chat endpoint |
+| `/api/v1/conversations` | `conversation-service` | yes | list and create conversations |
+| `/api/v1/conversations/{conversationId}` | `conversation-service` | yes | get, rename, delete conversation |
+| `/api/actions/status/{everything}` | `action-service` | no | consumed by the public status frontend |
+| `/api/actions/{everything}` | `action-service` | yes | `query` and `execute` endpoints |
+
+## Authentication behavior
+
+The gateway validates JWTs using the configured issuer, audience, lifetime, and signing key settings.
+
+### Validation performed
+
+- issuer
+- audience
+- token lifetime
+- signing key
+
+## Claim propagation
+
+`ClaimsToHeadersHandler` adds:
+
+- `X-User-Id` from claim `sub`
+- `X-User-Email` from claim `email`
+
+Downstream services rely on these headers instead of re-parsing the JWT in every service.
+
+## CORS
+
+The gateway explicitly allows hosts such as:
+
+- `localhost`
+- `127.0.0.1`
+- `mibo.monster`
+- `www.mibo.monster`
+- `api.mibo.monster`
+- `status.mibo.monster`
+
+The gateway also enables WebSockets alongside its primary HTTP routing features.

@@ -9,12 +9,12 @@ import ChatPage from "@/pages/ChatPage.tsx";
 import SettingsPage from "@/pages/SettingsPage.tsx";
 import AppLayout from "@/layouts/AppLayout.tsx";
 import { Outlet } from "react-router-dom";
+import { paths } from "@/routes/paths.ts";
 
 
 export const Signup = lazy(() => import('@/pages/Signup.tsx'));
 export const Login = lazy(() => import('@/pages/Login.tsx'));
 export const LandingPage = lazy(() => import('@/pages/LandingPage.tsx'));
-export const IntroPage = lazy(() => import('@/pages/IntroPage.tsx'));
 const renderFallback = () => (
     <LoadingOverlay show fullscreen />
 );
@@ -27,17 +27,9 @@ export const routesSection: RouteObject[] = [
             </Suspense>
         ),
         children: [
-            { index: true, element: <LandingPage/> },
+            { index: true, element: <LandingPage /> },
             {
-                path: "/intro",
-                element: (
-                    <AuthGuard>
-                        <IntroPage />
-                    </AuthGuard>
-                ),
-            },
-            {
-                path: "/chat",
+                path: paths.chat,
                 element: (
                     <AuthGuard>
                         <ChatPage />
@@ -45,7 +37,7 @@ export const routesSection: RouteObject[] = [
                 ),
             },
             {
-                path: "/settings",
+                path: paths.settings,
                 element: (
                     <AuthGuard>
                         <SettingsPage />

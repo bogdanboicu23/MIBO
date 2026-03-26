@@ -1,164 +1,90 @@
 ---
 title: Project Structure
-description: Overview of the MIBO repository layout and file organization
+description: Repository layout and how the codebase is partitioned by services, apps, infrastructure, and tests
 category: getting-started
 order: 3
 ---
 
 # Project Structure
 
-The MIBO repository is organized as a monorepo with all microservices and the frontend client in a single repository.
+The repository is organized around a single `src/` workspace with backend services, frontend applications, shared libraries, and local orchestration. Deployment and CI/CD assets live at the repository root.
 
-<SectionDivider />
+## Top-level repository layout
 
-<SectionHeader title="Root Layout" description="Top-level directory structure of the MIBO monorepo" />
-
-```
+```text
 MIBO/
-├── src/
-│   ├── MIBO.Gateway/              # YARP API Gateway
-│   ├── MIBO.IdentityService/      # Authentication & user management
-│   ├── MIBO.ConversationService/  # Chat orchestration & AI
-│   ├── MIBO.FinanceService/       # Financial data management
-│   ├── MIBO.Shared/               # Shared libraries & contracts
-│   └── MIBO.Client/
-│       ├── client/                # React SPA (main app)
-│       └── docs/                  # Documentation site (you are here)
-├── docker-compose.yml
-└── MIBO.sln
+├── src/                  # Application code, services, frontends, shared libraries
+├── tests/                # Unit and end-to-end test projects
+├── deploy/               # Helm charts, environment values, and migration jobs
+├── k8s/                  # Kubernetes manifests for apps, ingress, and platform resources
+├── .github/workflows/    # CI/CD pipelines
+└── scripts/              # Local helper scripts
 ```
 
-<SectionDivider />
+## `src/` layout
 
-<SectionHeader title="Microservices" description="Each service is independently deployable and follows a consistent internal structure" />
-
-<FeatureGrid columns={2}>
-  <FeatureCard
-    title="MIBO.Gateway"
-    description="YARP-based reverse proxy that routes incoming requests to the appropriate backend microservice"
-    icon="🌐"
-  />
-  <FeatureCard
-    title="MIBO.IdentityService"
-    description="Manages user authentication, registration, and JWT token issuance with refresh token support"
-    icon="🔐"
-  />
-  <FeatureCard
-    title="MIBO.ConversationService"
-    description="Orchestrates chat sessions, manages conversation history, and integrates with AI models"
-    icon="🤖"
-  />
-  <FeatureCard
-    title="MIBO.FinanceService"
-    description="Handles bank accounts, transactions, budgets, and spending analytics"
-    icon="💳"
-  />
-</FeatureGrid>
-
-<SectionDivider />
-
-<SectionHeader title="Service Internal Structure" description="Every .NET microservice follows this consistent folder layout" />
-
-```
-MIBO.{ServiceName}/
-├── Controllers/       # API endpoints
-├── Services/          # Business logic
-├── Models/            # Domain models & DTOs
-├── Data/              # EF Core DbContext & migrations
-├── Messaging/         # NATS publishers/subscribers
-├── Program.cs         # Service bootstrap
-└── appsettings.json   # Configuration
+```text
+src/
+├── MIBO.sln
+├── MIBO.AppHost/             # Aspire-based local orchestrator
+├── MIBO.ApiGateway/          # Ocelot gateway
+├── MIBO.IdentityService/     # Auth, JWT, Spotify OAuth, finance connection state
+├── MIBO.ConversationService/ # Chat endpoints, SSE relay, conversation persistence
+├── MIBO.ActionService/       # Tool/data runtime for query and execute contracts
+├── MIBO.LangChainService/    # FastAPI + LangGraph AI pipeline
+├── MIBO.Cache.Redis/         # Redis-backed finance and Spotify stores
+├── MIBO.Storage.Mongo/       # Mongo-backed conversation and monitoring stores
+├── MIBO.Client/
+│   ├── client/               # Main React application
+│   ├── docs/                 # Documentation site
+│   └── status/               # External-service status dashboard
+└── compose.yaml              # Container-based local runtime assets
 ```
 
-<Callout type="info" title="Consistent Conventions">
-  All services follow the same folder structure. This makes it easy to navigate between services and understand where to find specific functionality regardless of which service you are working in.
-</Callout>
+## Service ownership by folder
 
-<SectionDivider />
+| Path | Role |
+| --- | --- |
+| `src/MIBO.ApiGateway` | Public HTTP entry point and JWT validation |
+| `src/MIBO.IdentityService` | Authentication, registration, refresh flow, `me`, finance connection markers, Spotify OAuth |
+| `src/MIBO.ConversationService` | Conversation CRUD, chat endpoints, SSE proxying, persistence, platform and agent monitoring snapshots |
+| `src/MIBO.ActionService` | Public `query` and `execute` runtime used by the agent and generative UI |
+| `src/MIBO.LangChainService` | Intent, plan, execution, composition, and memory compaction pipeline |
+| `src/MIBO.Cache.Redis` | Redis token and connection storage |
+| `src/MIBO.Storage.Mongo` | Mongo bootstrap, indexes, conversation store, UI instance store, monitoring store |
 
-<SectionHeader title="Client Application Structure" description="The React SPA that powers the MIBO user interface" />
+## Frontend and docs ownership
 
+| Path | Role |
+| --- | --- |
+| `src/MIBO.Client/client` | Authenticated end-user application |
+| `src/MIBO.Client/docs` | Static docs application generated from MDX |
+| `src/MIBO.Client/status` | Public status page for integration health |
+
+## Infrastructure and delivery
+
+| Path | Role |
+| --- | --- |
+| `deploy/helm/*` | Helm charts for backend services |
+| `deploy/environments/test/*` | Test-environment values used by GitHub Actions deployments |
+| `deploy/migrations/*` | Identity database migration jobs |
+| `k8s/apps/*` | Raw manifests for client, docs, status, and supporting resources |
+| `k8s/traefik/*` | Traefik namespace, deployment, dashboard, auth, and TLS storage |
+| `.github/workflows/*` | Build, test, image publish, and deployment automation |
+
+## Tests
+
+The test solution is separate from the application solution:
+
+```text
+tests/
+├── MIBO.Tests.sln
+├── MIBO.E2ETests/               # End-to-end coverage for auth, conversations, streaming, and actions
+├── MIBO.Storage.Mongo.Tests/    # Mongo storage and index coverage
+├── MIBO.ActionService.Tests/    # Action service tests
+├── MIBO.ApiGateway.Tests/       # Gateway tests
+├── MIBO.ConversationService.Tests/
+├── MIBO.IdentityService.Tests/
+├── MIBO.LangChainService.Tests/
+└── TESTING-GUIDE.md             # Repository testing guide
 ```
-client/
-├── src/
-│   ├── components/
-│   │   ├── ui/        # Reusable UI components (Button, Card, Input, etc.)
-│   │   ├── chat/      # Chat-specific components
-│   │   └── finance/   # Finance-specific components
-│   ├── hooks/         # Custom React hooks
-│   ├── utils/         # Utility functions
-│   ├── theme/         # Theme tokens & configuration
-│   ├── services/      # API client services
-│   └── pages/         # Route pages
-├── public/
-└── package.json
-```
-
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Components"
-    description="Organized into ui, chat, and finance directories for clear separation of concerns"
-    icon="🧩"
-  />
-  <FeatureCard
-    title="Hooks & Utils"
-    description="Custom React hooks and shared utility functions used across the application"
-    icon="🔧"
-  />
-  <FeatureCard
-    title="Services"
-    description="API client modules that handle communication with backend microservices"
-    icon="🔗"
-  />
-</FeatureGrid>
-
-<SectionDivider />
-
-<SectionHeader title="Shared Libraries" description="Common code shared across all backend microservices" />
-
-<FeatureGrid columns={3}>
-  <FeatureCard
-    title="Contracts"
-    description="Message contracts for NATS communication between services"
-    icon="📄"
-  />
-  <FeatureCard
-    title="Models"
-    description="Shared DTOs and data models used consistently across services"
-    icon="🗄️"
-  />
-  <FeatureCard
-    title="Extensions"
-    description="Common service configuration extensions for streamlined bootstrapping"
-    icon="⚙️"
-  />
-</FeatureGrid>
-
-<Callout type="info" title="Shared References">
-  All services reference `MIBO.Shared` to ensure consistent message contracts and data models across the platform. Changes to shared contracts are reflected everywhere automatically.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Continue Exploring" description="Dive deeper into specific areas of the platform" />
-
-<LinkCardGrid>
-  <LinkCard
-    title="Architecture Deep Dive"
-    description="Understand how services communicate and the overall system design"
-    href="/architecture"
-    icon="🏛️"
-  />
-  <LinkCard
-    title="API Reference"
-    description="Complete REST API documentation for all endpoints"
-    href="/api-reference"
-    icon="📖"
-  />
-  <LinkCard
-    title="UI Components"
-    description="Browse the component library with live previews"
-    href="/components"
-    icon="🧩"
-  />
-</LinkCardGrid>

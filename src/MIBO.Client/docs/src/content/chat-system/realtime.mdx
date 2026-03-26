@@ -1,159 +1,147 @@
 ---
-title: Real-Time Features
-description: SignalR and SSE streaming in the MIBO chat system
+title: Streaming & Live Runtime
+description: SSE protocol, event semantics, and structured response handling across ConversationService, LangChainService, and the React client
 category: chat-system
-order: 52
+order: 54
 ---
 
-# Real-Time Features
+# Streaming & Live Runtime
 
-MIBO uses two real-time communication channels: **Server-Sent Events (SSE)** for streaming AI responses and **SignalR** for UI updates.
+The live assistant path in MIBO is built on **Server-Sent Events**. The client does not wait for one final JSON document at the end of a normal HTTP request. Instead, it receives structured progress and final payload events over a streaming response.
 
-<SectionDivider />
+## Streaming boundary
 
-<SectionHeader title="SSE Streaming" description="Token-by-token delivery of AI responses for a typewriter effect" />
+The browser talks to:
 
-The `/api/conversations/stream` endpoint delivers AI responses token-by-token for a typewriter effect.
+```http
+POST /api/v1/chat
+```
 
-<Callout type="info" title="Streaming Endpoint">
-  The SSE stream is accessed via `POST /api/conversations/stream` with a JSON body and Bearer token authentication.
+`ConversationService` then opens an upstream streamed call to:
+
+```http
+POST /chat
+```
+
+on `MIBO.LangChainService`.
+
+## Response headers
+
+The downstream browser response is returned with:
+
+| Header | Purpose |
+| --- | --- |
+| `Content-Type: text/event-stream` | declares SSE transport |
+| `Cache-Control: no-cache` | avoids aggressive buffering |
+| `X-Accel-Buffering: no` | reverse-proxy buffering compatibility |
+| `X-Conversation-Id` | exposes the resolved conversation ID |
+
+## Event types used in the runtime
+
+| Event type | Producer | Meaning |
+| --- | --- | --- |
+| `session` | ConversationService or LangChainService | communicates the resolved session or conversation ID |
+| `status` | LangChainService | human-readable progress update from a graph phase |
+| `chunk` | LangChainService | partial fragment of the final structured JSON payload |
+| `done` | LangChainService | complete final response serialized as JSON text |
+| `error` | optional | failure information when available |
+
+## Event format
+
+The wire format is standard SSE:
+
+```text
+data: {"type":"status","content":"Understanding your request..."}
+
+data: {"type":"chunk","content":"{\"text\":\"..."}
+
+data: {"type":"done","content":"{\"text\":\"Final answer\",\"components\":[]}"}
+```
+
+## Upstream versus downstream behavior
+
+### Upstream: LangChainService
+
+The AI service emits:
+
+- `session` only when it had to create a session ID itself
+- `status` from `intent_agent`, `planner_agent`, and `executor_agent`
+- `chunk` as the composer streams partial JSON
+- `done` once the final structured payload is available
+
+### Downstream: ConversationService
+
+The outer service mostly forwards the stream unchanged.
+
+It adds behavior in two places:
+
+- it can emit its own synthetic `session` event when it created the conversation before calling the agent
+- it inspects the `done` event so it can persist `assistantPayload` and `assistantText`
+
+## Why `chunk` exists even though `done` is authoritative
+
+The final payload is authoritative, but `chunk` has two practical purposes:
+
+1. it allows progressive downstream delivery while the composer is still generating
+2. it gives the client a recovery path if the final payload arrives as streamed fragments before the terminal `done`
+
+In the current client implementation, `done` is still the decisive event used to finalize the assistant message and build `ui.v1`.
+
+## Client-side parsing model
+
+The React client:
+
+1. opens `fetch()` against `/api/v1/chat`
+2. reads the `ReadableStream`
+3. appends incoming bytes into a string buffer
+4. splits events on `\n\n`
+5. extracts `data:` lines
+6. parses the event JSON
+
+The runtime behavior per event is:
+
+- `status`: update the temporary assistant status text
+- `chunk`: append to a local chunk buffer
+- `done`: parse the final payload as `AgentFinalResponse`, build `ui.v1`, and finalize the assistant message
+
+## Structured response semantics
+
+<Callout type="info" title="The stream carries structured state, not only text">
+  The assistant is not designed as a token-only text chatbot. The streamed output is a transport for a structured final response that may include components, reusable data sources, reusable actions, and subscriptions.
 </Callout>
 
-### Client Implementation
+## Persistence hook in ConversationService
 
-```typescript
-const response = await fetch("/api/conversations/stream", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({ message: "What's my balance?" })
-});
+`ConversationService` uses SSE parsing for one important side effect: it watches for the `done` event and attempts to parse the embedded JSON payload.
 
-const reader = response.body?.getReader();
-const decoder = new TextDecoder();
+If parsing succeeds:
 
-while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+- the whole object is stored as `assistantPayload`
+- the top-level `text` field is extracted as the assistant's message text
 
-    const chunk = decoder.decode(value);
-    // Parse SSE data lines
-    const lines = chunk.split("\n");
-    for (const line of lines) {
-        if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
-            if (data.done) break;
-            appendToken(data);
-        }
-    }
-}
-```
+If parsing fails:
 
-### SSE Event Format
+- the raw content is still persisted as the assistant text fallback
 
-```
-data: {"token": "Here"}
+## Failure modes
 
-data: {"token": " are"}
+### Upstream non-success response
 
-data: {"token": " your"}
+If `LangChainService` returns a non-success HTTP status, `ConversationService` stops the relay and propagates the error downstream.
 
-data: {"done": true}
-```
+### Stream closes before `done`
 
-<SectionDivider />
+The client treats this as an error because the structured final payload is missing.
 
-<SectionHeader title="SignalR UI Hub" description="Real-time bidirectional communication for live UI patches" />
+### Malformed model output
 
-The SignalR hub at `/hubs/ui` enables real-time UI patches from the server.
+The AI service attempts to recover malformed JSON during composition before emitting `done`, which reduces client-side parsing failures.
 
-### Connection Setup
+## Practical mental model
 
-```typescript
-import { HubConnectionBuilder } from "@microsoft/signalr";
+Treat the stream as a phased conversation protocol:
 
-const connection = new HubConnectionBuilder()
-    .withUrl("/hubs/ui")
-    .withAutomaticReconnect()
-    .build();
-
-await connection.start();
-```
-
-### Methods
-
-| Method | Direction | Description |
-|--------|-----------|-------------|
-| `JoinConversation(id)` | Client → Server | Subscribe to a conversation's updates |
-| `LeaveConversation(id)` | Client → Server | Unsubscribe from updates |
-| `UiPatch(patch)` | Server → Client | Receive UI update patches |
-
-### Receiving UI Patches
-
-When the server processes an action or completes a tool execution, it sends UI patches to all clients in the conversation group:
-
-```typescript
-connection.on("UiPatch", (patch) => {
-    // Apply the UI update to the current view
-    applyUiPatch(patch);
-});
-```
-
-<Callout type="tip" title="Group Management">
-  Conversations are managed as SignalR groups using the pattern `conversation:{conversationId}`. When a client joins, it receives all subsequent UI updates for that conversation.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="NATS JetStream Events" description="Backend event streaming for decoupled service communication" />
-
-Backend events flow through NATS JetStream with the stream name `MIBO_EVENTS`.
-
-### Event Envelope
-
-```json
-{
-    "schema": "event.v1",
-    "subject": "finance.expense_created",
-    "eventId": "guid-here",
-    "correlationId": "corr-123",
-    "conversationId": "conv-456",
-    "userId": "user-789",
-    "occurredAtUtc": "2024-01-15T10:30:00Z",
-    "payload": {
-        "expenseId": 42,
-        "amount": 45.00,
-        "category": "groceries"
-    }
-}
-```
-
-### Subscribed Subjects
-
-| Subject Pattern | Description |
-|----------------|-------------|
-| `finance.*` | All financial events |
-| `shop.*` | Shopping-related events |
-
-<Callout type="info" title="Durable Consumer">
-  The Conversation Service uses a durable NATS consumer (`conversationservice_refresh`) to ensure events are not lost during service restarts.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Technology Summary" description="The three real-time channels at a glance" />
-
-<FeatureGrid columns={3}>
-  <FeatureCard title="SSE Streaming" description="Token-by-token AI response delivery for typewriter-style rendering" icon="📨" />
-  <FeatureCard title="SignalR Hub" description="Bidirectional real-time communication for live UI patches" icon="🔌" />
-  <FeatureCard title="NATS JetStream" description="Durable event streaming for decoupled backend services" icon="📡" />
-</FeatureGrid>
-
-<SectionDivider />
-
-<LinkCardGrid>
-  <LinkCard title="Chat System Overview" description="High-level overview of the chat architecture" href="/chat-system" icon="💬" />
-  <LinkCard title="Conversation Flow" description="Step-by-step message lifecycle from input to response" href="/chat-system/conversation-flow" icon="🔄" />
-</LinkCardGrid>
+- `session` establishes identity for the conversation
+- `status` reflects internal AI phases
+- `chunk` reflects progressive assembly of the final JSON
+- `done` closes the loop with the actual assistant contract the client can render

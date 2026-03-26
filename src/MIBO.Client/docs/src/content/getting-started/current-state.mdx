@@ -1,0 +1,44 @@
+---
+title: Platform Snapshot
+description: Active platform summary for the current MIBO repository
+category: getting-started
+order: 4
+---
+
+# Platform Snapshot
+
+This page summarizes the active platform surface represented by the repository today.
+
+## Active platform services
+
+- Ocelot API gateway with JWT validation and claim-to-header propagation.
+- Identity service with login, registration, refresh-token cookies, `me`, finance connection flags, and Spotify OAuth.
+- Conversation service with conversation CRUD, SSE chat relay, Mongo persistence, and synthetic monitoring updates.
+- Action service with structured `query` and `execute` endpoints.
+- LangChain service using LangGraph and Groq to produce structured final responses.
+- React client using SSE, generative UI state, data source refresh rules, and action execution.
+- Status frontend consuming `/api/actions/status/summary`.
+- AppHost-based local orchestration.
+- Helm-based backend deployments and GitHub Actions pipelines.
+
+## Frontend applications
+
+- `src/MIBO.Client/client` is the main user-facing application.
+- `src/MIBO.Client/docs` is the technical documentation site.
+- `src/MIBO.Client/status` is the operational status dashboard.
+
+## Delivery model
+
+- Local orchestration is driven by `.NET Aspire` AppHost.
+- Backend services are deployed through Helm charts under `deploy/helm`.
+- Client, docs, and status apps are deployed from Kubernetes manifests under `k8s/apps`.
+- GitHub Actions coordinates build, test, image publishing, and deployment workflows.
+
+## Sources of truth
+
+The most useful implementation references are:
+
+1. runtime code under `src/`
+2. AppHost orchestration in `src/MIBO.AppHost/AppHost.cs`
+3. deployment assets under `deploy/` and `k8s/`
+4. GitHub Actions workflows under `.github/workflows/`

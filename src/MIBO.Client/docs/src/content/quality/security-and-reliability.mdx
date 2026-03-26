@@ -1,0 +1,39 @@
+---
+title: Security & Reliability
+description: Current auth, ownership, retry, and runtime reliability characteristics in MIBO
+category: quality
+order: 73
+---
+
+# Security & Reliability
+
+## Security controls that are clearly present
+
+- JWT validation at the gateway
+- refresh tokens stored in HTTP-only cookies
+- conversation ownership enforcement in Mongo-backed store logic
+- role and identity claims embedded in tokens
+- optional Turnstile validation on login
+- Spotify token storage in Redis rather than the client
+
+## Reliability controls that are clearly present
+
+- SSE relay with upstream error propagation
+- Mongo persistence of user messages before AI processing
+- integration monitoring snapshots and audit history
+- optional RabbitMQ-based retry flow in ActionService
+- rollout waits in deployment workflows
+
+## Operational cautions
+
+### Access token lifetime mismatch
+
+The configured access-token lifetime is named in minutes, but the current `AuthService` implementation uses `AddDays(...)` when generating the access token expiry. That should be treated as a correctness and security issue until fixed.
+
+### Public status endpoint
+
+`/api/actions/status/summary` is currently public through the gateway. That is intentional for the public status frontend, but it should be understood as an exposed operational surface.
+
+### Historical assets can mislead operational assumptions
+
+Several manifests and docs still describe older services or transport models. Reliability decisions should be based on the active code paths, not on older diagrams.

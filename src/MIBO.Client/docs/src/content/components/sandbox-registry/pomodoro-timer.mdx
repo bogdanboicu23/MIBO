@@ -1,0 +1,32 @@
+---
+title: PomodoroTimer
+description: Runtime Pomodoro timer component available in the client sandbox registry
+category: components
+order: 91
+---
+
+# PomodoroTimer
+
+`PomodoroTimer` is a runtime productivity component registered in the client sandbox UI registry.
+
+## Purpose
+
+It renders:
+
+- work, short-break, and long-break phases
+- a circular progress timer
+- session progression
+- local start, pause, and reset controls
+
+## Main props
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `workMinutes` | number | `25` |
+| `shortBreakMinutes` | number | `5` |
+| `longBreakMinutes` | number | `15` |
+| `sessionsBeforeLongBreak` | number | `4` |
+
+## Important note
+
+This component is currently a client-side interactive timer. It is not backed by a server-side state machine. The associated Action Service handler (`pomodoro.config.get`) provides configuration data, not persisted timer state.

@@ -1,9 +1,9 @@
 import { useState, useEffect, type ReactNode } from 'react';
 
-import { paths } from "src/routes/paths";
+import { normalizeReturnTo } from "src/routes/paths";
 
 import { useAuthContext } from '../hooks';
-import { useRouter } from "../../routes/hooks";
+import { useRouter, useSearchParams } from "../../routes/hooks";
 import { LoadingOverlay } from "../../components/ui";
 
 type GuestGuardProps = {
@@ -13,9 +13,7 @@ type GuestGuardProps = {
 export function GuestGuard({ children }: GuestGuardProps) {
     const { loading, authenticated } = useAuthContext();
     const router = useRouter();
-
-    // const searchParams = useSearchParams();
-    // const returnTo = searchParams.get('returnTo') || '';
+    const searchParams = useSearchParams();
 
     const [isChecking, setIsChecking] = useState<boolean>(true);
 
@@ -25,11 +23,7 @@ export function GuestGuard({ children }: GuestGuardProps) {
         }
 
         if (authenticated) {
-            // Redirect authenticated users to the returnTo path
-            // Using `window.location.href` instead of `router.replace` to avoid unnecessary re-rendering
-            // that might be caused by the AuthGuard component
-            // window.location.href = paths.dashboard + paths.order.list;
-            router.push(paths.intro);
+            router.replace(normalizeReturnTo(searchParams.get('returnTo')));
             return;
         }
 
@@ -39,7 +33,7 @@ export function GuestGuard({ children }: GuestGuardProps) {
     useEffect(() => {
         checkPermissions();
          
-    }, [authenticated, loading]);
+    }, [authenticated, loading, searchParams]);
 
     if (isChecking) {
         return (

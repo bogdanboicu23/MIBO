@@ -1,154 +1,35 @@
 ---
 title: Infrastructure
-description: Stateful infrastructure services - NATS, Redis, and PostgreSQL on Kubernetes
+description: Current infrastructure dependencies across AppHost, Kubernetes resources, and environment configuration
 category: deployment
 order: 64
 ---
 
-# Infrastructure Services
+# Infrastructure
 
-MIBO's stateful infrastructure runs as Kubernetes StatefulSets with persistent storage.
+MIBO relies on a small set of core infrastructure services that are configured differently between local development and the deployed environment.
 
-<SectionDivider />
+## Infrastructure by concern
 
-<SectionHeader title="Service Overview" description="Core infrastructure services powering the MIBO platform." />
+| Service | Local AppHost | Deployed environment | Current purpose |
+| --- | --- | --- | --- |
+| Redis | yes | configured through environment or cluster resources | Spotify tokens and finance connection state |
+| MongoDB | yes | configured through secrets and connection strings | conversations, messages, UI instances, monitoring data |
+| PostgreSQL | yes | configured through secrets and migration jobs | IdentityService relational storage |
+| RabbitMQ | yes | configured through environment values | ActionService retry flow |
 
-<FeatureGrid columns={2}>
-  <FeatureCard title="NATS + JetStream" description="Async messaging backbone between microservices with persistent event streams" icon="📨" />
-  <FeatureCard title="Redis" description="Caching and session storage across services with AOF persistence" icon="⚡" />
-  <FeatureCard title="PostgreSQL" description="Relational database for Identity Service user data (managed in production)" icon="🐘" />
-  <FeatureCard title="MongoDB" description="Document store for conversations, UI instances, and UI subscriptions" icon="🍃" />
-</FeatureGrid>
+## In-repo infrastructure assets
 
-<SectionDivider />
+The repository contains infrastructure assets in three main places:
 
-<SectionHeader title="NATS (Message Broker)" description="Provides the async messaging backbone between microservices." />
+- `src/MIBO.AppHost/AppHost.cs` for local orchestration
+- `deploy/migrations/*` for Identity database schema changes
+- `k8s/traefik/*` and selected resources under `k8s/apps/*` for cluster-side support
 
-```yaml
-# k8s/apps/20-nats.yaml
-kind: StatefulSet
-metadata:
-  name: nats
-  namespace: test
-spec:
-  replicas: 1
-  template:
-    spec:
-      containers:
-        - name: nats
-          image: nats:2.10-alpine
-          args: ["-js", "-sd", "/data", "-m", "8222"]
-          ports:
-            - containerPort: 4222   # Client connections
-            - containerPort: 8222   # Monitoring
-```
+## Environment model
 
-| Property | Value |
-|----------|-------|
-| Image | `nats:2.10-alpine` |
-| Client Port | 4222 |
-| Monitoring Port | 8222 |
-| Storage | 5Gi PersistentVolume |
-| JetStream | Enabled with persistent storage |
-| Monitoring Endpoint | HTTP GET on `:8222/varz` |
-| DNS | `nats.test.svc.cluster.local:4222` |
+The deployed test environment relies on environment variables, secrets, and Helm values rather than a single in-repo full-stack bootstrap. In practice that means:
 
-<Callout type="info" title="JetStream Persistence">
-  JetStream is enabled with persistent storage at `/data`, ensuring messages survive pod restarts. The `MIBO_EVENTS` stream uses subjects `finance.*` and `shop.*`.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Redis (Cache)" description="Provides caching and session storage across services." />
-
-```yaml
-# k8s/apps/21-redis.yaml
-kind: StatefulSet
-metadata:
-  name: redis
-  namespace: test
-spec:
-  replicas: 1
-  template:
-    spec:
-      containers:
-        - name: redis
-          image: redis:7-alpine
-          args: ["redis-server", "--appendonly", "yes"]
-          ports:
-            - containerPort: 6379
-```
-
-| Property | Value |
-|----------|-------|
-| Image | `redis:7-alpine` |
-| Port | 6379 |
-| Storage | 5Gi PersistentVolume |
-| Persistence | AOF (Append-Only File) enabled |
-| Health Check | `redis-cli ping` (expects PONG) |
-| DNS | `redis.test.svc.cluster.local:6379` |
-
-<SectionDivider />
-
-<SectionHeader title="PostgreSQL (Database)" description="Relational database used by the Identity Service for user data." />
-
-In production, PostgreSQL is a **DigitalOcean Managed Database** -- not deployed within the cluster.
-
-Connection strings are injected via Kubernetes Secrets:
-
-```yaml
-env:
-  - name: ConnectionStrings__DefaultConnection
-    valueFrom:
-      secretKeyRef:
-        name: database-secret
-        key: connection-string
-```
-
-<Callout type="warning" title="Database Migrations">
-  Database schema updates run as Kubernetes Jobs before service deployment. The migration job waits for PostgreSQL availability before executing.
-</Callout>
-
-```yaml
-# deploy/migrations/identity-db-migration.yaml
-kind: Job
-spec:
-  template:
-    spec:
-      initContainers:
-        - name: wait-for-db
-          image: postgres:16-alpine
-          command: ["sh", "-c", "until pg_isready -h $DB_HOST -p $DB_PORT; do sleep 2; done"]
-      containers:
-        - name: migrate
-          image: registry.digitalocean.com/mibo/identity-service:test-latest
-```
-
-<SectionDivider />
-
-<SectionHeader title="MongoDB" description="Document store for the Conversation Service." />
-
-MongoDB is used by the Conversation Service for storing conversations, UI instances, and UI subscriptions. Like PostgreSQL, it can be run as a managed service in production.
-
-<SectionDivider />
-
-<SectionHeader title="Service Discovery" description="All infrastructure services are accessible via Kubernetes DNS." />
-
-| Service | Internal DNS | Port |
-|---------|-------------|------|
-| NATS | `nats.test.svc.cluster.local` | 4222 |
-| Redis | `redis.test.svc.cluster.local` | 6379 |
-| PostgreSQL | `postgres.test.svc.cluster.local` | 5432 |
-
-<Callout type="tip" title="Short DNS Names">
-  Within the same namespace, you can use short names like `nats:4222` and `redis:6379`. The full DNS name is only needed for cross-namespace access.
-</Callout>
-
-<SectionDivider />
-
-<LinkCardGrid>
-  <LinkCard title="Docker Compose" description="Run infrastructure locally with Docker" href="/deployment/docker" icon="🐳" />
-  <LinkCard title="Kubernetes Deployment" description="Full cluster deployment architecture" href="/deployment/kubernetes" icon="☸️" />
-  <LinkCard title="Observability" description="Monitoring and logging stack" href="/deployment/observability" icon="📈" />
-  <LinkCard title="Deployment Overview" description="Back to deployment overview" href="/deployment" icon="🏠" />
-</LinkCardGrid>
+- AppHost is the clearest reference for local development
+- Helm values define the runtime wiring for backend services
+- GitHub Actions applies the frontend and ingress manifests used by the cluster

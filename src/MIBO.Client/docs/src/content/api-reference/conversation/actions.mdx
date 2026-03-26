@@ -1,115 +1,93 @@
 ---
-title: Actions
-description: Action execution endpoint for generative UI interactions
+title: Conversation Management
+description: CRUD contracts for conversations and their stored message history
 category: api-reference
-order: 24
+order: 25
 ---
 
-# Actions API
+# Conversation Management
 
-The Action endpoint processes user interactions with generative UI components, executing the appropriate backend operations.
+`ConversationService` exposes full conversation CRUD for the authenticated user.
 
-**Base path:** `/api/v1/action`
+## Endpoints
 
-<Callout type="info" title="Authentication Required">
-  This endpoint requires a valid JWT Bearer token in the `Authorization` header.
-</Callout>
+| Method | Route | Role |
+| --- | --- | --- |
+| `GET` | `/api/v1/conversations` | list the user's conversations |
+| `POST` | `/api/v1/conversations` | create a new conversation |
+| `GET` | `/api/v1/conversations/{conversationId}` | return conversation summary and messages |
+| `PATCH` | `/api/v1/conversations/{conversationId}` | rename a conversation |
+| `DELETE` | `/api/v1/conversations/{conversationId}` | delete the conversation, messages, and UI instances |
 
-<SectionDivider />
+## List conversations
 
-<SectionHeader title="Execute Action" description="Process a user interaction with a generative UI component" />
+Query parameters:
 
-<ApiEndpoint
-    method="POST"
-    path="/api/v1/action"
-    description="Execute an action triggered by user interaction with a generative UI component. The action is routed to the appropriate handler and may trigger events via NATS."
-    body={`{
-    "schema": "action.v1",
-    "conversationId": "conv-123-uuid",
-    "userId": "user-456-uuid",
-    "action": {
-        "type": "ui.setFilter",
-        "payload": {
-            "category": "groceries",
-            "dateRange": "this_month"
-        }
-    },
-    "uiContext": {
-        "uiInstanceId": "ui-789",
-        "focusedComponentId": "expense-chart"
-    }
-}`}
-    params={[
-        { name: "schema", type: "string", required: true, description: 'Always "action.v1"' },
-        { name: "conversationId", type: "string", required: true, description: "UUID of the conversation" },
-        { name: "userId", type: "string", required: true, description: "UUID of the authenticated user" },
-        { name: "action.type", type: "string", required: true, description: "Action type identifier (e.g., shop.buy, ui.setFilter)" },
-        { name: "action.payload", type: "object", required: true, description: "Action-specific data" },
-        { name: "uiContext", type: "object", required: false, description: "UI state context for the action" },
-    ]}
-/>
+- `skip`, default `0`
+- `limit`, default `50`
 
-<SectionDivider />
+Real implementation note:
 
-<SectionHeader title="Action Types" description="Available action types following the domain.verb naming convention" />
+- `MongoConversationStore` clamps `limit` to a maximum of `100`
 
-Actions follow a `domain.verb` naming convention:
+## Create conversation
 
-<FeatureGrid columns={3}>
-  <FeatureCard title="ui.setFilter" description="Update a UI component's filter state" icon="🔍" />
-  <FeatureCard title="shop.buy" description="Execute a purchase action" icon="🛒" />
-  <FeatureCard title="finance.transfer" description="Initiate a fund transfer between accounts" icon="💸" />
-</FeatureGrid>
-
-<SectionDivider />
-
-<SectionHeader title="Event Publishing" description="How actions trigger downstream events via NATS JetStream" />
-
-When an action is processed, the Action Router may publish events to NATS JetStream:
+Request body:
 
 ```json
 {
-    "schema": "event.v1",
-    "subject": "finance.expense_created",
-    "eventId": "generated-uuid",
-    "correlationId": "corr-123",
-    "conversationId": "conv-456",
-    "userId": "user-789",
-    "occurredAtUtc": "2024-01-15T10:30:00Z",
-    "payload": { ... }
+  "title": "optional"
 }
 ```
 
-<Callout type="tip" title="Real-Time Updates">
-  These events can trigger UI updates delivered via the [SignalR hub](/chat-system/realtime), enabling real-time feedback to the user after an action is executed.
-</Callout>
+If the title is missing, the service creates a conversation titled `New chat`.
 
-<SectionDivider />
+## Get conversation details
 
-<SectionHeader title="Action Lifecycle" description="How an action flows through the system" />
+Query parameters:
 
-<Steps>
-<Step title="User interacts with UI">
-  The user clicks a button, applies a filter, or performs another interaction on a generative UI component.
-</Step>
-<Step title="Client sends action request">
-  The client constructs an action payload with the schema, action type, payload data, and UI context, then sends it to `POST /api/v1/action`.
-</Step>
-<Step title="Action Router processes">
-  The Action Router identifies the correct handler based on the action type and executes the backend operation.
-</Step>
-<Step title="Events published">
-  If the action produces side effects, events are published to NATS JetStream for downstream consumers.
-</Step>
-<Step title="UI updated in real-time">
-  SignalR delivers update events to the client, which re-renders the affected UI components.
-</Step>
-</Steps>
+- `messagesLimit`, default `200`
 
-<SectionDivider />
+Real implementation note:
 
-<LinkCardGrid>
-  <LinkCard title="Chat API" description="Send messages to the AI assistant" href="/api-reference/conversation/chat" icon="💬" />
-  <LinkCard title="Streaming API" description="Stream responses via SSE" href="/api-reference/conversation/streaming" icon="📡" />
-  <LinkCard title="Real-Time Hub" description="SignalR real-time communication" href="/chat-system/realtime" icon="🔄" />
-</LinkCardGrid>
+- `MongoConversationStore` clamps `messagesLimit` to a maximum of `500`
+
+Typical response:
+
+```json
+{
+  "conversation": {
+    "conversationId": "id",
+    "userId": "user",
+    "title": "Title",
+    "createdAt": "2026-03-23T00:00:00Z",
+    "updatedAt": "2026-03-23T00:00:00Z",
+    "lastMessageAt": "2026-03-23T00:00:00Z",
+    "lastMessagePreview": "Latest message",
+    "messageCount": 2
+  },
+  "messages": [
+    {
+      "messageId": "id",
+      "conversationId": "id",
+      "userId": "user",
+      "role": "assistant",
+      "text": "Answer",
+      "assistantPayload": {},
+      "createdAt": "2026-03-23T00:00:00Z"
+    }
+  ]
+}
+```
+
+## Important ownership rules
+
+- ownership is enforced in `MongoConversationStore`
+- if a conversation belongs to another user, the service returns `404`, not `403`
+- delete removes the conversation document, message documents, and related UI instances
+
+## Naming behavior
+
+- default title is `New chat`
+- titles are trimmed and normalized
+- automatic title generation is based on the first user message if the conversation still has the default title

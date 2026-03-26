@@ -1,78 +1,75 @@
 ---
 title: Chat
-description: Main chat endpoint for sending messages to the AI assistant
+description: Live chat endpoint exposed by ConversationService through the gateway
 category: api-reference
-order: 22
+order: 23
 ---
 
-# Chat API
+# Chat
 
-The primary endpoint for sending messages to the MIBO AI assistant.
+`ConversationService` exposes the chat endpoint used by the React client through the gateway:
 
-**Base path:** `/api/v1/chat`
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/v1/chat` | main contract used by the React client |
 
-<Callout type="info" title="Authentication Required">
-  This endpoint requires a valid JWT Bearer token in the `Authorization` header.
-</Callout>
+The endpoint returns `text/event-stream`.
 
-<SectionDivider />
+## Main contract: `POST /api/v1/chat`
 
-<SectionHeader title="Send Message" description="Send a message to the AI assistant and receive a response with optional generative UI" />
+Request:
 
-<ApiEndpoint
-    method="POST"
-    path="/api/v1/chat"
-    description="Send a message to the AI assistant and receive a response with text and optional generative UI components."
-    body={`{
-    "conversationId": "conv-123-uuid",
-    "userId": "user-456-uuid",
-    "prompt": "Show me my spending this month"
-}`}
-    response={`{
-    "text": "Here's your spending summary for this month. You've spent $1,234.56 across 45 transactions.",
-    "uiV1": {
-        "type": "expense-chart",
-        "data": {
-            "total": 1234.56,
-            "categories": [
-                { "name": "Groceries", "amount": 450.00 },
-                { "name": "Dining", "amount": 280.00 }
-            ]
-        }
-    },
-    "correlationId": "corr-789-uuid"
-}`}
-    params={[
-        { name: "conversationId", type: "string", required: true, description: "UUID of the conversation" },
-        { name: "userId", type: "string", required: true, description: "UUID of the authenticated user" },
-        { name: "prompt", type: "string", required: true, description: "The user's message text" },
-    ]}
-/>
+```json
+{
+  "conversationId": "optional-existing-id",
+  "prompt": "Show me my spending this month"
+}
+```
 
-<SectionDivider />
+`message` is also accepted as an alternative field for compatibility.
 
-<SectionHeader title="Response Structure" description="Understanding the fields returned by the chat endpoint" />
+### Real behavior
 
-<FeatureGrid columns={3}>
-  <FeatureCard title="text" description="Natural language response from the AI assistant" icon="📝" />
-  <FeatureCard title="uiV1" description="Optional generative UI specification for rich interactive components" icon="🎨" />
-  <FeatureCard title="correlationId" description="Unique ID for tracking and correlating this interaction" icon="🔗" />
-</FeatureGrid>
+- if `conversationId` is missing, the service creates a new conversation
+- the user message is persisted immediately in Mongo
+- the service forwards the request to `LangChainService`
+- the upstream stream is relayed to the client as SSE
+- the assistant result is persisted after a successful `done` event
 
-<SectionDivider />
+### Upstream request to the AI service
 
-<SectionHeader title="Generative UI" description="Dynamic UI components rendered from AI responses" />
+`ConversationService` forwards the normalized request to `LangChainService` as:
 
-The `uiV1` field contains a dynamic UI specification that the client renders. This allows the AI to present rich, interactive components based on the conversation context -- charts, tables, cards, forms, and more.
+```json
+{
+  "session_id": "resolved-conversation-id",
+  "message": "Show me my spending this month",
+  "user_id": "resolved-user-id"
+}
+```
 
-<Callout type="tip" title="Full Orchestration Pipeline">
-  The chat endpoint handles the full orchestration pipeline: planning, tool execution, UI composition, and text generation. For streaming responses, use the [streaming endpoint](/api-reference/conversation/streaming) instead.
-</Callout>
+### Persistence side effects
 
-<SectionDivider />
+This endpoint is not only a transport endpoint. It also mutates conversation state:
 
-<LinkCardGrid>
-  <LinkCard title="Streaming API" description="Stream responses token-by-token via SSE" href="/api-reference/conversation/streaming" icon="📡" />
-  <LinkCard title="Actions API" description="Execute generative UI actions" href="/api-reference/conversation/actions" icon="⚡" />
-  <LinkCard title="Authentication" description="Get your JWT token" href="/api-reference/identity/auth" icon="🔐" />
-</LinkCardGrid>
+- appends a user message before the upstream AI call
+- updates `lastMessagePreview`, `lastMessageAt`, and `messageCount`
+- auto-titles the conversation from the first user message when needed
+- appends an assistant message with `assistantPayload` after the `done` event arrives
+
+## Response headers
+
+| Header | When present | Purpose |
+| --- | --- | --- |
+| `Content-Type: text/event-stream` | always | SSE response stream |
+| `X-Conversation-Id` | `/api/v1/chat` | exposes the resolved conversation ID |
+| `Cache-Control: no-cache` | always | reduces aggressive buffering |
+| `X-Accel-Buffering: no` | always | reverse-proxy compatibility |
+
+## Common errors
+
+| Case | Status |
+| --- | --- |
+| prompt missing or blank | `400` |
+| conversation does not exist for this user | `404` |
+| upstream agent failure | propagated upstream status |

@@ -1,0 +1,30 @@
+---
+title: SpotifyTrackList
+description: Runtime Spotify track-list component available in the client sandbox registry
+category: components
+order: 93
+---
+
+# SpotifyTrackList
+
+`SpotifyTrackList` renders a list of Spotify tracks returned by handlers such as:
+
+- `spotify.search`
+- `spotify.top_tracks`
+
+## Expected item fields
+
+Each track item may include:
+
+- `name`
+- `artist`
+- `album`
+- `albumArt`
+- `durationMs`
+- `spotifyUrl`
+
+## Behavior
+
+- renders a simple empty state when no tracks are available
+- supports optional list title through `title`
+- opens Spotify links in a new tab when URLs are present

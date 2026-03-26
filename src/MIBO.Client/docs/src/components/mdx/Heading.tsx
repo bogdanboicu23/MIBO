@@ -1,12 +1,14 @@
+import { Children, cloneElement, isValidElement } from "react";
 import { cn } from "@/utils/cn";
 
 type Level = 1 | 2 | 3 | 4 | 5 | 6;
+type HeadingAnchorElement = React.ReactElement<{ className?: string; children?: React.ReactNode }>;
 
 const styles: Record<Level, string> = {
-    1: "text-3xl font-extrabold tracking-tight mt-0 mb-6 text-zinc-950 dark:text-white",
-    2: "text-2xl font-bold tracking-tight mt-12 mb-4 pb-3 border-b border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-50",
-    3: "text-lg font-semibold tracking-tight mt-8 mb-3 text-zinc-800 dark:text-zinc-200",
-    4: "text-base font-semibold mt-6 mb-2 text-zinc-800 dark:text-zinc-200",
+    1: "text-4xl font-black tracking-[-0.04em] mt-0 mb-7 text-zinc-950 dark:text-white",
+    2: "text-[2.35rem] leading-tight font-black tracking-[-0.04em] mt-16 mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-800 text-zinc-950 dark:text-zinc-50",
+    3: "text-[1.45rem] leading-tight font-bold tracking-[-0.03em] mt-10 mb-4 text-zinc-900 dark:text-zinc-100",
+    4: "text-[1.05rem] font-semibold mt-7 mb-2 text-zinc-800 dark:text-zinc-200",
     5: "text-sm font-semibold mt-4 mb-2 text-zinc-700 dark:text-zinc-300",
     6: "text-sm font-medium mt-4 mb-2 text-zinc-600 dark:text-zinc-400",
 };
@@ -15,6 +17,27 @@ function createHeading(level: Level) {
     const Tag = `h${level}` as const;
 
     return function Heading({ children, id, className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+        const marker = (
+            <span className="ml-2 text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-zinc-600">#</span>
+        );
+
+        const normalizedChildren = id ? Children.toArray(children) : [];
+        const linkedChild = id && normalizedChildren.length === 1 && isValidElement(normalizedChildren[0]) && normalizedChildren[0].type === "a"
+            ? normalizedChildren[0] as HeadingAnchorElement
+            : null;
+
+        const linkedHeading = linkedChild
+            ? cloneElement(linkedChild, {
+                className: cn("group no-underline hover:no-underline", linkedChild.props.className),
+                children: (
+                    <>
+                        {linkedChild.props.children}
+                        {marker}
+                    </>
+                ),
+            })
+            : null;
+
         return (
             <Tag
                 id={id}
@@ -22,10 +45,12 @@ function createHeading(level: Level) {
                 {...props}
             >
                 {id ? (
+                    linkedHeading ?? (
                     <a href={`#${id}`} className="group no-underline hover:no-underline">
                         {children}
-                        <span className="ml-2 text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-zinc-600">#</span>
+                        {marker}
                     </a>
+                    )
                 ) : (
                     children
                 )}

@@ -1,105 +1,48 @@
 ---
 title: API Reference
-description: Complete REST API documentation for the MIBO platform
+description: Public HTTP contracts and action runtime contracts used by the current MIBO platform
 category: api-reference
 order: 20
 ---
 
 # API Reference
 
-All API requests go through the **Ocelot API Gateway**, which routes them to the appropriate microservice. The gateway runs on port 5000 in development and at `https://api.mibo.monster` in production.
+MIBO has two contract layers that matter operationally:
 
-<SectionDivider />
+1. **public HTTP endpoints** exposed through `MIBO.ApiGateway`
+2. **internal action runtime contracts** exposed by `MIBO.ActionService` and consumed by both the AI agent and the interactive client
 
-<SectionHeader title="Authentication" description="How to authenticate your API requests" />
+## Public surface exposed through the gateway
 
-Most endpoints require a JWT Bearer token. Include it in the `Authorization` header:
+| Group | Upstream prefix | Auth |
+| --- | --- | --- |
+| Gateway routing | `/api/*` | varies by route |
+| Identity | `/api/auth/*` | mixed |
+| Main chat | `/api/v1/chat` | JWT |
+| Conversations | `/api/v1/conversations*` | JWT |
+| Action runtime | `/api/actions/*` | JWT for `query` and `execute` |
+| Action status | `/api/actions/status/*` | currently public |
 
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
-```
+## Internal surface used by the AI runtime
 
-<Callout type="info" title="Getting a Token">
-  Obtain tokens via the [Auth endpoints](/api-reference/identity/auth). Tokens are issued on login and can be refreshed using the refresh token cookie.
-</Callout>
+The browser does **not** call the Python agent directly.
 
-<SectionDivider />
+Instead:
 
-<SectionHeader title="Gateway Routes" description="How the API Gateway maps upstream paths to downstream microservices" />
+- `ConversationService` calls `POST /chat` on `LangChainService`
+- `LangChainService` emits `text/event-stream`
+- `ConversationService` relays that stream to the browser
 
-| Upstream Pattern | Downstream Service | Port (Dev) |
-|-----------------|-------------------|------------|
-| `/api/auth/*` | Identity Service | 5001 |
-| `/api/users/*` | Identity Service | 5001 |
-| `/api/v1/chat` | Conversation Service | 7251 |
-| `/api/v1/*` | Conversation Service | 7251 |
-| `/api/conversations/*` | Conversation Service | 7251 |
-| `/hubs/ui` | Conversation Service (SignalR) | 7251 |
-| `/api/accounts/*` | Finance Data Service | 5003 |
-| `/api/transactions/*` | Finance Data Service | 5003 |
-| `/api/expenses/*` | Finance Data Service | 5003 |
-| `/api/budgets/*` | Finance Data Service | 5003 |
-| `/api/summary/*` | Finance Data Service | 5003 |
-| `/api/analytics/*` | Finance Data Service | 5003 |
+## Read this section in order
 
-<SectionDivider />
+- [Gateway](/api-reference/gateway) documents public routing, auth, and identity propagation.
+- [Identity](/api-reference/identity/auth) documents login, registration, refresh, `me`, finance connection state, and Spotify OAuth.
+- [Chat](/api-reference/conversation/chat) documents the live chat endpoint and behavior.
+- [Streaming](/api-reference/conversation/streaming) documents the SSE event format.
+- [Conversation Management](/api-reference/conversation/actions) documents conversation CRUD.
+- [Action Service Runtime](/api-reference/action-service/runtime) documents `query`, `execute`, transforms, and supported handlers.
+- [Integration Status](/api-reference/action-service/status) documents the monitoring summary endpoint used by the status app.
 
-<SectionHeader title="API Services" description="Explore all available API endpoints organized by service" />
+## Important clarification
 
-<FeatureGrid columns={3}>
-  <FeatureCard title="Identity / Auth" description="Login, register, JWT token management and user profiles" icon="🔐" />
-  <FeatureCard title="Chat" description="Main chat endpoint for sending messages to the AI assistant" icon="💬" />
-  <FeatureCard title="Streaming" description="Server-Sent Events for real-time token-by-token responses" icon="📡" />
-  <FeatureCard title="Actions" description="Execute generative UI actions triggered by user interactions" icon="⚡" />
-  <FeatureCard title="Accounts" description="Bank account management and balance queries" icon="🏦" />
-  <FeatureCard title="Transactions" description="Transaction queries, search, and filtering" icon="💳" />
-  <FeatureCard title="Expenses" description="Expense tracking, categorization, and filtering" icon="🧾" />
-  <FeatureCard title="Budgets" description="Create and manage spending budgets by category" icon="📊" />
-  <FeatureCard title="Summary" description="High-level financial summaries and overviews" icon="📋" />
-  <FeatureCard title="Analytics" description="Spending analytics, category breakdowns, and time-series data" icon="📈" />
-</FeatureGrid>
-
-<SectionDivider />
-
-<SectionHeader title="Common Response Patterns" description="Standard response shapes used across all endpoints" />
-
-### Paginated Lists
-
-```json
-{
-    "items": [...],
-    "total": 142,
-    "skip": 0,
-    "limit": 30
-}
-```
-
-### Error Responses
-
-```json
-{
-    "message": "Error description",
-    "details": "Additional context"
-}
-```
-
-<Callout type="warning" title="Rate Limiting">
-  All endpoints are subject to rate limiting through the API Gateway. Exceeding limits will return a `429 Too Many Requests` response.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Explore the API" description="Jump to any service documentation" />
-
-<LinkCardGrid>
-  <LinkCard title="Authentication" description="Login, register, and token management" href="/api-reference/identity/auth" icon="🔐" />
-  <LinkCard title="Chat" description="Send messages to the AI assistant" href="/api-reference/conversation/chat" icon="💬" />
-  <LinkCard title="Streaming" description="SSE streaming responses" href="/api-reference/conversation/streaming" icon="📡" />
-  <LinkCard title="Actions" description="Generative UI action execution" href="/api-reference/conversation/actions" icon="⚡" />
-  <LinkCard title="Accounts" description="Bank account endpoints" href="/api-reference/finance/accounts" icon="🏦" />
-  <LinkCard title="Transactions" description="Transaction queries and search" href="/api-reference/finance/transactions" icon="💳" />
-  <LinkCard title="Expenses" description="Expense tracking endpoints" href="/api-reference/finance/expenses" icon="🧾" />
-  <LinkCard title="Budgets" description="Budget management endpoints" href="/api-reference/finance/budgets" icon="📊" />
-  <LinkCard title="Summary" description="Financial summary endpoints" href="/api-reference/finance/summary" icon="📋" />
-  <LinkCard title="Analytics" description="Spending analytics and insights" href="/api-reference/finance/analytics" icon="📈" />
-</LinkCardGrid>
+The `finance/*` pages in this section document the finance handlers exposed by `MIBO.ActionService`.

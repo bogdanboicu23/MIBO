@@ -1,0 +1,293 @@
+---
+title: Conversation Service Runtime
+description: Detailed architecture of MIBO.ConversationService, including CRUD, SSE relay, Mongo persistence, ownership, and monitoring
+category: chat-system
+order: 53
+---
+
+# Conversation Service Runtime
+
+`MIBO.ConversationService` is the orchestration boundary between the authenticated client and the AI agent runtime. It is responsible for keeping conversations durable, user-scoped, and observable.
+
+## Runtime stack
+
+| Area | Implementation |
+| --- | --- |
+| Web framework | ASP.NET Core |
+| Storage | `MIBO.Storage.Mongo` |
+| Upstream AI integration | `HttpClient` to `LangChainService` |
+| Monitoring | Mongo-backed external service monitor store |
+| Streaming model | SSE relay |
+
+## Primary responsibilities
+
+- expose conversation CRUD endpoints
+- expose the chat SSE endpoint used by the client
+- resolve the effective user identity from forwarded headers
+- persist user and assistant messages
+- enforce per-user conversation ownership
+- relay AI stream events to the browser
+- record synthetic platform and AI-agent monitoring activity
+
+## Key implementation files
+
+| File | Why it matters |
+| --- | --- |
+| `Program.cs` | service registration, Mongo bootstrap, HttpClient wiring |
+| `Controllers/ChatController.cs` | conversation CRUD, SSE relay, persistence orchestration |
+| `Monitoring/PlatformActivityMonitor.cs` | synthetic platform and AI-agent status recording |
+| `MIBO.Storage.Mongo/Store/Conversation/MongoConversationStore.cs` | normalized conversation and message persistence |
+| `MIBO.Storage.Mongo/Conversations/ConversationDoc.cs` | conversation and message document models |
+| `MIBO.Storage.Mongo/MongoIndexHostedService.cs` | index creation and replacement strategy |
+
+## Public endpoints
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/v1/conversations` | list current user's conversations |
+| `POST` | `/api/v1/conversations` | create a new conversation |
+| `GET` | `/api/v1/conversations/{conversationId}` | load one conversation with messages |
+| `PATCH` | `/api/v1/conversations/{conversationId}` | rename a conversation |
+| `DELETE` | `/api/v1/conversations/{conversationId}` | delete a conversation and related data |
+| `POST` | `/api/v1/chat` | primary chat contract |
+| `POST` | `/api/chat` | legacy-compatible chat contract |
+
+## Bootstrapping and service registration
+
+`Program.cs` wires three important pieces:
+
+### Mongo bootstrap
+
+`AddMongo(builder.Configuration)` registers:
+
+- `IConversationStore`
+- `IExternalServiceMonitorStore`
+- UI instance and subscription stores
+- Mongo index creation on startup
+
+### Agent HttpClient
+
+The `agent` client resolves its base URL from:
+
+- `AGENT_SERVICE_URL`
+- `Planner:BaseUrl`
+- service-discovery keys
+
+It uses `Timeout.InfiniteTimeSpan` because chat responses are streamed.
+
+### Action Service HttpClient
+
+The `actions` client is also registered, although the main chat orchestration path in `ChatController` currently uses the `agent` client directly.
+
+## Chat lifecycle inside `ChatController`
+
+The central implementation is `StreamChatAsync()`.
+
+Its operational sequence is:
+
+1. validate the prompt
+2. resolve or create the conversation
+3. generate a request-level `correlationId`
+4. persist the user message
+5. open the upstream `/chat` request to `LangChainService`
+6. relay SSE frames downstream
+7. intercept the final `done` event to parse the structured assistant payload
+8. persist the assistant message
+9. record success or failure for platform and AI-agent monitoring
+
+## Code-level control flow
+
+```text
+receive chat request
+  -> resolve user
+  -> resolve or create conversation
+  -> append user message
+  -> call LangChainService /chat
+  -> relay SSE downstream
+  -> inspect done event
+  -> persist assistant payload
+  -> record monitoring outcome
+```
+
+## Conversation ownership model
+
+The effective user ID is resolved from the `X-User-Id` header. If no header exists, the runtime falls back to `anonymous`.
+
+Ownership is enforced in two layers:
+
+- the controller always resolves the effective user before calling the store
+- `MongoConversationStore` rejects access when the stored `userId` does not match
+
+This affects:
+
+- loading a conversation
+- renaming it
+- deleting it
+- appending chat messages into an existing conversation
+
+The service returns `404` for ownership violations to avoid leaking the existence of another user's conversation.
+
+## Mongo persistence model
+
+The conversation runtime uses a normalized storage model.
+
+### Conversation document
+
+The `conversations` collection stores:
+
+- `conversationId`
+- `userId`
+- `title`
+- `created_at`
+- `updated_at`
+- `last_message_at`
+- `last_message_preview`
+- `message_count`
+- `summary`
+- optional legacy embedded `messages`
+
+### Message document
+
+The `messages` collection stores each message independently with:
+
+- `messageId`
+- `conversationId`
+- `userId`
+- `role`
+- `text`
+- `assistantPayload`
+- `uiV1`
+- `correlationId`
+- `createdAt`
+
+In the current chat flow:
+
+- user messages are persisted with `assistantPayload = null`
+- assistant messages are persisted with the final structured payload in `assistantPayload`
+- `uiV1` is not currently materialized by `ConversationService`
+
+### Conversation metadata updates
+
+Every append updates the parent conversation:
+
+- `updatedAt`
+- `lastMessageAt`
+- `lastMessagePreview`
+- `messageCount`
+
+For the first user message, the store also auto-promotes the preview into the conversation title when the title is still `New chat`.
+
+## Legacy compatibility in reads
+
+`MongoConversationStore.GetConversationAsync()` prefers normalized `messages` collection records, but it still falls back to older embedded `conversation.messages` entries when normalized records are absent.
+
+This means the service supports both:
+
+- the current normalized model
+- historical conversation documents that still store messages inline
+
+## SSE relay behavior
+
+The service does not reinterpret the entire upstream AI stream. It mostly forwards it.
+
+The relay has only two special behaviors:
+
+### Synthetic session event
+
+If `ConversationService` had to create the conversation itself, it emits:
+
+```text
+data: {"type":"session","session_id":"resolved-conversation-id"}
+```
+
+This keeps the browser contract stable even though the actual upstream AI request already has a resolved `session_id`.
+
+### Final payload interception
+
+When the service reads a `done` event:
+
+- it parses the embedded JSON string if possible
+- extracts the assistant `text`
+- keeps the full structured object as `assistantPayload`
+- persists both after the stream is complete
+
+This is the main bridge between the AI stream and durable conversation history.
+
+## Monitoring model
+
+`PlatformActivityMonitor` records two synthetic components:
+
+| Synthetic component | Meaning |
+| --- | --- |
+| `platform` | outer platform request path handled by conversation and gateway |
+| `ai-agent` | upstream AI agent execution path |
+
+For each request, the runtime records:
+
+- success or failure
+- duration
+- handler name
+- correlation ID
+- incident state
+- total requests and failures
+
+These records are written to Mongo-backed monitoring collections and later surfaced by the status application.
+
+## Error behavior
+
+### Before upstream streaming starts
+
+If the request fails before the stream begins:
+
+- user message persistence errors stop the request
+- upstream AI connection errors are logged and recorded as failures
+
+### When upstream returns a non-success status
+
+`ConversationService`:
+
+- records AI and platform failure
+- propagates the upstream status code
+- returns the upstream body to the caller
+
+### During streaming
+
+If an exception happens after headers were accepted:
+
+- the error is logged
+- monitoring is marked as failed
+- the exception is rethrown
+
+### Client cancellation
+
+If the downstream client cancels after the upstream stream was accepted, the service currently records success for both the AI agent and platform path.
+
+## Indexing strategy
+
+`MongoIndexHostedService` creates explicit indexes for:
+
+- conversations by user and update time
+- conversations by conversation ID
+- messages by conversation and creation time
+- messages by conversation, user, and creation time
+- unique message IDs
+- UI instances by conversation and user
+- monitoring audits by service and correlation ID
+
+This is important because the service depends on:
+
+- fast conversation lists
+- fast ordered message reads
+- durable audit trails for the monitoring pipeline
+
+## Relationship to the AI service
+
+The Conversation Service intentionally does not reimplement AI logic. Its role is to surround the AI runtime with platform-grade behavior:
+
+- identity
+- ownership
+- persistence
+- transport relay
+- observability
+
+The AI service owns reasoning. The Conversation Service owns conversation durability and operational integrity.

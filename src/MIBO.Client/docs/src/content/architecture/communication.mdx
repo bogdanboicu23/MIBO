@@ -1,131 +1,71 @@
 ---
-title: Inter-Service Communication
-description: How MIBO services communicate via NATS and SignalR
+title: Communication
+description: Active request, streaming, identity propagation, and retry flows used by MIBO today
 category: architecture
 order: 12
 ---
 
-# Inter-Service Communication
+# Communication
 
-MIBO uses two primary communication patterns: **NATS** for backend service-to-service messaging and **SSE (Server-Sent Events)** for real-time client communication.
+MIBO uses a small set of active communication patterns across the client, gateway, services, and AI runtime.
 
-<FeatureGrid columns={2}>
-  <FeatureCard
-    title="NATS Message Broker"
-    description="Lightweight, high-performance messaging between backend microservices"
-    icon="📨"
-  />
-  <FeatureCard
-    title="SSE Streaming"
-    description="Unidirectional real-time streaming of AI responses to the client"
-    icon="🌊"
-  />
-</FeatureGrid>
+## 1. Client to platform: HTTP plus SSE
 
-<SectionDivider />
+The main frontend runtime uses standard HTTP requests for CRUD and action execution, and SSE for chat streaming.
 
-<SectionHeader title="NATS Message Broker" description="Lightweight, high-performance inter-service messaging" />
+| Flow | Transport | Current status |
+| --- | --- | --- |
+| Login, register, refresh, `me` | HTTP | active |
+| Conversation CRUD | HTTP | active |
+| Chat request/response | HTTP request + SSE response | active |
+| Generative UI data refresh | HTTP | active |
+| Status dashboard | HTTP | active |
 
-NATS provides the backbone for all backend service-to-service communication. It supports two primary patterns used throughout MIBO.
+## 2. Gateway to downstream services
 
-### Request-Reply Pattern
+`MIBO.ApiGateway` authenticates the user and forwards requests to internal services.
 
-Services use NATS request-reply for synchronous-style operations where a response is expected:
+### Identity propagation
 
-```csharp
-// Publishing a request
-var response = await natsConnection.RequestAsync<GetAccountRequest, AccountResponse>(
-    "finance.accounts.get",
-    new GetAccountRequest { AccountId = id }
-);
+The gateway adds:
+
+- `X-User-Id` from the `sub` claim
+- `X-User-Email` from the `email` claim
+
+These headers are consumed downstream by `ConversationService` and `ActionService`.
+
+## 3. Conversation service to AI agent
+
+The most important internal flow is:
+
+```text
+Client -> Gateway -> ConversationService -> LangChainService
 ```
 
-<Callout type="tip" title="When to Use Request-Reply">
-  Use request-reply when a service needs data from another service to continue processing -- for example, when the Conversation Service needs account details from the Finance Service to answer a user's question.
-</Callout>
+`ConversationService` sends:
 
-### Publish-Subscribe Pattern
+- `session_id`
+- `message`
+- `user_id`
 
-Events are broadcast to all interested subscribers. Publishers do not need to know who is listening:
+to `POST /chat` on `LangChainService`, then relays the response stream back to the browser.
 
-```csharp
-// Publishing an event
-await natsConnection.PublishAsync("finance.transaction.created", new TransactionCreatedEvent
-{
-    TransactionId = transaction.Id,
-    Amount = transaction.Amount,
-    UserId = transaction.UserId
-});
-```
+## 4. AI agent to Action Service
 
-<Callout type="tip" title="When to Use Pub-Sub">
-  Use pub-sub for fire-and-forget notifications -- for example, broadcasting that a new transaction was created so other services can react independently.
-</Callout>
+The Python agent does not call external providers directly for product, finance, weather, or Spotify data. It invokes tool wrappers that call `ActionService`, which then dispatches to the correct handler.
 
-### Message Subjects
+This gives the platform:
 
-NATS subjects follow a hierarchical naming convention using dots as delimiters. Wildcards (`*`) allow subscribing to groups of related subjects.
+- one shared action/query contract
+- centralized field-hint inference
+- shared retries and monitoring
+- a single runtime for both agent tools and UI-triggered actions
 
-| Subject | Publisher | Subscriber | Description |
-|---------|-----------|------------|-------------|
-| `finance.accounts.*` | Finance | Conversation | Account operations |
-| `finance.transactions.*` | Finance | Conversation | Transaction events |
-| `identity.user.*` | Identity | All services | User lifecycle events |
+## 5. Monitoring and retry flow
 
-<SectionDivider />
+`ConversationService` records synthetic monitoring updates for:
 
-<SectionHeader title="Real-Time Streaming (SSE)" description="How AI responses are streamed to the client in real time" />
+- `platform`
+- `ai-agent`
 
-The Conversation Service uses Server-Sent Events to stream AI responses to the client as tokens are generated, creating a typewriter effect.
-
-<Steps>
-  <Step title="Client sends a chat message">
-    The React client sends the user's message to the Conversation Service via an HTTP POST request through the API Gateway.
-  </Step>
-  <Step title="Server begins AI processing">
-    The Conversation Service forwards the message to the LLM provider and begins receiving response tokens.
-  </Step>
-  <Step title="Tokens stream back via SSE">
-    As each token is generated, it is pushed to the client over the open SSE connection -- no polling required.
-  </Step>
-  <Step title="Client renders in real time">
-    The React client reads the stream and renders tokens as they arrive, producing a smooth typewriter effect.
-  </Step>
-</Steps>
-
-### Client-Side SSE Consumption
-
-```typescript
-// Client-side SSE consumption
-const response = await fetch("/api/v1/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message: userInput }),
-});
-
-const reader = response.body?.getReader();
-// Read streamed chunks...
-```
-
-<Callout type="info" title="Why SSE over WebSockets?">
-  SSE (Server-Sent Events) provides a simpler alternative to WebSockets for unidirectional streaming, which is ideal for AI response delivery. It works over standard HTTP, requires no special protocol upgrade, and is natively supported by all modern browsers.
-</Callout>
-
-<SectionDivider />
-
-<SectionHeader title="Continue Reading" description="Explore related architecture topics" />
-
-<LinkCardGrid>
-  <LinkCard
-    title="Architecture Overview"
-    description="High-level system diagram and design principles"
-    href="/architecture"
-    icon="🏗️"
-  />
-  <LinkCard
-    title="Service Descriptions"
-    description="Detailed overview of each microservice and its responsibilities"
-    href="/architecture/services"
-    icon="🔧"
-  />
-</LinkCardGrid>
+`ActionService` records monitoring and audit data for external integrations and can queue retries through RabbitMQ when retry mode is enabled.

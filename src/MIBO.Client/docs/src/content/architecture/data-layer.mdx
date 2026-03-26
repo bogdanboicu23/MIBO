@@ -1,0 +1,58 @@
+---
+title: Data Layer
+description: Persistence ownership across PostgreSQL, MongoDB, Redis, and RabbitMQ
+category: architecture
+order: 13
+---
+
+# Data Layer
+
+MIBO uses different storage technologies for different concerns. There is no single shared platform database.
+
+## Storage ownership
+
+| Technology | Owned by | Current usage |
+| --- | --- | --- |
+| PostgreSQL | `IdentityService` | ASP.NET Identity users, roles, auth data |
+| MongoDB | `ConversationService`, `LangChainService`, `ActionService` monitoring | conversations, messages, UI instances, integration audits/status snapshots |
+| Redis | `IdentityService`, `ActionService` | Spotify tokens, finance connection state, shared cache-style state |
+| RabbitMQ | `ActionService` | queued retry flow for external integrations |
+
+## MongoDB collections
+
+The Mongo storage layer currently manages these important collections:
+
+| Collection | Purpose |
+| --- | --- |
+| `conversations` | conversation summary document, metadata, summary compaction state |
+| `messages` | normalized user and assistant messages |
+| `ui_instances` | stored UI instances and UI-related runtime data |
+| `external_service_audits` | audit history for external service executions |
+| `external_service_statuses` | latest status snapshot per monitored integration |
+
+## PostgreSQL
+
+`IdentityService` is the active service that relies on relational storage in this repository.
+
+It uses:
+
+- ASP.NET Identity
+- EF Core with Npgsql
+- startup role seeding
+- development-only automatic migration execution
+
+## Redis
+
+Redis is used for lightweight operational state rather than relational or document storage.
+
+### Current Redis-backed concerns
+
+- finance connection flags per user
+- Spotify access and refresh token storage
+- Spotify token refresh support
+
+## Data contracts worth noting
+
+- Assistant responses are persisted as `assistantPayload` in Mongo and materialized into `ui.v1` on the client.
+- `ConversationService` does not currently persist `uiV1` separately for assistant chat messages; the client derives it.
+- `ActionService` monitoring data is document-oriented and designed for the status dashboard.

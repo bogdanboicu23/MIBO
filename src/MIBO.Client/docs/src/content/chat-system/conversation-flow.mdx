@@ -1,140 +1,228 @@
 ---
 title: Conversation Flow
-description: Detailed flow of a conversation from user input to AI response
+description: Detailed lifecycle from browser prompt to persisted assistant payload and client-side generative UI
 category: chat-system
 order: 51
 ---
 
 # Conversation Flow
 
-This page describes the complete lifecycle of a chat message in the MIBO system.
+## Sequence overview
 
-<SectionDivider />
+```text
+User
+  -> Client
+  -> ApiGateway
+  -> ConversationService
+  -> LangChainService
+  -> ActionService
+  -> external systems
 
-<SectionHeader title="Flow Diagram" description="Visual overview of the message processing pipeline" />
-
-```
-User Input
-    │
-    ▼
-┌──────────────────┐
-│  ChatController   │  POST /api/v1/chat
-│  (HTTP endpoint)  │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Chat Orchestrator │  Coordinates the full pipeline
-└────────┬─────────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
-┌────────┐ ┌──────────┐
-│Planner │ │Tool      │
-│(LLM)   │→│Registry  │
-└────┬───┘ └──────────┘
-     │
-     ▼
-┌──────────────┐
-│Tool Executor │  Calls Finance/Identity APIs
-└────────┬─────┘
-         │
-    ┌────┴─────┐
-    ▼          ▼
-┌────────┐ ┌───────────┐
-│  Text  │ │    UI     │
-│Composer│ │ Composer  │
-└────┬───┘ └─────┬─────┘
-     │           │
-     └─────┬─────┘
-           ▼
-    Response (text + UI)
-           │
-           ▼
-    React Client (renders)
+User
+  <- Client UI updates
+  <- SSE
+  <- ConversationService
+  <- LangChainService
 ```
 
-<SectionDivider />
+## Step-by-step runtime
 
-<SectionHeader title="Step-by-Step" description="Each phase of the conversation pipeline explained in detail" />
+### 1. The client posts a chat request
 
-<Steps>
-  <Step title="Message Receipt">
-    The client sends a `ChatRequest` with the conversation ID, user ID, and prompt:
-
-    ```json
-    {
-        "conversationId": "conv-123",
-        "userId": "user-456",
-        "prompt": "Show me my expenses this month"
-    }
-    ```
-  </Step>
-  <Step title="Planning Phase">
-    The Chat Orchestrator delegates to the Planner, which uses an LLM to:
-    - Analyze the user's intent
-    - Select appropriate tools from the Tool Registry
-    - Determine the execution order
-  </Step>
-  <Step title="Tool Execution">
-    Selected tools are executed against backend services. Each tool is defined with:
-
-    ```csharp
-    ToolDefinition {
-        name: "get_expenses",
-        description: "Get user expenses with filters",
-        method: "GET",
-        urlTemplate: "/api/expenses/user/{userId}",
-        requiredArgs: ["userId"]
-    }
-    ```
-  </Step>
-  <Step title="Response Composition">
-    Two composers work in parallel:
-
-    <FeatureGrid columns={2}>
-      <FeatureCard title="Text Composer" description="Generates a natural language summary of the results" icon="✍️" />
-      <FeatureCard title="UI Composer" description="Creates dynamic UI component specifications for rich rendering" icon="🎨" />
-    </FeatureGrid>
-  </Step>
-  <Step title="Delivery">
-    The response is delivered back through the ChatController with both text and UI data:
-
-    ```json
-    {
-        "text": "Here are your expenses for this month...",
-        "uiV1": { /* generative UI specification */ },
-        "correlationId": "corr-789"
-    }
-    ```
-  </Step>
-</Steps>
-
-<SectionDivider />
-
-<SectionHeader title="Action Handling" description="How user interactions with generative UI components are processed" />
-
-When users interact with generative UI components (clicking buttons, applying filters), actions are sent via the ActionController:
+The browser sends:
 
 ```json
 {
-    "schema": "action.v1",
-    "conversationId": "conv-123",
-    "userId": "user-456",
-    "action": {
-        "type": "ui.setFilter",
-        "payload": { "category": "groceries" }
-    }
+  "conversationId": "optional-existing-id",
+  "prompt": "Show my spending this month"
 }
 ```
 
-<Callout type="info" title="Event-Driven Processing">
-  The Action Router processes these actions and publishes events via NATS JetStream, enabling decoupled handling across services.
-</Callout>
+`message` is also accepted for compatibility, but `prompt` is the primary field used by the current client.
 
-<SectionDivider />
+### 2. The gateway authenticates and forwards
 
-<LinkCardGrid>
-  <LinkCard title="Chat System Overview" description="High-level overview of the chat architecture" href="/chat-system" icon="💬" />
-  <LinkCard title="Real-Time Features" description="SSE streaming and SignalR for live updates" href="/chat-system/realtime" icon="⚡" />
-</LinkCardGrid>
+`MIBO.ApiGateway` validates the JWT and forwards the request to `ConversationService`. User identity is propagated through headers such as:
+
+- `X-User-Id`
+- `X-User-Email`
+
+`ConversationService` resolves the effective user from `X-User-Id` and falls back to `anonymous` when no identity header is present.
+
+### 3. ConversationService validates and resolves ownership
+
+`ChatController.StreamChatAsync()` performs the first hard checks:
+
+- trims and validates the prompt
+- creates a new conversation when `conversationId` is missing
+- verifies that an existing conversation belongs to the resolved user
+- allocates a `correlationId` for monitoring and tracing across the request
+
+If the conversation does not belong to the user, the service returns `404`.
+
+### 4. The user message is persisted before AI execution
+
+Before the AI call is opened, `ConversationService` writes the user message into MongoDB via `IConversationStore.AppendUserMessageAsync()`.
+
+Important effects of this write:
+
+- `messages` receives a normalized user message document
+- the parent conversation metadata is updated
+- `lastMessagePreview` and `lastMessageAt` are refreshed
+- `messageCount` is incremented
+- if the conversation title is still `New chat`, it is replaced with a normalized preview of the first user message
+
+### 5. ConversationService opens the upstream AI stream
+
+The service then calls `LangChainService /chat` with:
+
+```json
+{
+  "session_id": "conversation-id",
+  "message": "Show my spending this month",
+  "user_id": "authenticated-user-id"
+}
+```
+
+At this point `ConversationService` becomes an SSE relay boundary.
+
+### 6. LangChainService loads memory from MongoDB
+
+The first LangGraph node is `memory_loader`.
+
+It loads a context window directly from MongoDB by:
+
+- reading the conversation document
+- loading recent normalized messages from the `messages` collection
+- filtering out messages already covered by a stored summary
+- prepending a synthetic `system` message when a conversation summary exists
+
+This is a critical design point: the AI agent reads conversation memory from the same MongoDB dataset that `ConversationService` writes to.
+
+### 7. The agent classifies intent
+
+`intent_agent` sends recent conversation history and the current user message to Groq with a strict JSON prompt.
+
+The output is validated into an `IntentResult` shape that decides:
+
+- intent type
+- whether external data is needed
+- whether UI should be generated
+- whether calculation is required
+- which services and component types are likely relevant
+
+Before doing this, the agent checks token budget. If the prompt is too large, it compacts older context into a summary and reloads a smaller window.
+
+### 8. The agent builds an execution plan
+
+`planner_agent` turns the intent into a structured `ExecutionPlan`.
+
+The plan can include:
+
+- `tool_calls`
+- reusable `data_sources`
+- reusable `actions`
+- `components_plan`
+- `subscriptions`
+- a `response_text_instruction` that tells the composer how to phrase the final answer
+
+This is where the AI decides whether the answer should be:
+
+- pure text
+- text plus charts or tables
+- a fully interactive generative UI backed by follow-up data sources and actions
+
+### 9. The executor runs tool calls through the tool registry
+
+`executor_agent` iterates through the planned tool calls and resolves them from `TOOL_REGISTRY`.
+
+The important runtime behavior is:
+
+- tool outputs are truncated to keep the prompt budget stable
+- errors become structured result objects instead of crashing the pipeline
+- `user_id` is automatically injected into finance and Spotify-related tools
+
+The tools themselves do not call third parties directly in most cases. They go through typed wrappers that call `ActionService /api/actions/query`.
+
+### 10. The composer streams the final structured response
+
+`composer_agent` is the final AI generation phase.
+
+It receives:
+
+- the original user message
+- the intent result
+- the execution plan
+- the tool results
+
+It streams partial JSON fragments as SSE `chunk` events and finally produces a `FinalResponse`.
+
+That response is designed for the frontend and can contain:
+
+- explanatory text
+- static components
+- reusable data sources
+- reusable actions
+- subscriptions
+
+If the model returns imperfect JSON, the composer tries to recover it by extracting key fields such as `text`, `components`, `data_sources`, `actions`, and `subscriptions`.
+
+### 11. ConversationService relays the stream and intercepts `done`
+
+`ConversationService` forwards the upstream SSE stream almost verbatim. It only adds additional behavior in two places:
+
+- when it created the conversation itself, it emits a synthetic downstream `session` event
+- when it sees the upstream `done` event, it parses the assistant payload and extracts the assistant text for persistence
+
+This keeps the browser contract stable while still allowing `ConversationService` to persist the normalized result.
+
+### 12. The assistant message is persisted after the final payload arrives
+
+When the final payload has been parsed:
+
+- `assistantText` is extracted from the `text` field
+- the whole structured payload is stored as `assistantPayload`
+- the assistant message is written to the `messages` collection
+- conversation metadata is updated again
+
+The service currently stores the structured assistant payload, not a fully materialized `ui.v1`. The client derives `ui.v1` from `assistantPayload`.
+
+### 13. The client materializes generative UI
+
+The React client parses the final payload and calls `buildUiFromAgentResponse()`.
+
+That utility:
+
+- normalizes component aliases
+- registers data sources and actions
+- creates deterministic bindings for sandbox components
+- promotes plain markdown answers into renderable markdown UI when needed
+
+The result becomes the current conversation's `ui.v1` state.
+
+## Operational mechanisms worth knowing
+
+### Synthetic monitoring
+
+During the same request, `ConversationService` also records synthetic activity for:
+
+- `platform`
+- `ai-agent`
+
+Those records are written into Mongo-backed monitoring collections and are used by the status page.
+
+### Cancellation behavior
+
+If the client disconnects after the upstream stream was accepted, `ConversationService` currently treats the AI and platform work as successful for monitoring purposes.
+
+### Backward-compatible reads
+
+`MongoConversationStore` prefers the normalized `messages` collection when loading history, but it can still fall back to older embedded `conversation.messages` data if needed.
+
+## Summary
+
+The conversation pipeline is intentionally split:
+
+- `ConversationService` owns request lifecycle, persistence, and monitoring
+- `LangChainService` owns reasoning, planning, tool orchestration, and final structured output
+- the client owns materialization of `assistantPayload` into interactive UI
